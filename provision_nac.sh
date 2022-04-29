@@ -53,11 +53,44 @@ validate_github() {
 }
 
 
+parse_textfile_for_user_secret_keys_values() {
+	file="$1"
+	while IFS="=" read -r key value; do
+		case "$key" in
+		"nmc_api_username") NMC_API_USERNAME="$value" ;;
+		"nmc_api_password") NMC_API_PASSWORD="$value" ;;
+		"nac_product_key") NAC_PRODUCT_KEY="$value" ;;
+		"nmc_api_endpoint") NMC_API_ENDPOINT="$value" ;;
+		"web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+		"volume_key") VOLUME_KEY="$value" ;;
+		"volume_key_passphrase") VOLUME_KEY_PASSPHRASE="$value" ;;
+		"destination_bucket") DESTINATION_BUCKET="$value" ;;
+		"pem_key_path") PEM_KEY_PATH="$value" ;;
+        "acs_name") ACS_NAME="$value" ;;
+        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+		esac
+	done <"$file"
+}
+
+create_Config_Dat_file() {
+### create Config Dat file, which is used for NAC Provisioning
+
+}
+
+install_NAC_CLI() {
+### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
+
+
+}
+
+USER_SECRET_TEXT_FILE="$1"
+
 NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr -d '"')
 # GITHUB_ORGANIZATION=$(echo "$GITHUB_ORGANIZATION" | tr -d '"')
 GITHUB_ORGANIZATION="psahuNasuni"
 ACS_NAME="acs name from user secret text"
 ACS_RESOURCE_GROUP="acs resource_group from user secret text"
+parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 
 ######################## Check If Azure Cognitice Search Available ###############################################
 
@@ -136,6 +169,11 @@ fi
 ##################################### END Azure CognitiveSearch ###################################################################
 # exit 88888
 
+##################################### START NAC Provisioning ###################################################################
+create_Config_Dat_file 
+install_NAC_CLI
+
+
 NMC_VOLUME_NAME=$(echo "${TFVARS_FILE}" | rev | cut -d'/' -f 1 | rev |cut -d'.' -f 1)
 cd "$NMC_VOLUME_NAME"
 pwd
@@ -192,7 +230,7 @@ if [ $? -eq 0 ]; then
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
         exit 1
     fi
-sleep 50
+##################################### END NAC Provisioning ###################################################################
 
 END=$(date +%s)
 secs=$((END - START))
