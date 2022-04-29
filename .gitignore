@@ -1,0 +1,13 @@
+*.tfvars
+*tfstate*
+*.txt
+*.zip
+*lock*
+.terraform
+nac-es
+*.tfvars
+*.json
+*copy.sh
+# .gitignore
+nasuni-azure*
+*.pem
