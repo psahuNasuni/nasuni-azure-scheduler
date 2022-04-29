@@ -74,13 +74,40 @@ parse_textfile_for_user_secret_keys_values() {
 
 create_Config_Dat_file() {
 ### create Config Dat file, which is used for NAC Provisioning
-
+    source $1
+    CONFIG_DAT_FILE_NAME="/usr/local/bin/config.dat"
+    rm -rf "$CONFIG_DAT_FILE_NAME" 
+    echo "Name: "$Name >>$CONFIG_DAT_FILE_NAME
+    echo "AzureSubscriptionID: "$AzureSubscriptionID >>$CONFIG_DAT_FILE_NAME
+    echo "AzureLocation: "$AzureLocation >>$CONFIG_DAT_FILE_NAME
+    echo "ProductKey: "$ProductKey >>$CONFIG_DAT_FILE_NAME
+    echo "SourceContainer: "$SourceContainer >>$CONFIG_DAT_FILE_NAME
+    echo "SourceContainerSASURL: "$SourceContainerSASURL >>$CONFIG_DAT_FILE_NAME
+    echo "VolumeKeySASURL: "$VolumeKeySASURL >>$CONFIG_DAT_FILE_NAME
+    echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
+    echo "UniFSTOCHandle: "$UniFSTOCHandle >>$CONFIG_DAT_FILE_NAME
+    echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
+    echo "StartingPoint: "/ >>$CONFIG_DAT_FILE_NAME
+    echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE_NAME
+    echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
+    echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE_NAME
+    echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
+    echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE_NAME
+    echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE_NAME
+    echo "DestinationContainer: "$DestinationContainer >>$CONFIG_DAT_FILE_NAME
+    echo "DestinationContainerSASURL: "$DestinationContainerSASURL >>$CONFIG_DAT_FILE_NAME
+    echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
+    echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
 }
 
 install_NAC_CLI() {
 ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
-
-
+    echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
+    sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
+    sudo unzip '*.zip'
+    sudo mv nac_manager /usr/local/bin/
+    sudo apt update
+    echo "@@@@@@@@@@@@@@@@@@@@@ FINISHED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
 }
 
 USER_SECRET_TEXT_FILE="$1"
@@ -102,8 +129,7 @@ if [ "$ACS_NAME" == "" ] || [ "$ACS_NAME" == null ]; then
 else
     echo "ERROR ::: Azure Cognitive Search ::: $ACS_NAME not found"
     # ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
-    # ACS_STATUS=`az search service list --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --query "[].status"`
-    ACS_STATUS="878787"
+    ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --query "[].status"`
     echo "$?"
     echo ">>>>>>>>>>>>>>>>>>> ACS_STATUS ::: $ACS_STATUS"
     
