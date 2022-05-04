@@ -13,7 +13,7 @@
 ####             e- Terraform V 1.0.7
 ####       2- Azure Active Directory should be configured 
 ####       3- NMC Volume 
-####       5- User Specific AWS UserSecret  
+####       5- User Specific Azure UserSecret  
 ####             a- User need to provide/Update valid values for below keys:
 ####
 #############################################################################################
@@ -21,18 +21,18 @@ set -e
 
 START=$(date +%s)
 {
-TFVARS_FILE=$1
-read_TFVARS() {
-  file="$TFVARS_FILE"
-  while IFS="=" read -r key value; do
-    case "$key" in
-      "aws_profile") AWS_PROFILE="$value" ;;
-      "region") AWS_REGION="$value" ;;
-      "volume_name") NMC_VOLUME_NAME="$value" ;;
-      "github_organization") GITHUB_ORGANIZATION="$value" ;;
-    esac
-  done < "$file"
-}
+# TFVARS_FILE=$1
+# read_TFVARS() {
+#   file="$TFVARS_FILE"
+#   while IFS="=" read -r key value; do
+#     case "$key" in
+#       "region") AZURE_REGION="$value" ;;
+#       "volume_name") NMC_VOLUME_NAME="$value" ;;
+#       "github_organization") GITHUB_ORGANIZATION="$value" ;;
+#     esac
+#   done < "$file"
+# }
+
 validate_github() {
 	GITHUB_ORGANIZATION=$1
 	REPO_FOLDER=$2
@@ -66,8 +66,8 @@ parse_textfile_for_user_secret_keys_values() {
 		"volume_key_passphrase") VOLUME_KEY_PASSPHRASE="$value" ;;
 		"destination_bucket") DESTINATION_BUCKET="$value" ;;
 		"pem_key_path") PEM_KEY_PATH="$value" ;;
-        "acs_name") ACS_NAME="$value" ;;
-        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+        	"acs_name") ACS_NAME="$value" ;;
+        	"acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
 		esac
 	done <"$file"
 }
@@ -76,6 +76,7 @@ create_Config_Dat_file() {
 ### create Config Dat file, which is used for NAC Provisioning
     source $1
     CONFIG_DAT_FILE_NAME="/usr/local/bin/config.dat"
+    chmod 777 $CONFIG_DAT_FILE_NAME
     rm -rf "$CONFIG_DAT_FILE_NAME" 
     echo "Name: "$Name >>$CONFIG_DAT_FILE_NAME
     echo "AzureSubscriptionID: "$AzureSubscriptionID >>$CONFIG_DAT_FILE_NAME
@@ -100,6 +101,8 @@ create_Config_Dat_file() {
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
 }
 
+###
+
 install_NAC_CLI() {
 ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
@@ -115,21 +118,21 @@ USER_SECRET_TEXT_FILE="$1"
 NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr -d '"')
 # GITHUB_ORGANIZATION=$(echo "$GITHUB_ORGANIZATION" | tr -d '"')
 GITHUB_ORGANIZATION="psahuNasuni"
-ACS_NAME="acs name from user secret text"
-ACS_RESOURCE_GROUP="acs resource_group from user secret text"
+ACS_NAME=$(echo "$ACS_NAME" | tr -d '"')
+ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 
 ######################## Check If Azure Cognitice Search Available ###############################################
 
-echo "INFO ::: ES_DOMAIN NAME : $ACS_NAME"
+echo "INFO ::: ACS_DOMAIN NAME : $ACS_NAME"
 IS_ACS="N"
 if [ "$ACS_NAME" == "" ] || [ "$ACS_NAME" == null ]; then
-    echo "ERROR ::: Azure Cognitive Search is Not provided in admin secret"
+    echo "ERROR ::: Azure Cognitive Search is Not available"
     IS_ACS="N"
 else
-    echo "ERROR ::: Azure Cognitive Search ::: $ACS_NAME not found"
-    # ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
-    ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --query "[].status"`
+    echo "ERROR ::: Azure Cognitive Search ::: $ACS_NAME  not found"
+    ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
+    #ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --query "[].status"`
     echo "$?"
     echo ">>>>>>>>>>>>>>>>>>> ACS_STATUS ::: $ACS_STATUS"
     
@@ -193,13 +196,21 @@ else
 fi
 
 ##################################### END Azure CognitiveSearch ###################################################################
-# exit 88888
+#exit 88888
 
 ##################################### START NAC Provisioning ###################################################################
-create_Config_Dat_file 
-install_NAC_CLI
+create_Config_Dat_file $USER_SECRET_TEXT_FILE
+NAC_MANAGER_EXIST='N'
+FILE=/usr/local/bin/nac_manager
+if [ -f "$FILE" ]; then
+    echo "NAC Manager Already Available..."
+    NAC_MANAGER_EXIST='Y'
+else 
+    echo "NAC Manager not Available. Installing NAC Manager..."
+    install_NAC_CLI
+fi
 
-
+exit 8888
 NMC_VOLUME_NAME=$(echo "${TFVARS_FILE}" | rev | cut -d'/' -f 1 | rev |cut -d'.' -f 1)
 cd "$NMC_VOLUME_NAME"
 pwd
@@ -273,3 +284,4 @@ echo "INFO ::: Total execution Time ::: $DIFF"
     echo "INFO ::: Failed NAC Povisioning" 
 
 }
+
