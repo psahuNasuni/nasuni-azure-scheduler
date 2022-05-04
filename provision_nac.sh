@@ -21,17 +21,6 @@ set -e
 
 START=$(date +%s)
 {
-# TFVARS_FILE=$1
-# read_TFVARS() {
-#   file="$TFVARS_FILE"
-#   while IFS="=" read -r key value; do
-#     case "$key" in
-#       "region") AZURE_REGION="$value" ;;
-#       "volume_name") NMC_VOLUME_NAME="$value" ;;
-#       "github_organization") GITHUB_ORGANIZATION="$value" ;;
-#     esac
-#   done < "$file"
-# }
 
 validate_github() {
 	GITHUB_ORGANIZATION=$1
@@ -57,17 +46,8 @@ parse_textfile_for_user_secret_keys_values() {
 	file="$1"
 	while IFS="=" read -r key value; do
 		case "$key" in
-		"nmc_api_username") NMC_API_USERNAME="$value" ;;
-		"nmc_api_password") NMC_API_PASSWORD="$value" ;;
-		"nac_product_key") NAC_PRODUCT_KEY="$value" ;;
-		"nmc_api_endpoint") NMC_API_ENDPOINT="$value" ;;
-		"web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
-		"volume_key") VOLUME_KEY="$value" ;;
-		"volume_key_passphrase") VOLUME_KEY_PASSPHRASE="$value" ;;
-		"destination_bucket") DESTINATION_BUCKET="$value" ;;
-		"pem_key_path") PEM_KEY_PATH="$value" ;;
-        	"acs_name") ACS_NAME="$value" ;;
-        	"acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+        "acs_name") ACS_NAME="$value" ;;
+        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
 		esac
 	done <"$file"
 }
@@ -75,30 +55,32 @@ parse_textfile_for_user_secret_keys_values() {
 create_Config_Dat_file() {
 ### create Config Dat file, which is used for NAC Provisioning
     source $1
-    CONFIG_DAT_FILE_NAME="/usr/local/bin/config.dat"
-    chmod 777 $CONFIG_DAT_FILE_NAME
-    rm -rf "$CONFIG_DAT_FILE_NAME" 
-    echo "Name: "$Name >>$CONFIG_DAT_FILE_NAME
-    echo "AzureSubscriptionID: "$AzureSubscriptionID >>$CONFIG_DAT_FILE_NAME
-    echo "AzureLocation: "$AzureLocation >>$CONFIG_DAT_FILE_NAME
-    echo "ProductKey: "$ProductKey >>$CONFIG_DAT_FILE_NAME
-    echo "SourceContainer: "$SourceContainer >>$CONFIG_DAT_FILE_NAME
-    echo "SourceContainerSASURL: "$SourceContainerSASURL >>$CONFIG_DAT_FILE_NAME
-    echo "VolumeKeySASURL: "$VolumeKeySASURL >>$CONFIG_DAT_FILE_NAME
-    echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
-    echo "UniFSTOCHandle: "$UniFSTOCHandle >>$CONFIG_DAT_FILE_NAME
-    echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
-    echo "StartingPoint: "/ >>$CONFIG_DAT_FILE_NAME
-    echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE_NAME
-    echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
-    echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE_NAME
-    echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
-    echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE_NAME
-    echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE_NAME
-    echo "DestinationContainer: "$DestinationContainer >>$CONFIG_DAT_FILE_NAME
-    echo "DestinationContainerSASURL: "$DestinationContainerSASURL >>$CONFIG_DAT_FILE_NAME
-    echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
-    echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
+    CONFIG_DAT_FILE_NAME="config.dat"
+    CONFIG_DAT_FILE_PATH="/usr/local/bin" 
+    chmod 777 $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH
+    CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
+    rm -rf "$CONFIG_DAT_FILE" 
+    echo "Name: "$Name >>$CONFIG_DAT_FILE
+    echo "AzureSubscriptionID: "$AzureSubscriptionID >>$CONFIG_DAT_FILE
+    echo "AzureLocation: "$AzureLocation >>$CONFIG_DAT_FILE
+    echo "ProductKey: "$ProductKey >>$CONFIG_DAT_FILE
+    echo "SourceContainer: "$SourceContainer >>$CONFIG_DAT_FILE
+    echo "SourceContainerSASURL: "$SourceContainerSASURL >>$CONFIG_DAT_FILE
+    echo "VolumeKeySASURL: "$VolumeKeySASURL >>$CONFIG_DAT_FILE
+    echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE
+    echo "UniFSTOCHandle: "$UniFSTOCHandle >>$CONFIG_DAT_FILE
+    echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE
+    echo "StartingPoint: "/ >>$CONFIG_DAT_FILE
+    echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE
+    echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE
+    echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE
+    echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE
+    echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE
+    echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE
+    echo "DestinationContainer: "$DestinationContainer >>$CONFIG_DAT_FILE
+    echo "DestinationContainerSASURL: "$DestinationContainerSASURL >>$CONFIG_DAT_FILE
+    echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE
+    echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE
 }
 
 ###
@@ -113,37 +95,41 @@ install_NAC_CLI() {
     echo "@@@@@@@@@@@@@@@@@@@@@ FINISHED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
 }
 
-USER_SECRET_TEXT_FILE="$1"
-
-NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr -d '"')
-# GITHUB_ORGANIZATION=$(echo "$GITHUB_ORGANIZATION" | tr -d '"')
+###### START - EXECUTION ####
+NMC_VOLUME_NAME="$1"        #### 1st argument to provision_nac.sh
+USER_SECRET_TEXT_FILE="$2"  #### 2nd argument to provision_nac.sh
 GITHUB_ORGANIZATION="psahuNasuni"
+
+parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 ACS_NAME=$(echo "$ACS_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 
+echo  $ACS_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
 echo "INFO ::: ACS_DOMAIN NAME : $ACS_NAME"
 IS_ACS="N"
+if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
+    echo "ERROR ::: Azure Cognitive Search Resource Group is Not provided."
+    exit 1
+fi 
 if [ "$ACS_NAME" == "" ] || [ "$ACS_NAME" == null ]; then
-    echo "ERROR ::: Azure Cognitive Search is Not available"
-    IS_ACS="N"
+    echo "ERROR ::: Azure Cognitive Search is Not provided."
+    exit 1
 else
-    echo "ERROR ::: Azure Cognitive Search ::: $ACS_NAME  not found"
-    ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
-    #ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --query "[].status"`
-    echo "$?"
-    echo ">>>>>>>>>>>>>>>>>>> ACS_STATUS ::: $ACS_STATUS"
-    
-    if [ "$ACS_STATUS" != "" ] || [ "$ACS_STATUS" != null ] ; then
-        IS_ACS="Y"
-    echo "ASASASASA "
-else
-    echo "RTYRYTRYTRYTRYTRYTRT"
-    fi
-fi
+    echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_NAME"
 
+    echo "INFO ::: Checking for ACS Availability Status . . . . "
+
+    ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
+    if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
+        echo "INFO ::: ACS not found. Start provisioning ACS"
+        IS_ACS="N"
+    else
+        echo "ACS $ACS_NAME Status is: $ACS_STATUS"
+        IS_ACS="Y"
+    fi 
+fi 
 if [ "$IS_ACS" == "N" ]; then
     echo "ERROR ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
     echo "INFO ::: Begin Azure Cognitive Search Provisioning."
@@ -183,6 +169,7 @@ if [ "$IS_ACS" == "N" ]; then
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
     COMMAND="terraform apply -auto-approve"
     $COMMAND
+ 
     if [ $? -eq 0 ]; then
         echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
     else
@@ -196,12 +183,12 @@ else
 fi
 
 ##################################### END Azure CognitiveSearch ###################################################################
-#exit 88888
+
 
 ##################################### START NAC Provisioning ###################################################################
 create_Config_Dat_file $USER_SECRET_TEXT_FILE
 NAC_MANAGER_EXIST='N'
-FILE=/usr/local/bin/nac_manager
+FILE=/usr/local/bin/nac_manager   
 if [ -f "$FILE" ]; then
     echo "NAC Manager Already Available..."
     NAC_MANAGER_EXIST='Y'
@@ -210,8 +197,8 @@ else
     install_NAC_CLI
 fi
 
-exit 8888
-NMC_VOLUME_NAME=$(echo "${TFVARS_FILE}" | rev | cut -d'/' -f 1 | rev |cut -d'.' -f 1)
+### NMC_VOLUME_NAME=$(echo "${TFVARS_FILE}" | rev | cut -d'/' -f 1 | rev |cut -d'.' -f 1)
+mkdir "$NMC_VOLUME_NAME"
 cd "$NMC_VOLUME_NAME"
 pwd
 echo "INFO ::: current user :-"`whoami`
@@ -226,7 +213,6 @@ echo "INFO ::: BEGIN - Git Clone !!!"
 GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 echo "INFO ::: GIT_REPO : $GIT_REPO"
 echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
-pwd
 ls
 echo "INFO ::: Deleting the Directory: ${GIT_REPO_NAME}"
 rm -rf "${GIT_REPO_NAME}"
@@ -244,9 +230,6 @@ fi
 pwd
 ls -l
 ########################### Completed - Git Clone  ###############################################################
-echo "INFO ::: Copy TFVARS file to $(pwd)/${GIT_REPO_NAME}/${TFVARS_FILE}"
-# cp "$NMC_VOLUME_NAME/${TFVARS_FILE}" $(pwd)/"${GIT_REPO_NAME}"/
-cp "${TFVARS_FILE}" "${GIT_REPO_NAME}"/
 cd "${GIT_REPO_NAME}"
 pwd
 ls
@@ -255,11 +238,9 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
 $COMMAND
 chmod 755 $(pwd)/*
-# exit 1
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
-COMMAND="terraform apply -var-file=${TFVARS_FILE} -auto-approve"
-# COMMAND="terraform validate"
+COMMAND="terraform apply -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
@@ -273,7 +254,6 @@ END=$(date +%s)
 secs=$((END - START))
 DIFF=$(printf '%02dh:%02dm:%02ds\n' $((secs/3600)) $((secs%3600/60)) $((secs%60)))
 echo "INFO ::: Total execution Time ::: $DIFF"
-#exit 0
 
 } || {
     END=$(date +%s)
