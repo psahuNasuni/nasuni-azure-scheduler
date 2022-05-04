@@ -46,11 +46,23 @@ parse_textfile_for_user_secret_keys_values() {
 	file="$1"
 	while IFS="=" read -r key value; do
 		case "$key" in
+		"Name") Name="$value" ;;
+		"AzureSubscriptionID") AzureSubscriptionID="$value" ;;
+		"AzureLocation") AzureLocation="$value" ;;
+		"ProductKey") ProductKey="$value" ;;
+		"SourceContainer") SourceContainer="$value" ;;
+		"SourceContainerSASURL") SourceContainerSASURL="$value" ;;
+		"VolumeKeySASURL") VolumeKeySASURL="$value" ;;
+		"UniFSTOCHandle") UniFSTOCHandle="$value" ;;
+		"DestinationContainer") DestinationContainer="$value" ;;
+        "DestinationContainerSASURL") DestinationContainerSASURL="$value" ;;
         "acs_name") ACS_NAME="$value" ;;
         "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
 		esac
 	done <"$file"
 }
+
+
 
 create_Config_Dat_file() {
 ### create Config Dat file, which is used for NAC Provisioning
@@ -83,7 +95,6 @@ create_Config_Dat_file() {
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE
 }
 
-###
 
 install_NAC_CLI() {
 ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
@@ -186,7 +197,7 @@ fi
 
 
 ##################################### START NAC Provisioning ###################################################################
-create_Config_Dat_file $USER_SECRET_TEXT_FILE
+create_Config_Dat_file "$2"
 NAC_MANAGER_EXIST='N'
 FILE=/usr/local/bin/nac_manager   
 if [ -f "$FILE" ]; then
