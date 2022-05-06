@@ -46,17 +46,17 @@ parse_textfile_for_user_secret_keys_values() {
 	file="$1"
 	while IFS="=" read -r key value; do
 		case "$key" in
-		"Name") Name="$value" ;;
-		"AzureSubscriptionID") AzureSubscriptionID="$value" ;;
-		"AzureLocation") AzureLocation="$value" ;;
-		"ProductKey") ProductKey="$value" ;;
-		"SourceContainer") SourceContainer="$value" ;;
-		"SourceContainerSASURL") SourceContainerSASURL="$value" ;;
-		"VolumeKeySASURL") VolumeKeySASURL="$value" ;;
-		"UniFSTOCHandle") UniFSTOCHandle="$value" ;;
-		"DestinationContainer") DestinationContainer="$value" ;;
-        "DestinationContainerSASURL") DestinationContainerSASURL="$value" ;;
-        "acs_name") ACS_NAME="$value" ;;
+		"Name") NAC_RESOURCE_GROUP_NAME="$value" ;;
+		"AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
+		"AzureLocation") AZURE_LOCATION="$value" ;;
+		"ProductKey") PRODUCT_KEY="$value" ;;
+		"SourceContainer") SOURCE_CONTAINER="$value" ;;
+		"SourceContainerSASURL") SOURCE_CONTAINER_SAS_URL="$value" ;;
+		"VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
+		"UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
+		"DestinationContainer") DESTINATION_CONTAINER="$value" ;;
+        "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
         "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
 		esac
 	done <"$file"
@@ -72,15 +72,15 @@ create_Config_Dat_file() {
     chmod 777 $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH
     CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
     rm -rf "$CONFIG_DAT_FILE" 
-    echo "Name: "$Name >>$CONFIG_DAT_FILE
-    echo "AzureSubscriptionID: "$AzureSubscriptionID >>$CONFIG_DAT_FILE
-    echo "AzureLocation: "$AzureLocation >>$CONFIG_DAT_FILE
-    echo "ProductKey: "$ProductKey >>$CONFIG_DAT_FILE
-    echo "SourceContainer: "$SourceContainer >>$CONFIG_DAT_FILE
-    echo "SourceContainerSASURL: "$SourceContainerSASURL >>$CONFIG_DAT_FILE
-    echo "VolumeKeySASURL: "$VolumeKeySASURL >>$CONFIG_DAT_FILE
+    echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE
+    echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE
+    echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE
+    echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE
+    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE
+    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE
+    echo "VolumeKeySASURL: "$VOLUME_KEY_SAS_URL>>$CONFIG_DAT_FILE
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE
-    echo "UniFSTOCHandle: "$UniFSTOCHandle >>$CONFIG_DAT_FILE
+    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE
     echo "StartingPoint: "/ >>$CONFIG_DAT_FILE
     echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE
@@ -89,8 +89,8 @@ create_Config_Dat_file() {
     echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE
     echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE
     echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE
-    echo "DestinationContainer: "$DestinationContainer >>$CONFIG_DAT_FILE
-    echo "DestinationContainerSASURL: "$DestinationContainerSASURL >>$CONFIG_DAT_FILE
+    echo "DestinationContainer: "$DESTINATION_CONTAINER >>$CONFIG_DAT_FILE
+    echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE
     echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE
 }
@@ -112,32 +112,35 @@ USER_SECRET_TEXT_FILE="$2"  #### 2nd argument to provision_nac.sh
 GITHUB_ORGANIZATION="psahuNasuni"
 
 parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
-ACS_NAME=$(echo "$ACS_NAME" | tr -d '"')
+ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 
-echo  $ACS_NAME
+echo  $ACS_SERVICE_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
-echo "INFO ::: ACS_DOMAIN NAME : $ACS_NAME"
+echo "INFO ::: ACS_DOMAIN NAME : $ACS_SERVICE_NAME"
 IS_ACS="N"
 if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
     echo "ERROR ::: Azure Cognitive Search Resource Group is Not provided."
     exit 1
+else
+    ### If resource group already available
+    echo "INFO ::: Azure Cognitive Search Resource Group is provided as $ACS_RESOURCE_GROUP"
 fi 
-if [ "$ACS_NAME" == "" ] || [ "$ACS_NAME" == null ]; then
+if [ "$ACS_SERVICE_NAME" == "" ] || [ "$ACS_SERVICE_NAME" == null ]; then
     echo "ERROR ::: Azure Cognitive Search is Not provided."
     exit 1
 else
-    echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_NAME"
+    echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_SERVICE_NAME"
 
     echo "INFO ::: Checking for ACS Availability Status . . . . "
 
-    ACS_STATUS=`az search service show --name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
+    ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
     if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
         echo "INFO ::: ACS not found. Start provisioning ACS"
         IS_ACS="N"
     else
-        echo "ACS $ACS_NAME Status is: $ACS_STATUS"
+        echo "ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
         IS_ACS="Y"
     fi 
 fi 
@@ -176,9 +179,19 @@ if [ "$IS_ACS" == "N" ]; then
     $COMMAND
     chmod 755 $(pwd)/*
     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
+    
+    echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
+    ##### Create TFVARS file for provisioning Cognitive Search
+    ACS_TFVARS_FILE_NAME="ACS.tfvars"
+	rm -rf "$ACS_TFVARS_FILE_NAME"
+	echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
+	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+	echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
+
     ##### RUN terraform Apply
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
-    COMMAND="terraform apply -auto-approve"
+    COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
+    # COMMAND="terraform apply -auto-approve"
     $COMMAND
  
     if [ $? -eq 0 ]; then
