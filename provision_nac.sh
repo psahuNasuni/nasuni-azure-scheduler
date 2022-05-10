@@ -3,19 +3,17 @@
 #############################################################################################
 #### This Script Targets NAC Deployment from any Linux Box 
 #### Prequisites: 
-####       1- Software need to be Installed:
-####             a- AZURE CLI 
-####             b- Python 3
-####             c- curl 
-####             d- git 
-####             e- jq 
-####             f- wget 
-####             e- Terraform V 1.0.7
-####       2- Azure Active Directory should be configured 
-####       3- NMC Volume 
-####       5- User Specific Azure UserSecret  
-####             a- User need to provide/Update valid values for below keys:
-####
+#### 2.1. Software need to be Installed:
+####    a- AZURE CLI
+####    b- Python 3
+####    c- curl
+####    d- git
+####    e- jq
+####    f- wget
+####    g- Terraform V 1.0.7
+####    h- unzip
+####    i- zip
+#### 2.2. Azure Subscription
 #############################################################################################
 set -e
 
@@ -264,7 +262,8 @@ $COMMAND
 chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
-COMMAND="terraform apply -auto-approve"
+#### Added -var-file=$ACS_TFVARS_FILE_NAME file
+COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
