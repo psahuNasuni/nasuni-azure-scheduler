@@ -53,9 +53,10 @@ parse_textfile_for_user_secret_keys_values() {
 		"VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
 		"UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
 		"DestinationContainer") DESTINATION_CONTAINER="$value" ;;
-        "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
-        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
-        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+	        "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+       		"acs_service_name") ACS_SERVICE_NAME="$value" ;;
+       		"acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+                "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
 		esac
 	done <"$file"
 }
@@ -112,7 +113,7 @@ GITHUB_ORGANIZATION="psahuNasuni"
 parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-
+KeyVault_ACS_ID="secretnacacs1"
 echo  $ACS_SERVICE_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
@@ -124,7 +125,7 @@ if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
 else
     ### If resource group already available
     echo "INFO ::: Azure Cognitive Search Resource Group is provided as $ACS_RESOURCE_GROUP"
-fi 
+fi
 if [ "$ACS_SERVICE_NAME" == "" ] || [ "$ACS_SERVICE_NAME" == null ]; then
     echo "ERROR ::: Azure Cognitive Search is Not provided."
     exit 1
@@ -140,8 +141,8 @@ else
     else
         echo "ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
         IS_ACS="Y"
-    fi 
-fi 
+    fi
+fi
 if [ "$IS_ACS" == "N" ]; then
     echo "ERROR ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
     echo "INFO ::: Begin Azure Cognitive Search Provisioning."
@@ -175,9 +176,26 @@ if [ "$IS_ACS" == "N" ]; then
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
     COMMAND="terraform init"
     $COMMAND
+
     chmod 755 $(pwd)/*
+    ####KeyVault_ACS_ID=secretacsnasuni"
     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
-    
+    #### Check if Resource Group is already provisioned
+    ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
+    if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+        echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already provisioned"
+		COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+		$COMMAND
+    fi
+
+    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $KeyVault_ACS_ID --query properties.provisioningState --output tsv`
+    if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
+        echo "INFO ::: Azure Key Vault $KeyVault_ACS_ID is already provisioned"
+		ACS_KEY_VAULT_ID=`az keyvault show --name $KeyVault_ACS_ID --query id --output tsv`
+		COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_ID"
+		$COMMAND
+    fi
+
     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
     ##### Create TFVARS file for provisioning Cognitive Search
     ACS_TFVARS_FILE_NAME="ACS.tfvars"
@@ -185,7 +203,9 @@ if [ "$IS_ACS" == "N" ]; then
 	echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
 	echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-
+        echo "acs_key_vault="\"$KeyVault_ACS_ID\" >>$ACS_TFVARS_FILE_NAME
+        echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+        echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
     ##### RUN terraform Apply
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
     COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
@@ -210,7 +230,7 @@ fi
 ##################################### START NAC Provisioning ###################################################################
 create_Config_Dat_file "$2"
 NAC_MANAGER_EXIST='N'
-FILE=/usr/local/bin/nac_manager   
+FILE=/usr/local/bin/nac_manager 
 if [ -f "$FILE" ]; then
     echo "NAC Manager Already Available..."
     NAC_MANAGER_EXIST='Y'
@@ -255,15 +275,42 @@ ls -l
 cd "${GIT_REPO_NAME}"
 pwd
 ls
+#### Installing dependencies in ./ACSFunction/.python_packages/lib/site-packages location
+echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
+COMMAND="pip3 install  --target=./ACSFunction/.python_packages/lib/site-packages  -r ./ACSFunction/requirements.txt"
+$COMMAND
 ##### RUN terraform init
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
 $COMMAND
 chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
+
+#### Check if Resource Group is already provisioned
+ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
+if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+      echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already provisioned"
+      COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+      $COMMAND
+fi
+
+NAC_TFVARS_FILE_NAME="NAC.tfvars"
+rm -rf "$NAC_TFVARS_FILE_NAME"
+echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
+echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_key_vault="\"$KeyVault_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
+
+ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $KeyVault_ACS_ID --query properties.provisioningState --output tsv`
+if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
+      echo "INFO ::: Azure Key Vault $KeyVault_ACS_ID already provisioned"
+      ACS_KEY_VAULT_ID=`az keyvault show --name $KeyVault_ACS_ID --query id --output tsv`
+      COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_ID"
+      $COMMAND
+fi
+
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 #### Added -var-file=$ACS_TFVARS_FILE_NAME file
-COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
+COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
@@ -271,7 +318,17 @@ if [ $? -eq 0 ]; then
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
         exit 1
     fi
+
+############# Setup Environment Variable for Azure Key Vault ########################
+FUNCTION_APP_NAME=$ACS_RESOURCE_GROUP"-function-app"
+COMMAND="az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings AZURE_KEY_VAULT=$KeyVault_ACS_ID"
+#### COMMAND=az functionapp config appsettings set --name $ACS_RESOURCE_GROUP-function-app' --resource-group --settings AZURE_KEY_VAULT=secretacsnasuni"
+$COMMAND
 ##################################### END NAC Provisioning ###################################################################
+
+
+
+
 
 END=$(date +%s)
 secs=$((END - START))
@@ -287,5 +344,4 @@ echo "INFO ::: Total execution Time ::: $DIFF"
     echo "INFO ::: Failed NAC Povisioning" 
 
 }
-
 
