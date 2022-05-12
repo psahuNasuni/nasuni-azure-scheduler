@@ -111,6 +111,13 @@ USER_SECRET_TEXT_FILE="$2"  #### 2nd argument to provision_nac.sh
 GITHUB_ORGANIZATION="psahuNasuni"
 
 parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
+####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
+NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID}`
+if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
+   echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME" 
+   exit 1
+fi
+
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 KeyVault_ACS_ID="secretnacacs1"
