@@ -117,7 +117,7 @@ if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME" 
    exit 1
 fi
-
+################################################################################################################
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 KeyVault_ACS_ID="secretnacacs1"
@@ -307,12 +307,12 @@ echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_key_vault="\"$KeyVault_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
 
-ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $KeyVault_ACS_ID --query properties.provisioningState --output tsv`
-if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
-      echo "INFO ::: Azure Key Vault $KeyVault_ACS_ID already provisioned"
-      ACS_KEY_VAULT_ID=`az keyvault show --name $KeyVault_ACS_ID --query id --output tsv`
-      COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_ID"
-      $COMMAND
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $KeyVault_ACS_ID --query id --output tsv`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+	echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+	COMMAND="terraform import azurerm_key_vault_secret.search-endpoint $ACS_KEY_VAULT_SECRET_ID"
+	$COMMAND
 fi
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
