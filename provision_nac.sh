@@ -67,10 +67,10 @@ create_Config_Dat_file() {
 ### create Config Dat file, which is used for NAC Provisioning
     source $1
     CONFIG_DAT_FILE_NAME="config.dat"
-    CONFIG_DAT_FILE_PATH="/usr/local/bin" 
-    chmod 777 $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH
+    CONFIG_DAT_FILE_PATH="/usr/local/bin"
+    sudo chmod 777 $CONFIG_DAT_FILE_PATH
     CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
-    rm -rf "$CONFIG_DAT_FILE" 
+    sudo rm -rf "$CONFIG_DAT_FILE"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE
     echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE
     echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE
@@ -92,6 +92,7 @@ create_Config_Dat_file() {
     echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE
     echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE
+    sudo chmod 777 $CONFIG_DAT_FILE
 }
 
 
@@ -120,21 +121,21 @@ fi
 ################################################################################################################
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-KeyVault_ACS_ID="secretnacacs1"
+KeyVault_ACS_ID="secretnacacs3"
 echo  $ACS_SERVICE_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
 echo "INFO ::: ACS_DOMAIN NAME : $ACS_SERVICE_NAME"
 IS_ACS="N"
 if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
-    echo "ERROR ::: Azure Cognitive Search Resource Group is Not provided."
+    echo "INFO ::: Azure Cognitive Search Resource Group is Not provided."
     exit 1
 else
     ### If resource group already available
     echo "INFO ::: Azure Cognitive Search Resource Group is provided as $ACS_RESOURCE_GROUP"
 fi
 if [ "$ACS_SERVICE_NAME" == "" ] || [ "$ACS_SERVICE_NAME" == null ]; then
-    echo "ERROR ::: Azure Cognitive Search is Not provided."
+    echo "INFO ::: Azure Cognitive Search is Not provided."
     exit 1
 else
     echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_SERVICE_NAME"
@@ -151,7 +152,7 @@ else
     fi
 fi
 if [ "$IS_ACS" == "N" ]; then
-    echo "ERROR ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
+    echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
     echo "INFO ::: Begin Azure Cognitive Search Provisioning."
    ########## Download CognitiveSearch Provisioning Code from GitHub ##########
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
@@ -239,10 +240,10 @@ create_Config_Dat_file "$2"
 NAC_MANAGER_EXIST='N'
 FILE=/usr/local/bin/nac_manager 
 if [ -f "$FILE" ]; then
-    echo "NAC Manager Already Available..."
+    echo "INFO ::: NAC Manager Already Available..."
     NAC_MANAGER_EXIST='Y'
 else 
-    echo "NAC Manager not Available. Installing NAC Manager..."
+    echo "INFO ::: NAC Manager not Available. Installing NAC Manager..."
     install_NAC_CLI
 fi
 
@@ -326,15 +327,8 @@ if [ $? -eq 0 ]; then
         exit 1
     fi
 
-############# Setup Environment Variable for Azure Key Vault ########################
-FUNCTION_APP_NAME=$ACS_RESOURCE_GROUP"-function-app"
-COMMAND="az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings AZURE_KEY_VAULT=$KeyVault_ACS_ID"
-#### COMMAND=az functionapp config appsettings set --name $ACS_RESOURCE_GROUP-function-app' --resource-group --settings AZURE_KEY_VAULT=secretacsnasuni"
-$COMMAND
+
 ##################################### END NAC Provisioning ###################################################################
-
-
-
 
 
 END=$(date +%s)
