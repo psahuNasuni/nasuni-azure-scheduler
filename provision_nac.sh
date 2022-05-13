@@ -19,14 +19,13 @@ set -e
 
 START=$(date +%s)
 {
-
 validate_github() {
 	GITHUB_ORGANIZATION=$1
 	REPO_FOLDER=$2
 	if [[ $GITHUB_ORGANIZATION == "" ]];then
 		GITHUB_ORGANIZATION="nasuni-labs"
 		echo "INFO ::: github_organization not provided as Secret Key-Value pair. So considering nasuni-labs as the default value !!!"
-	fi 
+	fi
 	GIT_REPO="https://github.com/$GITHUB_ORGANIZATION/$REPO_FOLDER.git"
 	echo "INFO ::: git repo $GIT_REPO"
 	git ls-remote $GIT_REPO -q
@@ -53,14 +52,13 @@ parse_textfile_for_user_secret_keys_values() {
 		"VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
 		"UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
 		"DestinationContainer") DESTINATION_CONTAINER="$value" ;;
-	        "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
-       		"acs_service_name") ACS_SERVICE_NAME="$value" ;;
-       		"acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+                "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+                "acs_service_name") ACS_SERVICE_NAME="$value" ;;
+                "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
                 "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
 		esac
 	done <"$file"
 }
-
 
 
 create_Config_Dat_file() {
@@ -121,7 +119,7 @@ fi
 ################################################################################################################
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-KeyVault_ACS_ID="secretnacacs3"
+KEY_VAULT_ACS_ID="secretnacacs"
 echo  $ACS_SERVICE_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
@@ -158,7 +156,7 @@ if [ "$IS_ACS" == "N" ]; then
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-cognitive-search"
     ### https://github.com/psahuNasuni/nasuni-azure-cognitive-search.git
-	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
+	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
     ########################### Git Clone  ###############################################################
     echo "INFO ::: BEGIN - Git Clone !!!"
     ### Download Provisioning Code from GitHub
@@ -180,13 +178,12 @@ if [ "$IS_ACS" == "N" ]; then
         exit 1
     fi
     cd "${GIT_REPO_NAME}"
-    ##### RUN terraform init
+    #### RUN terraform init
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
     COMMAND="terraform init"
     $COMMAND
 
     chmod 755 $(pwd)/*
-    ####KeyVault_ACS_ID=secretacsnasuni"
     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
     #### Check if Resource Group is already provisioned
     ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
@@ -196,10 +193,10 @@ if [ "$IS_ACS" == "N" ]; then
 		$COMMAND
     fi
 
-    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $KeyVault_ACS_ID --query properties.provisioningState --output tsv`
+    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $KEY_VAULT_ACS_ID --query properties.provisioningState --output tsv`
     if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Azure Key Vault $KeyVault_ACS_ID is already provisioned"
-		ACS_KEY_VAULT_ID=`az keyvault show --name $KeyVault_ACS_ID --query id --output tsv`
+        echo "INFO ::: Azure Key Vault $KEY_VAULT_ACS_ID is already provisioned"
+		ACS_KEY_VAULT_ID=`az keyvault show --name $KEY_VAULT_ACS_ID --query id --output tsv`
 		COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_ID"
 		$COMMAND
     fi
@@ -211,15 +208,14 @@ if [ "$IS_ACS" == "N" ]; then
 	echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
 	echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-        echo "acs_key_vault="\"$KeyVault_ACS_ID\" >>$ACS_TFVARS_FILE_NAME
+        echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$ACS_TFVARS_FILE_NAME
         echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
         echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
     ##### RUN terraform Apply
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
     COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
-    # COMMAND="terraform apply -auto-approve"
     $COMMAND
- 
+
     if [ $? -eq 0 ]; then
         echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
     else
@@ -238,28 +234,28 @@ fi
 ##################################### START NAC Provisioning ###################################################################
 create_Config_Dat_file "$2"
 NAC_MANAGER_EXIST='N'
-FILE=/usr/local/bin/nac_manager 
+FILE=/usr/local/bin/nac_manager
 if [ -f "$FILE" ]; then
     echo "INFO ::: NAC Manager Already Available..."
     NAC_MANAGER_EXIST='Y'
-else 
+else
     echo "INFO ::: NAC Manager not Available. Installing NAC Manager..."
     install_NAC_CLI
 fi
 
-### NMC_VOLUME_NAME=$(echo "${TFVARS_FILE}" | rev | cut -d'/' -f 1 | rev |cut -d'.' -f 1)
 mkdir "$NMC_VOLUME_NAME"
 cd "$NMC_VOLUME_NAME"
 pwd
 echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
+
 ### GITHUB_ORGANIZATION defaults to nasuni-labs
 # https://github.com/psahuNasuni/nasuni-azure-analyticsconnector.git
 REPO_FOLDER="nasuni-azure-analyticsconnector"
-validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
+validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
 ########################### Git Clone : NAC Provisioning Repo ###############################################################
 echo "INFO ::: BEGIN - Git Clone !!!"
-### Download Provisioning Code from GitHub
+#### Download Provisioning Code from GitHub
 GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 echo "INFO ::: GIT_REPO : $GIT_REPO"
 echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
@@ -306,9 +302,9 @@ NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
-echo "acs_key_vault="\"$KeyVault_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $KeyVault_ACS_ID --query id --output tsv`
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
 	echo "INFO ::: Key Vault Secret already available ::: Started Importing"
@@ -317,7 +313,7 @@ if [ $RESULT -eq 0 ]; then
 fi
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
-#### Added -var-file=$ACS_TFVARS_FILE_NAME file
+
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
@@ -326,8 +322,6 @@ if [ $? -eq 0 ]; then
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
         exit 1
     fi
-
-
 ##################################### END NAC Provisioning ###################################################################
 
 
@@ -342,7 +336,5 @@ echo "INFO ::: Total execution Time ::: $DIFF"
 	DIFF=$(printf '%02dh:%02dm:%02ds\n' $((secs/3600)) $((secs%3600/60)) $((secs%60)))
 	echo "INFO ::: Total execution Time ::: $DIFF"
 	exit 0
-    echo "INFO ::: Failed NAC Povisioning" 
-
+    echo "INFO ::: Failed NAC Povisioning"
 }
-
