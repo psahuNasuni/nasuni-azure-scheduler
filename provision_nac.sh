@@ -56,6 +56,7 @@ parse_textfile_for_user_secret_keys_values() {
                 "acs_service_name") ACS_SERVICE_NAME="$value" ;;
                 "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
                 "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
+                "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
 		esac
 	done <"$file"
 }
@@ -113,13 +114,13 @@ parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID}`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
-   echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME" 
+   echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
    exit 1
 fi
 ################################################################################################################
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-KEY_VAULT_ACS_ID="secretnacacs"
+KEY_VAULT_ACS_ID="secretacsnac15"
 echo  $ACS_SERVICE_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
@@ -303,6 +304,8 @@ rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
+echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
+echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 
 ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
 RESULT=$?
@@ -312,6 +315,22 @@ if [ $RESULT -eq 0 ]; then
 	$COMMAND
 fi
 
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name web-access-appliance-address --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+        echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+        COMMAND="terraform import azurerm_key_vault_secret.web-access-appliance-address $ACS_KEY_VAULT_SECRET_ID"
+        $COMMAND
+fi
+
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name nmc-volume-name --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+        echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+        COMMAND="terraform import azurerm_key_vault_secret.nmc-volume-name $ACS_KEY_VAULT_SECRET_ID"
+        $COMMAND
+fi
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
