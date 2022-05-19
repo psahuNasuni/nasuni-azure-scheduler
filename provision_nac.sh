@@ -52,11 +52,11 @@ parse_textfile_for_user_secret_keys_values() {
 		"VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
 		"UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
 		"DestinationContainer") DESTINATION_CONTAINER="$value" ;;
-                "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
-                "acs_service_name") ACS_SERVICE_NAME="$value" ;;
-                "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-                "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
-                "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+        "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
+        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+        "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
+        "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
 		esac
 	done <"$file"
 }
@@ -209,9 +209,9 @@ if [ "$IS_ACS" == "N" ]; then
 	echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
 	echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-        echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$ACS_TFVARS_FILE_NAME
-        echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-        echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$ACS_TFVARS_FILE_NAME
+    echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+    echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
     ##### RUN terraform Apply
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
     COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
@@ -306,6 +306,8 @@ echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
+
 
 ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
 RESULT=$?
@@ -331,6 +333,15 @@ if [ $RESULT -eq 0 ]; then
         COMMAND="terraform import azurerm_key_vault_secret.nmc-volume-name $ACS_KEY_VAULT_SECRET_ID"
         $COMMAND
 fi
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name unifs-toc-handle --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+        echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+        COMMAND="terraform import azurerm_key_vault_secret.unifs-toc-handle $ACS_KEY_VAULT_SECRET_ID"
+        $COMMAND
+fi
+
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
