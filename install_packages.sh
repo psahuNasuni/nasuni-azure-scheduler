@@ -13,6 +13,7 @@ which terraform
 sudo apt install jq -y
 echo "****************** Installing Python ******************"
 sudo apt install python3 -y
+sudo apt install python3-testresources -y
 sudo apt install python3-pip -y
 sudo pip3 install boto3
 echo "******************  Installing AZURE CLI ******************"
