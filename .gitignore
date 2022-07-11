@@ -4,7 +4,6 @@
 *.zip
 *lock*
 .terraform
-nac-es
 *.tfvars
 *.json
 *copy.sh
