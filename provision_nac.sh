@@ -19,6 +19,29 @@ set -e
 
 START=$(date +%s)
 {
+
+parse_TFVARS_file() {
+    file="$1"
+
+    dos2unix $file
+    while IFS="=" read -r key value; do
+        case "$key" in
+        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
+        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+        "acs-key-vault-name") ACS_KEY_VAULT_NAME="$value" ;;
+        "github_organization") GITHUB_ORGANIZATION="$value" ;;
+        "user_vnet_id") USER_VPC_ID="$value" ;;
+        "user_subnet_id") USER_SUBNET_ID="$value" ;;
+        "use_private_ip") USE_PRIVATE_IP="$value" ;;
+        "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
+        "azure_location") AZURE_LOCATION="$value" ;;
+        "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+        "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
+        
+        esac
+    done <"$file"
+}
+
 validate_github() {
         GITHUB_ORGANIZATION=$1
         REPO_FOLDER=$2
@@ -38,25 +61,24 @@ validate_github() {
         fi
 }
 
-
 parse_textfile_for_user_secret_keys_values() {
         file="$1"
         while IFS="=" read -r key value; do
                 case "$key" in
-                "Name") NAC_RESOURCE_GROUP_NAME="$value" ;;
-                "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
-                "AzureLocation") AZURE_LOCATION="$value" ;;
-                "ProductKey") PRODUCT_KEY="$value" ;;
-                "SourceContainer") SOURCE_CONTAINER="$value" ;;
-                "SourceContainerSASURL") SOURCE_CONTAINER_SAS_URL="$value" ;;
-                "VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
-                "UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
-                "DestinationContainer") DESTINATION_CONTAINER="$value" ;;
-        "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
-        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
-        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-        "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
-        "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+                    "Name") NAC_RESOURCE_GROUP_NAME="$value" ;;
+                    "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
+                    "AzureLocation") AZURE_LOCATION="$value" ;;
+                    "ProductKey") PRODUCT_KEY="$value" ;;
+                    "SourceContainer") SOURCE_CONTAINER="$value" ;;
+                    "SourceContainerSASURL") SOURCE_CONTAINER_SAS_URL="$value" ;;
+                    "VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
+                    "UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
+                    "DestinationContainer") DESTINATION_CONTAINER="$value" ;;
+                    "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+                    "acs_service_name") ACS_SERVICE_NAME="$value" ;;
+                    "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+                    "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
+                    "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
                 esac
         done <"$file"
 }
@@ -106,11 +128,12 @@ install_NAC_CLI() {
 }
 
 ###### START - EXECUTION ####
-NMC_VOLUME_NAME="$1"        #### 1st argument to provision_nac.sh
-USER_SECRET_TEXT_FILE="$2"  #### 2nd argument to provision_nac.sh
-GITHUB_ORGANIZATION="psahuNasuni"
+parse_TFVARS_file "ACS.tfvars"
+# NMC_VOLUME_NAME="$1"        #### 1st argument to provision_nac.sh
+# USER_SECRET_TEXT_FILE="$1"  #### 2nd argument to provision_nac.sh
+# GITHUB_ORGANIZATION="psahuNasuni"
 
-parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
+# parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID}`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
@@ -120,7 +143,7 @@ fi
 ################################################################################################################
 ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-KEY_VAULT_ACS_ID="secretacsnac50"
+ACS_KEY_VAULT_NAME=$ACS_KEY_VAULT_NAME
 echo  $ACS_SERVICE_NAME
 ######################## Check If Azure Cognitice Search Available ###############################################
 
@@ -194,30 +217,32 @@ if [ "$IS_ACS" == "N" ]; then
                 $COMMAND
     fi
 
-    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $KEY_VAULT_ACS_ID --query properties.provisioningState --output tsv`
+    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $ACS_KEY_VAULT_NAME --query properties.provisioningState --output tsv`
     if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Azure Key Vault $KEY_VAULT_ACS_ID is already provisioned"
-                ACS_KEY_VAULT_ID=`az keyvault show --name $KEY_VAULT_ACS_ID --query id --output tsv`
-                COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_ID"
+        echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME is already provisioned"
+                ACS_KEY_VAULT_NAME=`az keyvault show --name $ACS_KEY_VAULT_NAME --query id --output tsv`
+                COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_NAME"
                 $COMMAND
     fi
 
     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
     ##### Create TFVARS file for provisioning Cognitive Search
     ##### Fetching Active USER PRINCIPAL NAME  #####
-    USER_PRINCIPAL_NAME=`az account show --query user.name --output tsv`
-    ACS_TFVARS_FILE_NAME="ACS.tfvars"
-        rm -rf "$ACS_TFVARS_FILE_NAME"
-        echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
-        echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-        echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-        echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$ACS_TFVARS_FILE_NAME
-        echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-        echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
-        echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
+    
+    # USER_PRINCIPAL_NAME=`az account show --query user.name --output tsv`
+    # ACS_TFVARS_FILE_NAME="ACS.tfvars"
+    #     rm -rf "$ACS_TFVARS_FILE_NAME"
+    #     echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
+    #     echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+    #     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
+    #     echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE_NAME
+    #     echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+    #     echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
+    #     echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
     ##### RUN terraform Apply
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
-    COMMAND="terraform apply -var-file=$ACS_TFVARS_FILE_NAME -auto-approve"
+    
+    COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
     $COMMAND
 
     if [ $? -eq 0 ]; then
@@ -231,9 +256,7 @@ else
     echo "INFO ::: Azure Cognitive Search is Active . . . . . . . . . ."
     echo "INFO ::: BEGIN ::: NAC Provisioning . . . . . . . . . . . ."
 fi
-
 ##################################### END Azure CognitiveSearch ###################################################################
-
 
 ##################################### START NAC Provisioning ###################################################################
 create_Config_Dat_file "$2"
@@ -247,9 +270,9 @@ else
     install_NAC_CLI
 fi
 
-mkdir "$NMC_VOLUME_NAME"
-cd "$NMC_VOLUME_NAME"
-pwd
+# mkdir "$NMC_VOLUME_NAME"
+# cd "$NMC_VOLUME_NAME"
+# pwd
 echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
 
@@ -306,13 +329,12 @@ NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
-echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
-
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv`
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
         echo "INFO ::: Key Vault Secret already available ::: Started Importing"
@@ -320,7 +342,7 @@ if [ $RESULT -eq 0 ]; then
         $COMMAND
 fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name web-access-appliance-address --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name web-access-appliance-address --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv`
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
         echo "INFO ::: Key Vault Secret already available ::: Started Importing"
@@ -328,8 +350,7 @@ if [ $RESULT -eq 0 ]; then
         $COMMAND
 fi
 
-
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name nmc-volume-name --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name nmc-volume-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv`
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
         echo "INFO ::: Key Vault Secret already available ::: Started Importing"
@@ -337,7 +358,7 @@ if [ $RESULT -eq 0 ]; then
         $COMMAND
 fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name unifs-toc-handle --vault-name $KEY_VAULT_ACS_ID --query id --output tsv`
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name unifs-toc-handle --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv`
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
         echo "INFO ::: Key Vault Secret already available ::: Started Importing"
@@ -398,7 +419,7 @@ echo "INFO ::: userinterface provisioning ::: FINISH - Executing ::: Terraform i
 UI_TFVARS_FILE_NAME="userinterface.tfvars"
 rm -rf "$UI_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$UI_TFVARS_FILE_NAME
-echo "acs_key_vault="\"$KEY_VAULT_ACS_ID\" >>$UI_TFVARS_FILE_NAME
+echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$UI_TFVARS_FILE_NAME
 
 
 echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
