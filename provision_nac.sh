@@ -334,11 +334,11 @@ echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFV
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name search-endpoint-test --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv`
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name index-endpoint --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv`
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
         echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-        COMMAND="terraform import azurerm_key_vault_secret.search-endpoint $ACS_KEY_VAULT_SECRET_ID"
+        COMMAND="terraform import azurerm_key_vault_secret.index-endpoint $ACS_KEY_VAULT_SECRET_ID"
         $COMMAND
 fi
 
@@ -371,6 +371,8 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
+        function_url=`az keyvault secret show --name index-endpoint --vault-name $KEY_VAULT_ACS_ID | jq -r .value`
+        curl -X GET -H "Content-Type: application/json" "$function_url"
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
     else
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
@@ -415,12 +417,10 @@ $COMMAND
 chmod 755 $(pwd)/*
 echo "INFO ::: userinterface provisioning ::: FINISH - Executing ::: Terraform init."
 
-
 UI_TFVARS_FILE_NAME="userinterface.tfvars"
 rm -rf "$UI_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$UI_TFVARS_FILE_NAME
 echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$UI_TFVARS_FILE_NAME
-
 
 echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 
