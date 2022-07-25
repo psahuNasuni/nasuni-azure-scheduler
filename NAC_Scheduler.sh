@@ -205,10 +205,14 @@ validate_secret_values() {
 				ACS_RESOURCE_GROUP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-service-name" ]; then
 				ACS_SERVICE_NAME=$SECRET_VALUE 
-			elif [ "$SECRET_NAME" == "datasource-connection-string" ]; then
-				DATASOURCE_CONNECTION_STRING=$SECRET_VALUE
+			# elif [ "$SECRET_NAME" == "datasource-connection-string" ]; then
+			# 	DATASOURCE_CONNECTION_STRING=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "github-organization" ]; then
 				GITHUB_ORGANIZATION=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "destination-bucket-url" ]; then
+				DESTINATION_BUCKET_URL=$SECRET_VALUE				
+			elif [ "$SECRET_NAME" == "volume-key-bucket-url" ]; then
+				VOLUME_KEY_BUCKET_URL=$SECRET_VALUE				
 			fi
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
 	
@@ -265,27 +269,103 @@ Schedule_CRON_JOB() {
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
 	LAMBDA_LAYER_SUFFIX=$(echo $RND)
+
+#####=======================================================
+### NMC API CALL
+#'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
+
+# NMC_API_ENDPOINT="from_KEYVault"
+# WEB_ACCESS_APPLIANCE_ADDRESS="from_KEYVault"
+# NMC_API_USERNAME="from_KEYVault"
+# NMC_API_PASSWORD="from_KEYVault"
+NMC_API_OUTPUT=`python fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}`
+# FILTER Values
+
+###From NMC API Call
+	
+SOURCE_STORAGE_ACCOUNT_NAME=`jq '.account_name' $NMC_API_OUTPUT`
+TOC_HANDLE=`jq '.root_handle' $NMC_API_OUTPUT`
+SOURCE_BUCKET=`jq '.bucket' $NMC_API_OUTPUT`
+
+SAS_EXPIRY=`date -d '+1 day' +"%m-%d-%Y"`
+
+###Source account-key: 
+SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+
+###SourceContainerSASURL ==> SOURCE_BUCKET_SASURL
+SOURCE_BUCKET_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
+SOURCE_BUCKET_SASURL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_BUCKET_TOCKEN"
+###DestinationContainerSASURL:	
+#DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
+
+### DestinationContainer ==> DESTINATION_BUCKET_NAME, Used in Both NAC and CognitiveSearch Provisioning
+DESTINATION_BUCKET_NAME=$(echo ${DESTINATION_BUCKET_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+
+# https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
+
+DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_BUCKET_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
+
+###Destination account-key: 
+DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+
+DESTINATION_BUCKET_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
+DESTINATION_BUCKET_SASURL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_BUCKET_TOCKEN"
+### Destination Bucket COnnection String ==> datasource_connection_string, Used for CognitiveSearch Provisioning ###datasource_connection_string=DefaultEndpointsProtocol=https;AccountName=destinationbktsa;AccountKey=ekOsyrbVEGCbOQFIM6CaM3Ne7zdnct33ZuvSvp1feo1xtpQ/IMq15WD9TGXIeVvvuS0DO1mRMYYB+ASt1lMVKw==;EndpointSuffix=core.windows.net
+
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
+
+### VolumeKeySASURL==> VOLUME_KEY_BUCKET_SASURL
+#VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
+## Example : https://keysa.blob.core.windows.net/key/
+VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BUCKET_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
+VOLUME_KEY_BUCKET_NAME=$(echo ${VOLUME_KEY_BUCKET_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+
+VOLUME_KEY_BUCKET_TOCKEN=`az storage container generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BUCKET_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --https-only`
+VOLUME_KEY_BUCKET_SASURL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BUCKET_NAME?$VOLUME_KEY_BUCKET_TOCKEN"
+
+#####=======================================================
+
+
+	### Generating NAC Resource group name dynamically
 	NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
+	### AzureSubscriptionID >>>>> Read from user_secret Key Vault
     echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
+	### AzureLocation >>>>> Read from user_secret Key Vault
     echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE_NAME
+	### ProductKey >>>>> Read from user_secret Key Vault
     echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE_NAME
+	### SourceContainer >>>>> Get from NMC_API Call
     echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
+	### SourceContainerSASURL >>>>> Generate Dynamically by using az CLI commands
     echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
+	### VolumeKeySASURL >>>>> Generate Dynamically by using az CLI commands
     echo "VolumeKeySASURL: "$VOLUME_KEY_SAS_URL>>$CONFIG_DAT_FILE_NAME
+	### VolumeKeyPassphrase >>>>> Recommended as 'null' for AZURE NAC
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
+	### UniFSTOCHandle >>>>> Get from NMC_API Call
     echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
+	### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "StartingPoint: "/ >>$CONFIG_DAT_FILE_NAME
+	### IncludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE_NAME
+	### IncludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
+	### ExcludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE_NAME
+	### ExcludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
+	### MinFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE_NAME
+	### MaxFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE_NAME
     echo "DestinationContainer: "$DESTINATION_CONTAINER >>$CONFIG_DAT_FILE_NAME
     echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
     echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
+	### ExcludeTempFiles >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
 
     chmod 777 $CONFIG_DAT_FILE_NAME
@@ -449,6 +529,8 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" pem-key-path
 		validate_secret_values "$AZURE_KEYVAULT_NAME" acs-key-vault-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" github-organization
+		validate_secret_values "$AZURE_KEYVAULT_NAME" destination-bucket-url
+		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-bucket-url
 
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
