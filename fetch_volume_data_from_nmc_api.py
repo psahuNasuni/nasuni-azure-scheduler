@@ -46,6 +46,7 @@ try:
     data = urllib.parse.urlencode(values).encode("utf-8")
     logging.info(data)
     response = urllib.request.urlopen(url, data, timeout=5)
+    print(response)
     logging.info(response)
     result = json.loads(response.read().decode('utf-8'))
     logging.info(result)
@@ -61,15 +62,15 @@ try:
     for i in json_data['items']:
         if i['name'] == volume_name:
             print(i)
-            toc_file = open('nmc_api_data_root_handle_' + rid + '.txt', 'w')
+            toc_file = open('nmc_api_data_root_handle.txt', 'w')
             toc_file.write(i['root_handle'])
             # print('toc_handle',i['root_handle'])
-            src_bucket = open('nmc_api_data_source_bucket_' + rid + '.txt', 'w')
+            src_bucket = open('nmc_api_data_source_container.txt', 'w')
             src_bucket.write(i['bucket'])
             # print('source_bucket', i['bucket'])
-            v_guid = open('nmc_api_data_v_guid_' + rid + '.txt', 'w')
-            v_guid.write(i['guid'])
-            vv_guid = i['guid']
+            v_guid = open('nmc_api_data_source_storage_account_name.txt', 'w')
+            v_guid.write(i['account_name'])
+            # vv_guid = i['guid']
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
         'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/filers/shares/\"'
     logging.info(cmd)
