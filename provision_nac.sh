@@ -37,7 +37,6 @@ parse_TFVARS_file() {
         "azure_location") AZURE_LOCATION="$value" ;;
         "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
         "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
-        
         esac
     done <"$file"
 }
@@ -61,59 +60,26 @@ validate_github() {
         fi
 }
 
-parse_textfile_for_user_secret_keys_values() {
+parse_config_file_for_user_secret_keys_values() {
         file="$1"
-        while IFS="=" read -r key value; do
+        while IFS=":" read -r key value; do
                 case "$key" in
                     "Name") NAC_RESOURCE_GROUP_NAME="$value" ;;
                     "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
-                    "AzureLocation") AZURE_LOCATION="$value" ;;
-                    "ProductKey") PRODUCT_KEY="$value" ;;
-                    "SourceContainer") SOURCE_CONTAINER="$value" ;;
-                    "SourceContainerSASURL") SOURCE_CONTAINER_SAS_URL="$value" ;;
-                    "VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
-                    "UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
-                    "DestinationContainer") DESTINATION_CONTAINER="$value" ;;
-                    "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
-                    "acs_service_name") ACS_SERVICE_NAME="$value" ;;
-                    "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-                    "datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
-                    "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+                    #"AzureLocation") AZURE_LOCATION="$value" ;;
+                    #"ProductKey") PRODUCT_KEY="$value" ;;
+                    #"SourceContainer") SOURCE_CONTAINER="$value" ;;
+                    #"SourceContainerSASURL") SOURCE_CONTAINER_SAS_URL="$value" ;;
+                    #"VolumeKeySASURL") VOLUME_KEY_SAS_URL="$value" ;;
+                    #"UniFSTOCHandle") UNIFS_TOC_HANDLE="$value" ;;
+                    #"DestinationContainer") DESTINATION_CONTAINER="$value" ;;
+                    #"DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+                    #"acs_service_name") ACS_SERVICE_NAME="$value" ;;
+                    #"acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+                    #"datasource_connection_string") DATASOURCE_CONNECTION_STRING="$value" ;;
+                    #"web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
                 esac
         done <"$file"
-}
-
-
-create_Config_Dat_file() {
-### create Config Dat file, which is used for NAC Provisioning
-    source $1
-    CONFIG_DAT_FILE_NAME="config.dat"
-    CONFIG_DAT_FILE_PATH="/usr/local/bin"
-    sudo chmod 777 $CONFIG_DAT_FILE_PATH
-    CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
-    sudo rm -rf "$CONFIG_DAT_FILE"
-    echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE
-    echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE
-    echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE
-    echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE
-    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE
-    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE
-    echo "VolumeKeySASURL: "$VOLUME_KEY_SAS_URL>>$CONFIG_DAT_FILE
-    echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE
-    echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE
-    echo "StartingPoint: "/ >>$CONFIG_DAT_FILE
-    echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE
-    echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE
-    echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE
-    echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE
-    echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE
-    echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE
-    echo "DestinationContainer: "$DESTINATION_CONTAINER >>$CONFIG_DAT_FILE
-    echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE
-    echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE
-    echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE
-    sudo chmod 777 $CONFIG_DAT_FILE
 }
 
 
@@ -129,11 +95,7 @@ install_NAC_CLI() {
 
 ###### START - EXECUTION ####
 parse_TFVARS_file "ACS.tfvars"
-# NMC_VOLUME_NAME="$1"        #### 1st argument to provision_nac.sh
-# USER_SECRET_TEXT_FILE="$1"  #### 2nd argument to provision_nac.sh
-# GITHUB_ORGANIZATION="psahuNasuni"
-
-# parse_textfile_for_user_secret_keys_values $USER_SECRET_TEXT_FILE
+parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID}`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
@@ -212,6 +174,10 @@ if [ "$IS_ACS" == "N" ]; then
     #### Check if Resource Group is already provisioned
     ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
     if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+
+	echo "***************************>>>>>>>>>>***************"
+	pwd 
+	ls
         echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already provisioned"
                 COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
                 $COMMAND
@@ -259,7 +225,13 @@ fi
 ##################################### END Azure CognitiveSearch ###################################################################
 
 ##################################### START NAC Provisioning ###################################################################
-create_Config_Dat_file "$2"
+#create_Config_Dat_file "$2"
+CONFIG_DAT_FILE_NAME="config.dat"
+CONFIG_DAT_FILE_PATH="/usr/local/bin"
+sudo chmod 777 $CONFIG_DAT_FILE_PATH
+CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
+sudo rm -rf "$CONFIG_DAT_FILE"
+cp $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH
 NAC_MANAGER_EXIST='N'
 FILE=/usr/local/bin/nac_manager
 if [ -f "$FILE" ]; then
@@ -318,8 +290,14 @@ chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
 #### Check if Resource Group is already provisioned
+
+AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
+
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
 if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+      echo "============================================================================================="
+      pwd
+      ls
       echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already provisioned"
       COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
       $COMMAND

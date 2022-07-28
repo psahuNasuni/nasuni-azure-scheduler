@@ -87,7 +87,7 @@ validate_github() {
 nmc_endpoint_accessibility() {
 	NAC_SCHEDULER_NAME="$1"
 	NAC_SCHEDULER_IP_ADDR="$2"
-    NMC_API_ENDPOINT="$3"
+        NMC_API_ENDPOINT="$3"
 	NMC_API_USERNAME="$4"
 	NMC_API_PASSWORD="$5" #14-19
 	PEM="$PEM_KEY_PATH"
