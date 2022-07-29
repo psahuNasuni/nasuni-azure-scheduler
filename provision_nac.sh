@@ -174,10 +174,6 @@ if [ "$IS_ACS" == "N" ]; then
     #### Check if Resource Group is already provisioned
     ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
     if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-
-	echo "***************************>>>>>>>>>>***************"
-	pwd 
-	ls
         echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already provisioned"
                 COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
                 $COMMAND
@@ -192,22 +188,7 @@ if [ "$IS_ACS" == "N" ]; then
     fi
 
     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
-    ##### Create TFVARS file for provisioning Cognitive Search
-    ##### Fetching Active USER PRINCIPAL NAME  #####
-    
-    # USER_PRINCIPAL_NAME=`az account show --query user.name --output tsv`
-    # ACS_TFVARS_FILE_NAME="ACS.tfvars"
-    #     rm -rf "$ACS_TFVARS_FILE_NAME"
-    #     echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
-    #     echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-    #     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-    #     echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE_NAME
-    #     echo "datasource-connection-string="\"$DATASOURCE_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-    #     echo "destination-container-name="\"$DESTINATION_CONTAINER\" >>$ACS_TFVARS_FILE_NAME
-    #     echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
-    ##### RUN terraform Apply
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
-    
     COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
     $COMMAND
 
@@ -295,9 +276,6 @@ AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
 if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-      echo "============================================================================================="
-      pwd
-      ls
       echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already provisioned"
       COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
       $COMMAND
@@ -345,11 +323,10 @@ if [ $RESULT -eq 0 ]; then
 fi
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
-
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
-        function_url=`az keyvault secret show --name index-endpoint --vault-name $KEY_VAULT_ACS_ID | jq -r .value`
+        function_url=`az keyvault secret show --name index-endpoint --vault-name $ACS_KEY_VAULT_NAME | jq -r .value`
         curl -X GET -H "Content-Type: application/json" "$function_url"
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
     else
@@ -388,6 +365,10 @@ ls -l
 cd "${GIT_REPO_NAME}"
 pwd
 ls
+#### Installing dependencies in ./SearchFunction/.python_packages/lib/site-packages location
+echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
+COMMAND="pip3 install  --target=./SearchFunction/.python_packages/lib/site-packages  -r ./SearchFunction/requirements.txt"
+$COMMAND
 ##### RUN terraform init
 echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"

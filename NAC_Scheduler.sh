@@ -165,10 +165,8 @@ validate_secret_values() {
 			if [ "$SECRET_NAME" == "azure-subscription-id" ]; then
 				AZURE_SUBSCRIPTION_ID=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-location" ]; then
-				### Azure location need to be retrive from subscription id 
 				AZURE_LOCATION="eastus"
 			elif [ "$SECRET_NAME" == "product-key" ]; then
-				### To retrive from NMC Api
 				PRODUCT_KEY=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "nmc-api-username" ]; then
 				NMC_API_USERNAME=$SECRET_VALUE
@@ -184,7 +182,6 @@ validate_secret_values() {
 				USE_PRIVATE_IP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "pem-key-path" ]; then
 				PEM_KEY_PATH=$SECRET_VALUE
-				#PEM_KEY_PATH="D:/azure_key.pem"
 			elif [ "$SECRET_NAME" == "acs-key-vault-name" ]; then
 				ACS_KEY_VAULT_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-resource-group" ]; then
@@ -210,7 +207,6 @@ validate_secret_values() {
 ######################## Validating AZURE Subscription for NAC ####################################
 AZURE_SUBSCRIPTION="Product Management"
 AZURE_REGION="us-east-1"
-#AZURE_USER_KEYVAULT="secretacsnac45"
 ARG_COUNT="$#"
 
 validate_AZURE_SUBSCRIPTION() {
@@ -245,49 +241,28 @@ Schedule_CRON_JOB() {
 	### Create TFVARS File for PROVISION_NAC.SH which is Used by CRON JOB - to Provision NAC Stack
 	CONFIG_DAT_FILE_NAME="config.dat"
 	rm -rf "$CONFIG_DAT_FILE_NAME"
-	#### smg check
 	AZURE_CURRENT_USER=$(az ad signed-in-user show --query userPrincipalName)
 	# echo "INFO ::: $AWS_CURRENT_USER which will be added for lambda layer::: "
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
 	LAMBDA_LAYER_SUFFIX=$(echo $RND)
 
-#####=======================================================
 ### NMC API CALL
 #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-
-# NMC_API_ENDPOINT="from_KEYVault"
-# WEB_ACCESS_APPLIANCE_ADDRESS="from_KEYVault"
-# NMC_API_USERNAME="from_KEYVault"
-# NMC_API_PASSWORD="from_KEYVault"
 python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}
-# FILTER Values
-
-###From NMC API Call
-# SOURCE_STORAGE_ACCOUNT_NAME=$(echo "$NMC_API_OUTPUT" | jq '.account_name')
-# TOC_HANDLE=`jq '.root_handle' $NMC_API_OUTPUT`
-# SOURCE_CONTAINER=`jq '.bucket' $NMC_API_OUTPUT`
-# SAS_EXPIRY=`date -d '+1 day' +"%Y-%d-%m"`
-
+# FILTER Values From NMC API Call
 
 SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
 UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
 SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-#SAS_EXPIRY=`date -d '+7 day' +"%Y-%d-%m"`
 SAS_EXPIRY=`date -u -d "30 minutes" '+%Y-%m-%dT%H:%MZ'`
 rm -rf nmc_api_*.txt
-###Source account-key: 
 SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-
-###SourceContainerSASURL ==> SOURCE_BUCKET_SASURL
 SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
 SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
 SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
 
-###DestinationContainerSASURL:	
 #DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
-
-### DestinationContainer ==> DESTINATION_BUCKET_NAME, Used in Both NAC and CognitiveSearch Provisioning
 DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 
 # https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
@@ -303,25 +278,18 @@ DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.co
 
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 
-### VolumeKeySASURL==> VOLUME_KEY_BUCKET_SASURL
 #VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
-## Example : https://keysa.blob.core.windows.net/key/
 VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
-#VOLUME_KEY_BLOB_NAME=$(echo ${VOLUME_KEY_BLOB_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
-
 VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-
 VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
 VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
-#VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
 BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
 ### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
 VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
 
-#####=======================================================
-	### Generating NAC Resource group name dynamically
-	NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
+    ### Generating NAC Resource group name dynamically
+    NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
 	### AzureSubscriptionID >>>>> Read from user_secret Key Vault
     echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
@@ -390,36 +358,6 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 
     chmod 777 $ACS_TFVARS_FILE
 
-
-	#### smg check for create layter
-	# scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null create_layer.sh tracker_json.py ubuntu@$NAC_SCHEDULER_IP_ADDR:~/ #SSA
-	# RES="$?"
-	# if [ $RES -ne 0 ]; then
-	# 	echo "ERROR ::: Failed to Copy create_layer.sh to NAC_Scheduer Instance."
-	# 	exit 1
-	# elif [ $RES -eq 0 ]; then
-	# 	echo "INFO :::create_layer.sh Uploaded Successfully to NAC_Scheduer Instance."
-	# fi
-	# ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "dos2unix create_layer.sh" #SSA
-	# RES="$?"
-	# if [ $RES -ne 0 ]; then
-	# 	echo "ERROR ::: Failed to do dos2unix create_layer.sh to NAC_Scheduer Instance."
-	# 	exit 1
-	# elif [ $RES -eq 0 ]; then
-	# 	echo "INFO :::create_layer.sh executed dos2unix Successfully to NAC_Scheduer Instance."
-	# fi
-	#pass pub_ip to fun SSA
-	#IAM_USER to be defined. et user 
-	# ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sh create_layer.sh nasuni-labs-os-lambda-layer $AZURE_SUBSCRIPTION $NAC_SCHEDULER_IP_ADDR $AWS_CURRENT_USER $LAMBDA_LAYER_SUFFIX" #SSA
-	# RES="$?"
-	# if [ $RES -ne 0 ]; then
-	# 	echo "ERROR ::: Failed to execute create_layer.sh to NAC_Scheduer Instance."
-	# 	exit 1
-	# elif [ $RES -eq 0 ]; then
-	# 	echo "INFO :::create_layer.sh executed Successfully to NAC_Scheduer Instance."
-	# fi
-	# echo "Exiting from "
-	# exit 1
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
@@ -608,7 +546,6 @@ else
 	echo "INFO ::: $GIT_REPO"
 	echo "INFO ::: GIT_REPO_NAME - $GIT_REPO_NAME"
 	pwd
-	# ls
 	rm -rf "${GIT_REPO_NAME}"
 	COMMAND="git clone -b main ${GIT_REPO}"
 	$COMMAND
@@ -678,14 +615,7 @@ else
 	pwd
 	cd ../
 	pwd
-	## Call this function to add Local public IP to Network Security Group (NSG rule) of NAC_SCHEDULER IP
-	#add_ip_to_sec_grp ${NAC_SCHEDULER_IP_ADDR}
-	## nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
-	#nmc_endpoint_accessibility  $NAC_SCHEDULER_NAME ${NAC_SCHEDULER_IP_ADDR} $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD #458
-	# SSH to nac scheduler instance
 	echo "Pem key path: $PEM_KEY_PATH"
-	echo "Pem : $PEM"
-
 	sudo chmod 400 $PEM
 	ssh -i $PEM ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null
 	exit 111
