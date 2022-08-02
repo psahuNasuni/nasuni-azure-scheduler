@@ -200,7 +200,11 @@ validate_secret_values() {
 				NAC_SCHEDULER_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "user-vnet-name" ]; then
 				USER_VNET_NAME=$SECRET_VALUE
-                        fi
+			elif [ "$SECRET_NAME" == "azure-username" ]; then
+				AZURE_USERNAME=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "azure-password" ]; then
+				AZURE_PASSWORD=$SECRET_VALUE
+            fi
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
 		fi
 	fi
@@ -464,9 +468,11 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-endpoint
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-password
-                validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-name
-                validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-resource-group
-                validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
+		validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-name
+		validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-resource-group
+		validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
+		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
+		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
 
 
 echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
@@ -478,8 +484,7 @@ fi
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 ######################  NAC Scheduler Instance is Available ##############################
 
-NAC_SCHEDULER_NAME="SCHVM1"
-#NAC_SCHEDULER_NAME=
+#NAC_SCHEDULER_NAME="SCHVM1"
 #NAC_SCHEDULER_RESOURCE_GROUP="AzResource-01"
 #RESOURCE_GROUP="acs-resource-demo45"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
@@ -553,6 +558,7 @@ else
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-analyticsconnector-manager"
 	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
+	GIT_BRANCH_NAME="demo"
 	GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo "INFO ::: Begin - Git Clone to ${GIT_REPO}"
 	echo "INFO ::: $GIT_REPO"
@@ -560,7 +566,7 @@ else
 	pwd
 	rm -rf "${GIT_REPO_NAME}"
         #### smg test from aniket
-	COMMAND="git clone -b aniket ${GIT_REPO}"
+	COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
 	$COMMAND
 	RESULT=$?
 	if [ $RESULT -eq 0 ]; then
@@ -589,8 +595,10 @@ else
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
+	echo "azure_username="\"$AZURE_USERNAME\" >>$TFVARS_NAC_SCHEDULER
+	echo "azure_password="\"$AZURE_PASSWORD\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
-        echo "nac_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+	echo "nac_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$NAC_SCHEDULER_NAME" != "" ]]; then
 		echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$TFVARS_NAC_SCHEDULER

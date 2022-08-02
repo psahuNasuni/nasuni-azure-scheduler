@@ -94,6 +94,7 @@ install_NAC_CLI() {
 }
 
 ###### START - EXECUTION ####
+GIT_BRANCH_NAME="demo"
 parse_TFVARS_file "ACS.tfvars"
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
@@ -154,7 +155,7 @@ if [ "$IS_ACS" == "N" ]; then
     echo "INFO ::: Removing ${GIT_REPO_NAME}"
     rm -rf "${GIT_REPO_NAME}"
     pwd
-    COMMAND="git clone -b main ${GIT_REPO}"
+    COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
     $COMMAND
     RESULT=$?
     if [ $RESULT -eq 0 ]; then
@@ -243,7 +244,7 @@ ls
 echo "INFO ::: Deleting the Directory: ${GIT_REPO_NAME}"
 rm -rf "${GIT_REPO_NAME}"
 pwd
-COMMAND="git clone -b main ${GIT_REPO}"
+COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
 $COMMAND
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
@@ -348,7 +349,7 @@ ls
 echo "INFO ::: Deleting the Directory: ${GIT_REPO_NAME}"
 rm -rf "${GIT_REPO_NAME}"
 pwd
-COMMAND="git clone -b main ${GIT_REPO}"
+COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
 $COMMAND
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
