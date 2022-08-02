@@ -165,7 +165,7 @@ validate_secret_values() {
 			if [ "$SECRET_NAME" == "azure-subscription-id" ]; then
 				AZURE_SUBSCRIPTION_ID=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-location" ]; then
-				AZURE_LOCATION="eastus"
+				AZURE_LOCATION=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "product-key" ]; then
 				PRODUCT_KEY=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "nmc-api-username" ]; then
@@ -194,7 +194,13 @@ validate_secret_values() {
 				DESTINATION_CONTAINER_URL=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "volume-key-container-url-1" ]; then
 				VOLUME_KEY_BLOB_URL=$SECRET_VALUE
-			fi
+			elif [ "$SECRET_NAME" == "nac-scheduler-resource-group" ]; then
+				NAC_SCHEDULER_RESOURCE_GROUP=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "nac-scheduler-name" ]; then
+				NAC_SCHEDULER_NAME=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "user-vnet-name" ]; then
+				USER_VNET_NAME=$SECRET_VALUE
+                        fi
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
 		fi
 	fi
@@ -206,7 +212,7 @@ validate_secret_values() {
 
 ######################## Validating AZURE Subscription for NAC ####################################
 AZURE_SUBSCRIPTION="Product Management"
-AZURE_REGION="us-east-1"
+#AZURE_REGION="us-east-1"
 ARG_COUNT="$#"
 
 validate_AZURE_SUBSCRIPTION() {
@@ -255,7 +261,7 @@ python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME
 SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
 UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
 SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-SAS_EXPIRY=`date -u -d "30 minutes" '+%Y-%m-%dT%H:%MZ'`
+SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
 rm -rf nmc_api_*.txt
 SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
@@ -415,7 +421,7 @@ if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
 fi
 if [[ "${#ANALYTICS_SERVICE}" -lt 2 ]]; then
 	echo "INFO ::: The length of Service name provided as 2nd argument is too small, So, It will consider ES as the default Analytics Service."
-	ANALYTICS_SERVICE="ES" # ElasticSearch Service as default
+	ANALYTICS_SERVICE="ACS" # Azure Cognitive Search Service as default
 fi
 if [[ "${#FREQUENCY}" -lt 2 ]]; then
 	echo "ERROR ::: Mandatory 3rd argument is invalid"
@@ -436,7 +442,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 	####  Fourth Argument is passed by User as a KeyVault Name
 	echo "INFO ::: Fourth Argument $FOURTH_ARG is passed as Azure Key Vault Name"
 	AZURE_KEYVAULT_NAME="$FOURTH_ARG"
-	
+
 	### Verify the KeyVault Exists
 	AZURE_KEYVAULT_EXISTS=$(check_if_key_vault_exists $AZURE_KEYVAULT_NAME)
 	echo "INFO ::: User secret Exists:: $AZURE_KEYVAULT_EXISTS"
@@ -457,9 +463,13 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url-1
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-endpoint
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-username
-		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-password		
+		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-password
+                validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-name
+                validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-resource-group
+                validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
 
-		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
+
+echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
 else
 	echo "INFO ::: Fourth argument is NOT provided, So, It will consider prod/nac/admin as the default key vault."
@@ -469,8 +479,10 @@ echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 ######################  NAC Scheduler Instance is Available ##############################
 
 NAC_SCHEDULER_NAME="SCHVM1"
-NAC_SCHEDULER_RESOURCE_GROUP="AzResource-01"
-RESOURCE_GROUP="acs-resource-demo45"
+#NAC_SCHEDULER_NAME=
+#NAC_SCHEDULER_RESOURCE_GROUP="AzResource-01"
+#RESOURCE_GROUP="acs-resource-demo45"
+USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
 ### parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
 # parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
 echo "INFO ::: nac_scheduler_name = $NAC_SCHEDULER_NAME "
@@ -547,7 +559,8 @@ else
 	echo "INFO ::: GIT_REPO_NAME - $GIT_REPO_NAME"
 	pwd
 	rm -rf "${GIT_REPO_NAME}"
-	COMMAND="git clone -b main ${GIT_REPO}"
+        #### smg test from aniket
+	COMMAND="git clone -b aniket ${GIT_REPO}"
 	$COMMAND
 	RESULT=$?
 	if [ $RESULT -eq 0 ]; then
@@ -569,35 +582,34 @@ else
 	pwd
 	TFVARS_NAC_SCHEDULER="NACScheduler.tfvars"
 	rm -rf "$TFVARS_NAC_SCHEDULER" 
-    AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+        AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo $AZURE_KEY
 	PEM="$AZURE_KEY.pem"
 	### Copy the Pem Key from provided path to current folder
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
-	echo "azure_profile="\"$AZURE_PROFILE\" >>$TFVARS_NAC_SCHEDULER
-	echo "region="\"$AZURE_REGION\" >>$TFVARS_NAC_SCHEDULER
+	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
+        echo "nac_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$NAC_SCHEDULER_NAME" != "" ]]; then
 		echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$TFVARS_NAC_SCHEDULER
 		### Create entries about the Pem Key in the TFVARS File
-		echo "pem_key_file="\"$PEM\" >>$TFVARS_NAC_SCHEDULER
-		echo "AZURE_KEY="\"$AZURE_KEY\" >>$TFVARS_NAC_SCHEDULER
 	fi
+        echo "pem_key_path="\"$PEM\" >>$TFVARS_NAC_SCHEDULER
 	echo "github_organization="\"$GITHUB_ORGANIZATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$VNET_IS" != "" ]]; then
-		echo "USER_VNET_NAME="\"$VNET_IS\" >>$TFVARS_NAC_SCHEDULER
+		echo "user_vnet_name="\"$VNET_IS\" >>$TFVARS_NAC_SCHEDULER
 	fi
 	if [[ "$SUBNET_IS" != "" ]]; then
-		echo "USER_SUBNET_NAME="\"$SUBNET_IS\" >>$TFVARS_NAC_SCHEDULER
-	fi
-	if [[ "$AZ_IS" != "" ]]; then
-		echo "subnet_availability_zone="\"$AZ_IS\" >>$TFVARS_NAC_SCHEDULER
+		echo "user_subnet_name="\"$SUBNET_IS\" >>$TFVARS_NAC_SCHEDULER
 	fi
 	if [[ "$USE_PRIVATE_IP" != "" ]]; then
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
 	fi
-	echo "$TFVARS_NAC_SCHEDULER created"
+        echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+        echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$TFVARS_NAC_SCHEDULER
+        echo "$TFVARS_NAC_SCHEDULER created"
 	echo `cat $TFVARS_NAC_SCHEDULER`
 
 	dos2unix $TFVARS_NAC_SCHEDULER
@@ -617,8 +629,7 @@ else
 	pwd
 	echo "Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM
-	ssh -i $PEM ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null
-	exit 111
+	#ssh -i $PEM ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 	## Setup_Search_Lambda
 	## Setup_Search_UI
