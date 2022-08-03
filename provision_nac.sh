@@ -20,7 +20,7 @@ set -e
 START=$(date +%s)
 {
 
-parse_TFVARS_file() {
+parse_file() {
     file="$1"
 
     dos2unix $file
@@ -28,18 +28,19 @@ parse_TFVARS_file() {
         case "$key" in
         "acs_service_name") ACS_SERVICE_NAME="$value" ;;
         "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-        "acs-key-vault-name") ACS_KEY_VAULT_NAME="$value" ;;
+	"subscription_id") AZURE_SUBSCRIPTION_ID="$value" ;;
+	"tenant_id") AZURE_TENANT_ID="$value" ;;
+        "acs-key-vault") ACS_KEY_VAULT_NAME="$value" ;;
+	"datasource-connection-string") DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$value" ;;
+	"destination-container-name") DESTINATION_CONTAINER_NAME="$value" ;;
         "github_organization") GITHUB_ORGANIZATION="$value" ;;
-        "user_vnet_id") USER_VPC_ID="$value" ;;
-        "user_subnet_id") USER_SUBNET_ID="$value" ;;
-        "use_private_ip") USE_PRIVATE_IP="$value" ;;
         "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
         "azure_location") AZURE_LOCATION="$value" ;;
         "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
         "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
-        "tenant_id") AZURE_TENANT_ID ="$value" ;;
-        esac
-    done <"$file"
+	"user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+          esac
+        done <"$file"
 }
 
 validate_github() {
@@ -96,7 +97,8 @@ install_NAC_CLI() {
 
 ###### START - EXECUTION ####
 GIT_BRANCH_NAME="demo"
-parse_TFVARS_file "ACS.tfvars"
+#parse_TFVARS_file "ACS.tfvars"
+parse_file "ACS.txt"
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID}`
@@ -165,7 +167,7 @@ if [ "$IS_ACS" == "N" ]; then
         echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
         exit 1
     fi
-    cp ACS.tfvars $GIT_REPO_NAME
+    #cp ACS.tfvars $GIT_REPO_NAME
     cd "${GIT_REPO_NAME}"
     #### RUN terraform init
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
@@ -191,6 +193,15 @@ if [ "$IS_ACS" == "N" ]; then
     fi
 
     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
+        ACS_TFVARS_FILE_NAME="ACS.tfvars"
+        rm -rf "$ACS_TFVARS_FILE_NAME"
+        echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
+        echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+        echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
+        echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE_NAME
+        echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+        echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
+        echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
     COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
     $COMMAND

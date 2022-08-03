@@ -352,14 +352,14 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	# fi
 	# chmod 777 $TFVARS_FILE_NAME
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
-	ACS_TFVARS_FILE="ACS.tfvars"
+	ACS_TFVARS_FILE="ACS.txt"
 	rm -rf "$ACS_TFVARS_FILE"
         echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
         echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
 	echo "subscription_id="$AZURE_SUBSCRIPTION_ID >>$ACS_TFVARS_FILE
 	echo "tenant_id="$AZURE_TENANT_ID >>$ACS_TFVARS_FILE
 	echo "azure_location="$AZURE_LOCATION >>$ACS_TFVARS_FILE
-	echo "acs-key-vault-name="$ACS_KEY_VAULT_NAME >>$ACS_TFVARS_FILE
+	echo "acs-key-vault="$ACS_KEY_VAULT_NAME >>$ACS_TFVARS_FILE
 	echo "datasource-connection-string="$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING >>$ACS_TFVARS_FILE
 	echo "destination-container-name="$DESTINATION_CONTAINER_NAME >>$ACS_TFVARS_FILE
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$ACS_TFVARS_FILE
@@ -367,7 +367,24 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$ACS_TFVARS_FILE
 	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
         echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
-        echo "" >>$ACS_TFVARS_FILE
+        
+        #echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE
+        #echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE
+        #echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE
+        #echo "tenant_id="\"$AZURE_TENANT_ID\" >>$ACS_TFVARS_FILE
+        #echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE
+        #echo "acs-key-vault-name="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE
+        #echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE
+        #echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE
+        #echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$ACS_TFVARS_FILE
+        #echo "github_organization="\"$GITHUB_ORGANIZATION\" >>$ACS_TFVARS_FILE
+        #echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$ACS_TFVARS_FILE
+        #echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$ACS_TFVARS_FILE
+        #echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE
+
+
+
+echo "" >>$ACS_TFVARS_FILE
     chmod 777 $ACS_TFVARS_FILE
 
 	### Create Directory for each Volume
