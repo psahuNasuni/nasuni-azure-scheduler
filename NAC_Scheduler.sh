@@ -356,7 +356,8 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	rm -rf "$ACS_TFVARS_FILE"
         echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
         echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
-	echo "AzureSubscriptionID="$AZURE_SUBSCRIPTION_ID >>$ACS_TFVARS_FILE
+	echo "subscription_id="$AZURE_SUBSCRIPTION_ID >>$ACS_TFVARS_FILE
+	echo "tenant_id="$AZURE_TENANT_ID >>$ACS_TFVARS_FILE
 	echo "azure_location="$AZURE_LOCATION >>$ACS_TFVARS_FILE
 	echo "acs-key-vault-name="$ACS_KEY_VAULT_NAME >>$ACS_TFVARS_FILE
 	echo "datasource-connection-string="$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING >>$ACS_TFVARS_FILE
