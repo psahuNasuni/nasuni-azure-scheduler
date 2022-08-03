@@ -20,25 +20,40 @@ set -e
 START=$(date +%s)
 {
 
-parse_file() {
+parse_file_acs_txt() {
     file="$1"
 
     dos2unix $file
     while IFS="=" read -r key value; do
         case "$key" in
-        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
-        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-	"subscription_id") AZURE_SUBSCRIPTION_ID="$value" ;;
-	"tenant_id") AZURE_TENANT_ID="$value" ;;
-        "acs-key-vault") ACS_KEY_VAULT_NAME="$value" ;;
-	"datasource-connection-string") DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$value" ;;
-	"destination-container-name") DESTINATION_CONTAINER_NAME="$value" ;;
-        "github_organization") GITHUB_ORGANIZATION="$value" ;;
-        "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
-        "azure_location") AZURE_LOCATION="$value" ;;
-        "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
-        "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
-	"user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+            "acs_service_name") ACS_SERVICE_NAME="$value" ;;
+            "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+            "subscription_id") AZURE_SUBSCRIPTION_ID="$value" ;;
+            "tenant_id") AZURE_TENANT_ID="$value" ;;
+            "acs-key-vault") ACS_KEY_VAULT_NAME="$value" ;;
+            "datasource-connection-string") DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$value" ;;
+            "destination-container-name") DESTINATION_CONTAINER_NAME="$value" ;;
+            "github_organization") GITHUB_ORGANIZATION="$value" ;;
+            "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
+            "azure_location") AZURE_LOCATION="$value" ;;
+            "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+            # "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
+            "user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+          esac
+        done <"$file"
+}
+
+parse_file_nmc_txt() {
+    file="$1"
+
+    dos2unix $file
+    while IFS="=" read -r key value; do
+        case "$key" in
+            "nmc_api_endpoint") NMC_API_ENDPOINT="$value" ;;
+            "nmc_api_username") NMC_API_USERNAME="$value" ;;
+            "nmc_api_password") NMC_API_PASSWORD="$value" ;;
+            "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
+            "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
           esac
         done <"$file"
 }
@@ -60,6 +75,32 @@ validate_github() {
         else
                 echo "INFO ::: git repo accessible. Continue . . . Provisioning . . . "
         fi
+}
+append_tochandle_to_config_dat(){
+	CONFIG_DAT_FILE_NAME="config.dat"
+    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME 
+}
+nmc_api_call(){
+NMC_DETAILS_TXT=$1    
+parse_file_nmc_txt $NMC_DETAILS
+### NMC API CALL  ####888
+RND=$(( $RANDOM % 1000000 ));
+#'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
+python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
+# FILTER Values From NMC API Call
+
+SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
+UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
+SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
+SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+rm -rf nmc_api_*.txt
+SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
+SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
+SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
+
+###888  Till here 
+
 }
 
 parse_config_file_for_user_secret_keys_values() {
@@ -96,10 +137,24 @@ install_NAC_CLI() {
 }
 
 ###### START - EXECUTION ####
+# GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME="demo"
+if [ $GIT_BRANCH_NAME == "" ]; then
+    GIT_BRANCH_NAME="main"
+fi
+NMC_API_ENDPOINT=""
+NMC_API_USERNAME=""
+NMC_API_PASSWORD=""
+NMC_VOLUME_NAME=""
+WEB_ACCESS_APPLIANCE_ADDRESS=""
 #parse_TFVARS_file "ACS.tfvars"
-parse_file "ACS.txt"
+nmc_api_call "nmc_details.txt"
+parse_file_acs_txt "ACS.txt"
+append_tochandle_to_config_dat config.dat
+
 parse_config_file_for_user_secret_keys_values config.dat 
+
+
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID}`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then

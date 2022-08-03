@@ -87,7 +87,7 @@ validate_github() {
 nmc_endpoint_accessibility() {
 	NAC_SCHEDULER_NAME="$1"
 	NAC_SCHEDULER_IP_ADDR="$2"
-        NMC_API_ENDPOINT="$3"
+	NMC_API_ENDPOINT="$3"
 	NMC_API_USERNAME="$4"
 	NMC_API_PASSWORD="$5" #14-19
 	PEM="$PEM_KEY_PATH"
@@ -257,20 +257,22 @@ Schedule_CRON_JOB() {
 	RND=$(( $RANDOM % 1000000 )); 
 	LAMBDA_LAYER_SUFFIX=$(echo $RND)
 
-### NMC API CALL
-#'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}
-# FILTER Values From NMC API Call
+# ### NMC API CALL  ####888
+# #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
+# python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}
+# # FILTER Values From NMC API Call
 
-SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
-UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
-SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-rm -rf nmc_api_*.txt
-SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
-SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
-SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
+# SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
+# UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
+# SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
+# SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+# rm -rf nmc_api_*.txt
+# SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+# SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
+# SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
+# SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
+
+####888  Till here 
 
 #DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
 DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
@@ -315,8 +317,10 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
     echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
 	### VolumeKeyPassphrase >>>>> Recommended as 'null' for AZURE NAC
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
-	### UniFSTOCHandle >>>>> Get from NMC_API Call
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+	# ####888
+	# ### UniFSTOCHandle >>>>> Get from NMC_API Call
+    # echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+	# ####888
 	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
 	### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
@@ -354,8 +358,8 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
 	ACS_TFVARS_FILE="ACS.txt"
 	rm -rf "$ACS_TFVARS_FILE"
-        echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
-        echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
+	echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
+	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
 	echo "subscription_id="$AZURE_SUBSCRIPTION_ID >>$ACS_TFVARS_FILE
 	echo "tenant_id="$AZURE_TENANT_ID >>$ACS_TFVARS_FILE
 	echo "azure_location="$AZURE_LOCATION >>$ACS_TFVARS_FILE
@@ -365,32 +369,25 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$ACS_TFVARS_FILE
 	echo "github_organization="$GITHUB_ORGANIZATION >>$ACS_TFVARS_FILE
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$ACS_TFVARS_FILE
-	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
-        echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
-        
-        #echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE
-        #echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE
-        #echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE
-        #echo "tenant_id="\"$AZURE_TENANT_ID\" >>$ACS_TFVARS_FILE
-        #echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE
-        #echo "acs-key-vault-name="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE
-        #echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE
-        #echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE
-        #echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$ACS_TFVARS_FILE
-        #echo "github_organization="\"$GITHUB_ORGANIZATION\" >>$ACS_TFVARS_FILE
-        #echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$ACS_TFVARS_FILE
-        #echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$ACS_TFVARS_FILE
-        #echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE
-
-
-
-echo "" >>$ACS_TFVARS_FILE
+	####888 echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
+	echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
+	echo "" >>$ACS_TFVARS_FILE
     chmod 777 $ACS_TFVARS_FILE
+
+	### Create File to transfer data related to NMC 
+	NMC_DETAILS="nmc_details.txt"
+	echo "nmc_api_endpoint="$NMC_API_ENDPOINT >>$NMC_DETAILS
+	echo "nmc_api_username="$NMC_API_USERNAME >>$NMC_DETAILS
+	echo "nmc_api_password="$NMC_API_PASSWORD >>$NMC_DETAILS
+	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NMC_DETAILS
+	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NMC_DETAILS
+	echo "" >>$NMC_DETAILS
+    chmod 777 $NMC_DETAILS
 
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$ACS_TFVARS_FILE" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$ACS_TFVARS_FILE" "$CONFIG_DAT_FILE_NAME" "$NMC_DETAILS" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 
 	RES="$?"
 	if [ $RES -ne 0 ]; then
