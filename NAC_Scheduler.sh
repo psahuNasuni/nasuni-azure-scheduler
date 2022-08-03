@@ -351,7 +351,7 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	# 	append_nac_keys_values_to_tfvars $NAC_INPUT_KVP $TFVARS_FILE_NAME
 	# fi
 	# chmod 777 $TFVARS_FILE_NAME
-
+	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
 	ACS_TFVARS_FILE="ACS.tfvars"
 	rm -rf "$ACS_TFVARS_FILE"
         echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
@@ -366,7 +366,8 @@ VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.wind
 	echo "github_organization="$GITHUB_ORGANIZATION >>$ACS_TFVARS_FILE
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$ACS_TFVARS_FILE
 	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
-
+        echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
+        echo "" >>$ACS_TFVARS_FILE
     chmod 777 $ACS_TFVARS_FILE
 
 	### Create Directory for each Volume
@@ -599,7 +600,7 @@ else
 	echo "azure_username="\"$AZURE_USERNAME\" >>$TFVARS_NAC_SCHEDULER
 	echo "azure_password="\"$AZURE_PASSWORD\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
-	echo "nac_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+	echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$NAC_SCHEDULER_NAME" != "" ]]; then
 		echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$TFVARS_NAC_SCHEDULER
