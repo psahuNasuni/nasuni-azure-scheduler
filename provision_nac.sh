@@ -37,6 +37,7 @@ parse_TFVARS_file() {
         "azure_location") AZURE_LOCATION="$value" ;;
         "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
         "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
+        "tenant_id") AZURE_TENANT_ID ="$value" ;;
         esac
     done <"$file"
 }
@@ -381,7 +382,8 @@ UI_TFVARS_FILE_NAME="userinterface.tfvars"
 rm -rf "$UI_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$UI_TFVARS_FILE_NAME
 echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$UI_TFVARS_FILE_NAME
-
+echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$UI_TFVARS_FILE_NAME
+echo "tenant_id="\"$AZURE_TENANT_ID\" >>$UI_TFVARS_FILE_NAME
 echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 
 COMMAND="terraform apply -var-file=$UI_TFVARS_FILE_NAME -auto-approve"
