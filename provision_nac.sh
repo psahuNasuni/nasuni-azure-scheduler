@@ -165,6 +165,7 @@ if [ "$IS_ACS" == "N" ]; then
         echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
         exit 1
     fi
+    cp ACS.tfvars $GIT_REPO_NAME
     cd "${GIT_REPO_NAME}"
     #### RUN terraform init
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
