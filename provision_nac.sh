@@ -294,7 +294,9 @@ if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
       COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
       $COMMAND
 fi
-
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo "$ACS_KEY_VAULT_NAME"
+echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
@@ -341,7 +343,8 @@ COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 if [ $? -eq 0 ]; then
         function_url=`az keyvault secret show --name index-endpoint --vault-name $ACS_KEY_VAULT_NAME | jq -r .value`
-        curl -X GET -H "Content-Type: application/json" "$function_url"
+        echo "$function_url"
+	curl -X GET -H "Content-Type: application/json" "$function_url"
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
     else
         echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"

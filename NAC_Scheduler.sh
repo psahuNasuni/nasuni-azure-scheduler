@@ -192,7 +192,7 @@ validate_secret_values() {
 				GITHUB_ORGANIZATION=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "destination-container-url" ]; then
 				DESTINATION_CONTAINER_URL=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "volume-key-container-url-1" ]; then
+			elif [ "$SECRET_NAME" == "volume-key-container-url" ]; then
 				VOLUME_KEY_BLOB_URL=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "nac-scheduler-resource-group" ]; then
 				NAC_SCHEDULER_RESOURCE_GROUP=$SECRET_VALUE
@@ -483,7 +483,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" acs-key-vault-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" github-organization
 		validate_secret_values "$AZURE_KEYVAULT_NAME" destination-container-url
-		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url-1
+		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-endpoint
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-password
