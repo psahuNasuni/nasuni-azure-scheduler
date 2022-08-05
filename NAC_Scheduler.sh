@@ -162,8 +162,8 @@ validate_secret_values() {
 			echo "ERROR ::: Validation FAILED as, Secret $SECRET_NAME does not exists in Key Vault $KEY_VAULT_NAME." 
 			exit 1
 		else
-			if [ "$SECRET_NAME" == "azure-subscription-id" ]; then
-				AZURE_SUBSCRIPTION_ID=$SECRET_VALUE
+			if [ "$SECRET_NAME" == "azure-subscription" ]; then
+				AZURE_SUBSCRIPTION=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-location" ]; then
 				AZURE_LOCATION=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "product-key" ]; then
@@ -215,7 +215,7 @@ validate_secret_values() {
 }
 
 ######################## Validating AZURE Subscription for NAC ####################################
-AZURE_SUBSCRIPTION="Product Management"
+#AZURE_SUBSCRIPTION="Product Management"
 #AZURE_REGION="us-east-1"
 ARG_COUNT="$#"
 
@@ -223,12 +223,13 @@ validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
 
 	## TO UPDATE AS IN AZURE current_config
-	if [[ "$(az account list -o tsv | cut -f 6 | grep "${AZURE_SUBSCRIPTION}")" == "" ]]; then
+	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
+	echo "$AZURE_SUBSCRIPTION_STATUS"
+	if [ "$AZURE_SUBSCRIPTION_STATUS" == "" ]; then
 		echo "ERROR ::: AZURE Subscrip ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
 		exit 1
 	else # AZURE Subscription nasuni available
-		COMMAND="az account set --subscription '${AZURE_SUBSCRIPTION}'"
-		$COMMAND
+		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 	fi
@@ -458,7 +459,7 @@ else
 fi
 
 ### Validate AZURE_SUBSCRIPTION 
-validate_AZURE_SUBSCRIPTION
+#validate_AZURE_SUBSCRIPTION
 ########## Check If fourth argument is provided
 USER_SECRET_EXISTS="N"
 if [[ -n "$FOURTH_ARG" ]]; then
@@ -473,7 +474,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 	if [ "$AZURE_KEYVAULT_EXISTS" == "Y" ]; then
 		### Validate Keys in the Secret
 		echo "INFO ::: Check if all Keys are provided"
-		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-subscription-id
+		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-subscription
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-location
 		validate_secret_values "$AZURE_KEYVAULT_NAME" product-key
 		validate_secret_values "$AZURE_KEYVAULT_NAME" acs-service-name
@@ -499,6 +500,7 @@ echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!"
 else
 	echo "INFO ::: Fourth argument is NOT provided, So, It will consider prod/nac/admin as the default key vault."
 fi
+validate_AZURE_SUBSCRIPTION
 
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 ######################  NAC Scheduler Instance is Available ##############################
