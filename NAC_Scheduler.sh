@@ -87,7 +87,7 @@ validate_github() {
 nmc_endpoint_accessibility() {
 	NAC_SCHEDULER_NAME="$1"
 	NAC_SCHEDULER_IP_ADDR="$2"
-    NMC_API_ENDPOINT="$3"
+  NMC_API_ENDPOINT="$3"
 	NMC_API_USERNAME="$4"
 	NMC_API_PASSWORD="$5" #14-19
 	PEM="$PEM_KEY_PATH"
@@ -216,7 +216,6 @@ validate_secret_values() {
 
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
-
 validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
 	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
@@ -283,7 +282,6 @@ Schedule_CRON_JOB() {
 	### Destination Bucket COnnection String ==> datasource_connection_string, Used for CognitiveSearch Provisioning ###datasource_connection_string=DefaultEndpointsProtocol=https;AccountName=destinationbktsa;AccountKey=ekOsyrbVEGCbOQFIM6CaM3Ne7zdnct33ZuvSvp1feo1xtpQ/IMq15WD9TGXIeVvvuS0DO1mRMYYB+ASt1lMVKw==;EndpointSuffix=core.windows.net
 
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
-
 	### VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
 	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
 	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
@@ -596,7 +594,6 @@ else
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$TFVARS_NAC_SCHEDULER
 	echo "$TFVARS_NAC_SCHEDULER created"
-
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
 	$COMMAND

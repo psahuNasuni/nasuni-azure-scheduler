@@ -154,6 +154,7 @@ if [ "$IS_ACS" == "N" ]; then
         echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
         exit 1
     fi
+    #cp ACS.tfvars $GIT_REPO_NAME
     cd "${GIT_REPO_NAME}"
     ### RUN terraform init
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
@@ -171,7 +172,6 @@ if [ "$IS_ACS" == "N" ]; then
     else
         echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
     fi
-
     ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $ACS_KEY_VAULT_NAME --query properties.provisioningState --output tsv 2> /dev/null`
     if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
         echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME is already exist. Importing the existing KeyVault . . . "
