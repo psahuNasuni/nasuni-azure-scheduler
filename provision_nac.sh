@@ -98,116 +98,116 @@ ACS_SERVICE_NAME=$(echo "$ACS_SERVICE_NAME" | tr -d '"')
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 ACS_KEY_VAULT_NAME=$ACS_KEY_VAULT_NAME
 echo  $ACS_SERVICE_NAME
-######################## Check If Azure Cognitice Search Available ###############################################
+# ######################## Check If Azure Cognitice Search Available ###############################################
 
-echo "INFO ::: ACS_DOMAIN NAME : $ACS_SERVICE_NAME"
-IS_ACS="N"
-if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
-    echo "INFO ::: Azure Cognitive Search Resource Group is Not provided."
-    exit 1
-else
-    ### If resource group already available
-    echo "INFO ::: Azure Cognitive Search Resource Group is provided as $ACS_RESOURCE_GROUP"
-fi
-if [ "$ACS_SERVICE_NAME" == "" ] || [ "$ACS_SERVICE_NAME" == null ]; then
-    echo "INFO ::: Azure Cognitive Search is Not provided."
-    exit 1
-else
-    echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_SERVICE_NAME"
+# echo "INFO ::: ACS_DOMAIN NAME : $ACS_SERVICE_NAME"
+# IS_ACS="N"
+# if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
+#     echo "INFO ::: Azure Cognitive Search Resource Group is Not provided."
+#     exit 1
+# else
+#     ### If resource group already available
+#     echo "INFO ::: Azure Cognitive Search Resource Group is provided as $ACS_RESOURCE_GROUP"
+# fi
+# if [ "$ACS_SERVICE_NAME" == "" ] || [ "$ACS_SERVICE_NAME" == null ]; then
+#     echo "INFO ::: Azure Cognitive Search is Not provided."
+#     exit 1
+# else
+#     echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_SERVICE_NAME"
 
-    echo "INFO ::: Checking for ACS Availability Status . . . . "
+#     echo "INFO ::: Checking for ACS Availability Status . . . . "
 
-    ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
-    if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
-        echo "INFO ::: ACS not found. Start provisioning ACS"
-        IS_ACS="N"
-    else
-        echo "ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
-        IS_ACS="Y"
-    fi
-fi
-if [ "$IS_ACS" == "N" ]; then
-    echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
-    echo "INFO ::: Begin Azure Cognitive Search Provisioning."
-    ########## Download CognitiveSearch Provisioning Code from GitHub ##########
-    ### GITHUB_ORGANIZATION defaults to nasuni-labs
-    REPO_FOLDER="nasuni-azure-cognitive-search"
-    ### https://github.com/psahuNasuni/nasuni-azure-cognitive-search.git
-    validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
-    ########################### Git Clone  ###############################################################
-    echo "INFO ::: BEGIN - Git Clone !!!"
-    ### Download Provisioning Code from GitHub
-    GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
-    echo "INFO ::: $GIT_REPO"
-    echo "INFO ::: GIT_REPO_NAME $GIT_REPO_NAME"
-    pwd
-    ls
-    echo "INFO ::: Removing ${GIT_REPO_NAME}"
-    rm -rf "${GIT_REPO_NAME}"
-    pwd
-    COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
-    $COMMAND
-    RESULT=$?
-    if [ $RESULT -eq 0 ]; then
-        echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
-    else
-        echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
-        exit 1
-    fi
-    #cp ACS.tfvars $GIT_REPO_NAME
-    cd "${GIT_REPO_NAME}"
-    ### RUN terraform init
-    echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
-    COMMAND="terraform init"
-    $COMMAND
+#     ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
+#     if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
+#         echo "INFO ::: ACS not found. Start provisioning ACS"
+#         IS_ACS="N"
+#     else
+#         echo "ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
+#         IS_ACS="Y"
+#     fi
+# fi
+# if [ "$IS_ACS" == "N" ]; then
+#     echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
+#     echo "INFO ::: Begin Azure Cognitive Search Provisioning."
+#     ########## Download CognitiveSearch Provisioning Code from GitHub ##########
+#     ### GITHUB_ORGANIZATION defaults to nasuni-labs
+#     REPO_FOLDER="nasuni-azure-cognitive-search"
+#     ### https://github.com/psahuNasuni/nasuni-azure-cognitive-search.git
+#     validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
+#     ########################### Git Clone  ###############################################################
+#     echo "INFO ::: BEGIN - Git Clone !!!"
+#     ### Download Provisioning Code from GitHub
+#     GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
+#     echo "INFO ::: $GIT_REPO"
+#     echo "INFO ::: GIT_REPO_NAME $GIT_REPO_NAME"
+#     pwd
+#     ls
+#     echo "INFO ::: Removing ${GIT_REPO_NAME}"
+#     rm -rf "${GIT_REPO_NAME}"
+#     pwd
+#     COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
+#     $COMMAND
+#     RESULT=$?
+#     if [ $RESULT -eq 0 ]; then
+#         echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
+#     else
+#         echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
+#         exit 1
+#     fi
+#     #cp ACS.tfvars $GIT_REPO_NAME
+#     cd "${GIT_REPO_NAME}"
+#     ### RUN terraform init
+#     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
+#     COMMAND="terraform init"
+#     $COMMAND
 
-    chmod 755 $(pwd)/*
-    echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
-    ### Check if Resource Group is already provisioned
-    ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
-    if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
-        COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
-        $COMMAND
-    else
-        echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
-    fi
-    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $ACS_KEY_VAULT_NAME --query properties.provisioningState --output tsv 2> /dev/null`
-    if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME is already exist. Importing the existing KeyVault . . . "
-        ACS_KEY_VAULT_NAME=`az keyvault show --name $ACS_KEY_VAULT_NAME --query id --output tsv`
-        COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME does not exist. It will provision a new internal KeyVault."
-    fi
+#     chmod 755 $(pwd)/*
+#     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
+#     ### Check if Resource Group is already provisioned
+#     ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
+#     if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+#         echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
+#         COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+#         $COMMAND
+#     else
+#         echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
+#     fi
+#     ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $ACS_KEY_VAULT_NAME --query properties.provisioningState --output tsv 2> /dev/null`
+#     if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
+#         echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME is already exist. Importing the existing KeyVault . . . "
+#         ACS_KEY_VAULT_NAME=`az keyvault show --name $ACS_KEY_VAULT_NAME --query id --output tsv`
+#         COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_NAME"
+#         $COMMAND
+#     else
+#         echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME does not exist. It will provision a new internal KeyVault."
+#     fi
 
-    echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
-    ACS_TFVARS_FILE_NAME="ACS.tfvars"
-    rm -rf "$ACS_TFVARS_FILE_NAME"
-    echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
-    echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-    echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-    echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE_NAME
-    echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-    echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
-    echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
-    echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
-    COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
-    $COMMAND
+#     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
+#     ACS_TFVARS_FILE_NAME="ACS.tfvars"
+#     rm -rf "$ACS_TFVARS_FILE_NAME"
+#     echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
+#     echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+#     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
+#     echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE_NAME
+#     echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+#     echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
+#     echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
+#     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
+#     COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
+#     $COMMAND
 
-    if [ $? -eq 0 ]; then
-        echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
-    else
-        echo "ERROR ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: FAILED "
-        exit 1
-    fi
-    cd ..
-else
-    echo "INFO ::: Azure Cognitive Search is Active . . . . . . . . . ."
-    echo "INFO ::: BEGIN ::: NAC Provisioning . . . . . . . . . . . ."
-fi
-##################################### END Azure CognitiveSearch ###################################################################
+#     if [ $? -eq 0 ]; then
+#         echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
+#     else
+#         echo "ERROR ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: FAILED "
+#         exit 1
+#     fi
+#     cd ..
+# else
+#     echo "INFO ::: Azure Cognitive Search is Active . . . . . . . . . ."
+#     echo "INFO ::: BEGIN ::: NAC Provisioning . . . . . . . . . . . ."
+# fi
+# ##################################### END Azure CognitiveSearch ###################################################################
 
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
