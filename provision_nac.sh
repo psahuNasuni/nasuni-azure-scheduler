@@ -118,7 +118,7 @@ else
 
     echo "INFO ::: Checking for ACS Availability Status . . . . "
 
-    ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status`
+    ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
     if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
         echo "INFO ::: ACS not found. Start provisioning ACS"
         IS_ACS="N"
