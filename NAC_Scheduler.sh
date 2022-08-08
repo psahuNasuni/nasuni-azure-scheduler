@@ -87,7 +87,7 @@ validate_github() {
 nmc_endpoint_accessibility() {
 	NAC_SCHEDULER_NAME="$1"
 	NAC_SCHEDULER_IP_ADDR="$2"
-        NMC_API_ENDPOINT="$3"
+    NMC_API_ENDPOINT="$3"
 	NMC_API_USERNAME="$4"
 	NMC_API_PASSWORD="$5" #14-19
 	PEM="$PEM_KEY_PATH"
@@ -215,20 +215,16 @@ validate_secret_values() {
 }
 
 ######################## Validating AZURE Subscription for NAC ####################################
-#AZURE_SUBSCRIPTION="Product Management"
-#AZURE_REGION="us-east-1"
 ARG_COUNT="$#"
 
 validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
-
-	## TO UPDATE AS IN AZURE current_config
 	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
 	echo "$AZURE_SUBSCRIPTION_STATUS"
 	if [ "$AZURE_SUBSCRIPTION_STATUS" == "" ]; then
 		echo "ERROR ::: AZURE Subscrip ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
 		exit 1
-	else # AZURE Subscription nasuni available
+	else
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
@@ -288,7 +284,7 @@ Schedule_CRON_JOB() {
 
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 
-	#VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
+	### VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
 	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
 	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
 	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
@@ -385,7 +381,6 @@ Schedule_CRON_JOB() {
 		echo "INFO ::: crontab does not require volume entry.As it is already present.:::::"
 	else
 		### Set up a new CRON JOB for NAC Provisioning
-
 		echo "INFO ::: Setting CRON JOB for $CRON_DIR_NAME as it is not present"
 		ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "(crontab -l ; echo '*/$FREQUENCY * * * * cd ~/$CRON_DIR_NAME && /bin/bash provision_nac.sh  ~/$CRON_DIR_NAME/$TFVARS_FILE_NAME >> ~/$CRON_DIR_NAME/CRON_log-$CRON_DIR_NAME-$DATE_WITH_TIME.log 2>&1') | sort - | uniq - | crontab -"
 		if [ $? -eq 0 ]; then
@@ -420,7 +415,7 @@ if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
 fi
 if [[ "${#ANALYTICS_SERVICE}" -lt 2 ]]; then
 	echo "INFO ::: The length of Service name provided as 2nd argument is too small, So, It will consider ES as the default Analytics Service."
-	ANALYTICS_SERVICE="ACS" # Azure Cognitive Search Service as default
+	ANALYTICS_SERVICE="ACS" ### Azure Cognitive Search Service as default
 fi
 if [[ "${#FREQUENCY}" -lt 2 ]]; then
 	echo "ERROR ::: Mandatory 3rd argument is invalid"
@@ -434,7 +429,6 @@ else
 fi
 
 ### Validate AZURE_SUBSCRIPTION 
-#validate_AZURE_SUBSCRIPTION
 ########## Check If fourth argument is provided
 USER_SECRET_EXISTS="N"
 if [[ -n "$FOURTH_ARG" ]]; then
@@ -445,7 +439,6 @@ if [[ -n "$FOURTH_ARG" ]]; then
 	### Verify the KeyVault Exists
 	AZURE_KEYVAULT_EXISTS=$(check_if_key_vault_exists $AZURE_KEYVAULT_NAME)
 	echo "INFO ::: User secret Exists:: $AZURE_KEYVAULT_EXISTS"
-	# if [ "${#AZURE_KEYVAULT_EXISTS}" -gt 0 ]; then
 	if [ "$AZURE_KEYVAULT_EXISTS" == "Y" ]; then
 		### Validate Keys in the Secret
 		echo "INFO ::: Check if all Keys are provided"
@@ -479,13 +472,8 @@ validate_AZURE_SUBSCRIPTION
 
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 ######################  NAC Scheduler Instance is Available ##############################
-
-#NAC_SCHEDULER_NAME="SCHVM1"
-#NAC_SCHEDULER_RESOURCE_GROUP="AzResource-01"
-#RESOURCE_GROUP="acs-resource-demo45"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
 ### parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
-# parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
 echo "INFO ::: nac_scheduler_name = $NAC_SCHEDULER_NAME "
 if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 	### User has provided the NACScheduler Name as Key-Value from 4th Argument
@@ -499,7 +487,6 @@ if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 		NAC_SCHEDULER_IP_ADDR=`az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.privateIpAddresses[0]" | cut -d":" -f 2 | tr -d '"' | tr -d ' '`
 	fi
 else
-	#### smg check if vm already exist with name NACScheduler if yes then take it or create new one and assign the ip
 	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 fi
 echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: $NAC_SCHEDULER_IP_ADDR"
@@ -511,14 +498,12 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	PEM="$AZURE_KEY.pem"
 	### Copy the Pem Key from provided path to current folder
 	ls
-	#chmod 777 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
 	### Call this function to add Local public IP to Network Security Group (NSG rule) of NAC_SCHEDULER IP
 	ls
 	echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
-	# nmc_endpoint_accessibility  $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD #458
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 	exit 111
 
@@ -545,7 +530,6 @@ else
 		else
 		### If USER_VNET_NAME provided and USER_SUBNET_NAME Provided, It will take the provided VNET NAME and provided Subnet
 			echo "INFO ::: USER_VNET_NAME and USER_SUBNET_NAME Provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and Subnet $USER_SUBNET_NAME"
-			# check $USER_VNET_NAME $USER_SUBNET_NAME is exists
 			check_if_subnet_exists $USER_SUBNET_NAME $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
 		fi
 	fi
@@ -554,14 +538,13 @@ else
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-analyticsconnector-manager"
 	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
-	GIT_BRANCH_NAME="demo"
+	GIT_BRANCH_NAME="main"
 	GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo "INFO ::: Begin - Git Clone to ${GIT_REPO}"
 	echo "INFO ::: $GIT_REPO"
 	echo "INFO ::: GIT_REPO_NAME - $GIT_REPO_NAME"
 	pwd
 	rm -rf "${GIT_REPO_NAME}"
-        #### smg test from aniket
 	COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
 	$COMMAND
 	RESULT=$?
@@ -587,7 +570,6 @@ else
 	AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo $AZURE_KEY
 	PEM="$AZURE_KEY.pem"
-	### Copy the Pem Key from provided path to current folder
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
@@ -614,7 +596,6 @@ else
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$TFVARS_NAC_SCHEDULER
 	echo "$TFVARS_NAC_SCHEDULER created"
-	# echo `cat $TFVARS_NAC_SCHEDULER`
 
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
@@ -633,15 +614,10 @@ else
 	pwd
 	echo "Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM
-	#ssh -i $PEM ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
-	## Setup_Search_Lambda
-	## Setup_Search_UI
-
 fi
 
 END=$(date +%s)
 secs=$((END - START))
 DIFF=$(printf '%02dh:%02dm:%02ds\n' $((secs / 3600)) $((secs % 3600 / 60)) $((secs % 60)))
 echo "INFO ::: Total execution Time ::: $DIFF"
-#exit 0

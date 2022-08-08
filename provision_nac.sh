@@ -84,8 +84,7 @@ install_NAC_CLI() {
 }
 
 ###### START - EXECUTION ####
-GIT_BRANCH_NAME="demo"
-#parse_TFVARS_file "ACS.tfvars"
+GIT_BRANCH_NAME="main"
 parse_file "ACS.txt"
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
@@ -130,11 +129,11 @@ fi
 if [ "$IS_ACS" == "N" ]; then
     echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
     echo "INFO ::: Begin Azure Cognitive Search Provisioning."
-   ########## Download CognitiveSearch Provisioning Code from GitHub ##########
-        ### GITHUB_ORGANIZATION defaults to nasuni-labs
-        REPO_FOLDER="nasuni-azure-cognitive-search"
+    ########## Download CognitiveSearch Provisioning Code from GitHub ##########
+    ### GITHUB_ORGANIZATION defaults to nasuni-labs
+    REPO_FOLDER="nasuni-azure-cognitive-search"
     ### https://github.com/psahuNasuni/nasuni-azure-cognitive-search.git
-        validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
+    validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
     ########################### Git Clone  ###############################################################
     echo "INFO ::: BEGIN - Git Clone !!!"
     ### Download Provisioning Code from GitHub
@@ -155,17 +154,15 @@ if [ "$IS_ACS" == "N" ]; then
         echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
         exit 1
     fi
-    #cp ACS.tfvars $GIT_REPO_NAME
     cd "${GIT_REPO_NAME}"
-    #### RUN terraform init
+    ### RUN terraform init
     echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
     COMMAND="terraform init"
     $COMMAND
 
     chmod 755 $(pwd)/*
     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
-    #### Check if Resource Group is already provisioned
-    # ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv`
+    ### Check if Resource Group is already provisioned
     ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
     if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
         echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
@@ -174,7 +171,6 @@ if [ "$IS_ACS" == "N" ]; then
     else
         echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
     fi
-
 
     ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $ACS_KEY_VAULT_NAME --query properties.provisioningState --output tsv 2> /dev/null`
     if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
@@ -213,8 +209,7 @@ else
 fi
 ##################################### END Azure CognitiveSearch ###################################################################
 
-##################################### START NAC Provisioning ###################################################################
-#create_Config_Dat_file "$2"
+##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
 sudo chmod 777 $CONFIG_DAT_FILE_PATH
@@ -235,7 +230,7 @@ echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
 
 ### GITHUB_ORGANIZATION defaults to nasuni-labs
-# https://github.com/psahuNasuni/nasuni-azure-analyticsconnector.git
+### https://github.com/psahuNasuni/nasuni-azure-analyticsconnector.git
 REPO_FOLDER="nasuni-azure-analyticsconnector"
 validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
 ########################### Git Clone : NAC Provisioning Repo ###############################################################
@@ -264,19 +259,18 @@ ls -l
 cd "${GIT_REPO_NAME}"
 pwd
 ls
-#### Installing dependencies in ./ACSFunction/.python_packages/lib/site-packages location
+### Installing dependencies in ./ACSFunction/.python_packages/lib/site-packages location
 echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
 COMMAND="pip3 install --target=./ACSFunction/.python_packages/lib/site-packages -r ./ACSFunction/requirements.txt"
 $COMMAND
-##### RUN terraform init
+### RUN terraform init
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
 $COMMAND
 chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
-#### Check if Resource Group is already provisioned
-
+### Check if Resource Group is already provisioned
 AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
@@ -351,12 +345,11 @@ else
 fi
 cd ..
 ##################################### END NAC Provisioning ###################################################################
-
 REPO_FOLDER="nasuni-azure-userinterface"
 validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
-########################### Git Clone : userinterface Repo ###############################################################
+########################### Git Clone : userinterface Repo ###################################################################
 echo "INFO ::: BEGIN - Git Clone !!!"
-#### Download Provisioning Code from GitHub
+### Download Provisioning Code from GitHub
 GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 echo "INFO ::: GIT_REPO : $GIT_REPO"
 echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
@@ -381,11 +374,11 @@ ls -l
 cd "${GIT_REPO_NAME}"
 pwd
 ls
-#### Installing dependencies in ./SearchFunction/.python_packages/lib/site-packages location
+### Installing dependencies in ./SearchFunction/.python_packages/lib/site-packages location
 echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
 COMMAND="pip3 install  --target=./SearchFunction/.python_packages/lib/site-packages  -r ./SearchFunction/requirements.txt"
 $COMMAND
-##### RUN terraform init
+### RUN terraform init
 echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
 $COMMAND
