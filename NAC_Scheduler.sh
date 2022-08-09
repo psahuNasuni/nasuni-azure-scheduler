@@ -403,44 +403,19 @@ Schedule_CRON_JOB() {
 	LAMBDA_LAYER_SUFFIX=$(echo $RND)
 
 	### NMC API CALL
-	###'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
+	###'Usage -- python3 fetch_volume_data_from_nmc_api.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
 	python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}
 	### FILTER Values From NMC API Call
 
 	SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
 	UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
 	SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-	SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+	# SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
 	rm -rf nmc_api_*.txt
 	SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 	SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
 	SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
 	SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
-
-	# ### DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
-	# DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-
-	# ### https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
-
-	# DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
-
-	# ### Destination account-key: 
-	# DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	# DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
-	# DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
-	# DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
-	# ### Destination Bucket COnnection String ==> datasource_connection_string, Used for CognitiveSearch Provisioning ###datasource_connection_string=DefaultEndpointsProtocol=https;AccountName=destinationbktsa;AccountKey=ekOsyrbVEGCbOQFIM6CaM3Ne7zdnct33ZuvSvp1feo1xtpQ/IMq15WD9TGXIeVvvuS0DO1mRMYYB+ASt1lMVKw==;EndpointSuffix=core.windows.net
-
-	# DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
-	### VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
-	# VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
-	# VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
-	# VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	# VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
-	# VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
-	# BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
-	# ### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
-	# VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
 
     ### Generating NAC Resource group name dynamically
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
@@ -489,22 +464,6 @@ Schedule_CRON_JOB() {
 	
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
 	echo $USER_PRINCIPAL_NAME
-	# ACS_TFVARS_FILE="NAC.tfvars"
-	# rm -rf "$ACS_TFVARS_FILE"
-	# echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
-	# echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
-	# echo "subscription_id="$AZURE_SUBSCRIPTION_ID >>$ACS_TFVARS_FILE
-	# echo "tenant_id="$AZURE_TENANT_ID >>$ACS_TFVARS_FILE
-	# echo "azure_location="$AZURE_LOCATION >>$ACS_TFVARS_FILE
-	# echo "acs-key-vault="$ACS_KEY_VAULT_NAME >>$ACS_TFVARS_FILE
-	# echo "datasource-connection-string="$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING >>$ACS_TFVARS_FILE
-	# echo "destination-container-name="$DESTINATION_CONTAINER_NAME >>$ACS_TFVARS_FILE
-	# echo "nmc_volume_name="$NMC_VOLUME_NAME >>$ACS_TFVARS_FILE
-	# echo "github_organization="$GITHUB_ORGANIZATION >>$ACS_TFVARS_FILE
-	# echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$ACS_TFVARS_FILE
-	# echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
-	# echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
-	# echo "" >>$ACS_TFVARS_FILE
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
@@ -513,8 +472,8 @@ Schedule_CRON_JOB() {
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
-        echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
-        chmod 777 $NAC_TXT_FILE_NAME
+	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
+	chmod 777 $NAC_TXT_FILE_NAME
 
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
@@ -569,9 +528,8 @@ ACS_UID=$(( $RANDOM % 1000 ));
 ACS_SERVICE_NAME="acs-service-$ACS_UID"
 ACS_RESOURCE_GROUP="acs-resource-group-$ACS_UID"
 ACS_KEY_VAULT_NAME="runtime-vault-$ACS_UID"
-# acs-service-name
-# acs-resource-group
-# acs-key-vault-name
+SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
 if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
 	echo "ERROR ::: Something went wrong. Please re-check 1st argument and provide a valid NMC Volume Name."
@@ -609,11 +567,8 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-subscription
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-location
 		validate_secret_values "$AZURE_KEYVAULT_NAME" product-key
-		# validate_secret_values "$AZURE_KEYVAULT_NAME" acs-service-name
-		# validate_secret_values "$AZURE_KEYVAULT_NAME" acs-resource-group
 		validate_secret_values "$AZURE_KEYVAULT_NAME" web-access-appliance-address
 		validate_secret_values "$AZURE_KEYVAULT_NAME" pem-key-path
-		# validate_secret_values "$AZURE_KEYVAULT_NAME" acs-key-vault-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" github-organization
 		validate_secret_values "$AZURE_KEYVAULT_NAME" destination-container-url
 		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url
@@ -643,9 +598,7 @@ get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 provision_Azure_Cognitice_Search
 
 echo "*************************************************************"
-#exit 888
 ############ END: Provision ACS if Not Available ################
-
 
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 ######################  NAC Scheduler Instance is Available ##############################
@@ -666,15 +619,15 @@ if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 else
 	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 fi
+echo $PEM_KEY_PATH
+AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+echo $AZURE_KEY
+PEM="$AZURE_KEY.pem"
+
 echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: $NAC_SCHEDULER_IP_ADDR"
 if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	echo "INFO ::: NAC Scheduler Instance is Available. IP Address: $NAC_SCHEDULER_IP_ADDR"
-	echo $PEM_KEY_PATH
-	AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-	echo $AZURE_KEY
-	PEM="$AZURE_KEY.pem"
 	### Copy the Pem Key from provided path to current folder
-	ls
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
 	### Call this function to add Local public IP to Network Security Group (NSG rule) of NAC_SCHEDULER IP
@@ -682,7 +635,6 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
-	exit 888
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
@@ -715,7 +667,6 @@ else
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-analyticsconnector-manager"
 	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
-	#GIT_BRANCH_NAME="main"
 	GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo "INFO ::: Begin - Git Clone to ${GIT_REPO}"
 	echo "INFO ::: $GIT_REPO"
@@ -744,9 +695,6 @@ else
 	pwd
 	TFVARS_NAC_SCHEDULER="NACScheduler.tfvars"
 	rm -rf "$TFVARS_NAC_SCHEDULER" 
-	AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-	echo $AZURE_KEY
-	PEM="$AZURE_KEY.pem"
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
