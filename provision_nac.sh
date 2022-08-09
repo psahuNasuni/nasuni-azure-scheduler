@@ -26,19 +26,19 @@ file="$1"
 dos2unix $file
 while IFS="=" read -r key value; do
     case "$key" in
-        "acs_service_name") ACS_SERVICE_NAME="$value" ;;
+        #"acs_service_name") ACS_SERVICE_NAME="$value" ;;
         "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-        "subscription_id") AZURE_SUBSCRIPTION_ID="$value" ;;
-        "tenant_id") AZURE_TENANT_ID="$value" ;;
-        "acs-key-vault") ACS_KEY_VAULT_NAME="$value" ;;
-        "datasource-connection-string") DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$value" ;;
-        "destination-container-name") DESTINATION_CONTAINER_NAME="$value" ;;
+        #"subscription_id") AZURE_SUBSCRIPTION_ID="$value" ;;
+        #"tenant_id") AZURE_TENANT_ID="$value" ;;
+        "acs_key_vault") ACS_KEY_VAULT_NAME="$value" ;;
+        #"datasource-connection-string") DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$value" ;;
+        #"destination-container-name") DESTINATION_CONTAINER_NAME="$value" ;;
         "github_organization") GITHUB_ORGANIZATION="$value" ;;
         "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
         "azure_location") AZURE_LOCATION="$value" ;;
         "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
         "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
-        "user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+        #"user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
         esac
     done <"$file"
 }
@@ -85,7 +85,7 @@ install_NAC_CLI() {
 
 ###### START - EXECUTION ####
 GIT_BRANCH_NAME="main"
-parse_file "ACS.txt"
+parse_file "NAC.txt"
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
@@ -284,6 +284,7 @@ fi
 
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
+
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$NAC_TFVARS_FILE_NAME
@@ -345,63 +346,63 @@ else
 fi
 cd ..
 ##################################### END NAC Provisioning ###################################################################
-REPO_FOLDER="nasuni-azure-userinterface"
-validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
-########################### Git Clone : userinterface Repo ###################################################################
-echo "INFO ::: BEGIN - Git Clone !!!"
-### Download Provisioning Code from GitHub
-GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-echo "INFO ::: GIT_REPO : $GIT_REPO"
-echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
-ls
-echo "INFO ::: Deleting the Directory: ${GIT_REPO_NAME}"
-rm -rf "${GIT_REPO_NAME}"
-pwd
-COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
-$COMMAND
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
-else
-    echo "ERROR ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
-    echo "ERROR ::: Unable to Proceed with userinterface Provisioning."
-    exit 1
-fi
-pwd
-ls -l
-########################### Completed - Git Clone  ###############################################################
-##################################### START userinterface Provisioning ###################################################################
-cd "${GIT_REPO_NAME}"
-pwd
-ls
-### Installing dependencies in ./SearchFunction/.python_packages/lib/site-packages location
-echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
-COMMAND="pip3 install  --target=./SearchFunction/.python_packages/lib/site-packages  -r ./SearchFunction/requirements.txt"
-$COMMAND
-### RUN terraform init
-echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform init."
-COMMAND="terraform init"
-$COMMAND
-chmod 755 $(pwd)/*
-echo "INFO ::: userinterface provisioning ::: FINISH - Executing ::: Terraform init."
+# REPO_FOLDER="nasuni-azure-userinterface"
+# validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
+# ########################### Git Clone : userinterface Repo ###################################################################
+# echo "INFO ::: BEGIN - Git Clone !!!"
+# ### Download Provisioning Code from GitHub
+# GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+# echo "INFO ::: GIT_REPO : $GIT_REPO"
+# echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
+# ls
+# echo "INFO ::: Deleting the Directory: ${GIT_REPO_NAME}"
+# rm -rf "${GIT_REPO_NAME}"
+# pwd
+# COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
+# $COMMAND
+# RESULT=$?
+# if [ $RESULT -eq 0 ]; then
+#     echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
+# else
+#     echo "ERROR ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
+#     echo "ERROR ::: Unable to Proceed with userinterface Provisioning."
+#     exit 1
+# fi
+# pwd
+# ls -l
+# ########################### Completed - Git Clone  ###############################################################
+# ##################################### START userinterface Provisioning ###################################################################
+# cd "${GIT_REPO_NAME}"
+# pwd
+# ls
+# ### Installing dependencies in ./SearchFunction/.python_packages/lib/site-packages location
+# echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
+# COMMAND="pip3 install  --target=./SearchFunction/.python_packages/lib/site-packages  -r ./SearchFunction/requirements.txt"
+# $COMMAND
+# ### RUN terraform init
+# echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform init."
+# COMMAND="terraform init"
+# $COMMAND
+# chmod 755 $(pwd)/*
+# echo "INFO ::: userinterface provisioning ::: FINISH - Executing ::: Terraform init."
 
-UI_TFVARS_FILE_NAME="userinterface.tfvars"
-rm -rf "$UI_TFVARS_FILE_NAME"
-echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$UI_TFVARS_FILE_NAME
-echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$UI_TFVARS_FILE_NAME
-echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$UI_TFVARS_FILE_NAME
-echo "tenant_id="\"$AZURE_TENANT_ID\" >>$UI_TFVARS_FILE_NAME
-echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
+# UI_TFVARS_FILE_NAME="userinterface.tfvars"
+# rm -rf "$UI_TFVARS_FILE_NAME"
+# echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$UI_TFVARS_FILE_NAME
+# echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$UI_TFVARS_FILE_NAME
+# echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$UI_TFVARS_FILE_NAME
+# echo "tenant_id="\"$AZURE_TENANT_ID\" >>$UI_TFVARS_FILE_NAME
+# echo "INFO ::: userinterface provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 
-COMMAND="terraform apply -var-file=$UI_TFVARS_FILE_NAME -auto-approve"
-$COMMAND
-if [ $? -eq 0 ]; then
-        echo "INFO ::: userinterface provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
-    else
-        echo "INFO ::: userinterface provisioning ::: FINISH ::: Terraform apply ::: FAILED"
-        exit 1
-    fi
-##################################### END userinterface Provisioning ###################################################################
+# COMMAND="terraform apply -var-file=$UI_TFVARS_FILE_NAME -auto-approve"
+# $COMMAND
+# if [ $? -eq 0 ]; then
+#         echo "INFO ::: userinterface provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
+#     else
+#         echo "INFO ::: userinterface provisioning ::: FINISH ::: Terraform apply ::: FAILED"
+#         exit 1
+#     fi
+# ##################################### END userinterface Provisioning ###################################################################
 
 
 END=$(date +%s)

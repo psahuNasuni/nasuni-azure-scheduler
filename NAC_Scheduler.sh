@@ -54,6 +54,19 @@ get_destination_container_url(){
 
 }
 
+get_volume_key_blob_url(){
+	VOLUME_KEY_BLOB_URL=$1
+
+	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
+	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
+	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
+	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
+	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
+	### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
+	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
+}
+
 check_if_VNET_exists(){
 INPUT_VNET="$1"
 INPUT_RG="$2"
@@ -420,14 +433,14 @@ Schedule_CRON_JOB() {
 
 	# DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 	### VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
-	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
-	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
-	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
-	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
-	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
-	### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
-	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
+	# VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
+	# VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
+	# VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+	# VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
+	# VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
+	# BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
+	# ### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
+	# VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
 
     ### Generating NAC Resource group name dynamically
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
@@ -476,7 +489,7 @@ Schedule_CRON_JOB() {
 	
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
 	echo $USER_PRINCIPAL_NAME
-	# ACS_TFVARS_FILE="ACS.txt"
+	# ACS_TFVARS_FILE="NAC.tfvars"
 	# rm -rf "$ACS_TFVARS_FILE"
 	# echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
 	# echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
@@ -492,13 +505,21 @@ Schedule_CRON_JOB() {
 	# echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
 	# echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
 	# echo "" >>$ACS_TFVARS_FILE
-   
-    chmod 777 $ACS_TFVARS_FILE
+	NAC_TXT_FILE_NAME="NAC.txt"
+	rm -rf "$NAC_TXT_FILE_NAME"
+	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
+	echo "acs_key_vault="$ACS_KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
+	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
+	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
+	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
+        echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
+        chmod 777 $NAC_TXT_FILE_NAME
 
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$ACS_TFVARS_FILE" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 
 	RES="$?"
 	if [ $RES -ne 0 ]; then
@@ -616,12 +637,13 @@ validate_AZURE_SUBSCRIPTION
 GIT_BRANCH_NAME="CTPROJECT-337"
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL
+get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 ############ START : Provision ACS if Not Available ################
 provision_Azure_Cognitice_Search
 
 echo "*************************************************************"
-exit 888
+#exit 888
 ############ END: Provision ACS if Not Available ################
 
 
@@ -693,7 +715,7 @@ else
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-analyticsconnector-manager"
 	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
-	GIT_BRANCH_NAME="main"
+	#GIT_BRANCH_NAME="main"
 	GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo "INFO ::: Begin - Git Clone to ${GIT_REPO}"
 	echo "INFO ::: $GIT_REPO"
