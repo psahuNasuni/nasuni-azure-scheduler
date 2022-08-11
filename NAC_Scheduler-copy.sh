@@ -358,10 +358,11 @@ if [ "$IS_ACS" == "N" ]; then
     rm -rf "$ACS_TFVARS_FILE_NAME"
     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
     echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$ACS_TFVARS_FILE_NAME
-    echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-    echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
+    echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+    echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
     echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
+	echo "cognitive_search_status='"N"'" >>$ACS_TFVARS_FILE_NAME
 	echo "" >>$ACS_TFVARS_FILE_NAME
 
 	echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
@@ -392,7 +393,6 @@ ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query propert
 if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
 	echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT is already exist. . "
 	# COMMAND="terraform import azurerm_key_vault.acs_admin_vault $ACS_ADMIN_VAULT"
-	echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
 	COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
     # COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/fb43991d-325b-404b-b0cd-9319b558a03f/resourceGroups/nasuni-labs-acs-rg/providers/Microsoft.KeyVault/vaults/nasuni-labs-acs-admin"
 	$COMMAND
@@ -409,12 +409,10 @@ ACS_RESOURCE_GROUP="$1"
 AZURE_SUBSCRIPTION_ID="$2"
 ### Check if Resource Group is already provisioned
 echo "INFO ::: Check if Resource Group $ACS_RESOURCE_GROUP exist . . . . "
-echo "****************************%%%%%%%%%%%****************"
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
 if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
 	pwd
 	echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
-	echo "***********1323123221*************%%%%%%%%%%%****************"
 	COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
 	$COMMAND
 else
