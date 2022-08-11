@@ -62,7 +62,6 @@ get_volume_key_blob_url(){
 	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
 	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
 	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
-	### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
 	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
 }
 
@@ -215,8 +214,6 @@ validate_secret_values() {
 				USE_PRIVATE_IP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "pem-key-path" ]; then
 				PEM_KEY_PATH=$SECRET_VALUE
-			# elif [ "$SECRET_NAME" == "acs-key-vault" ]; then
-			# 	ACS_KEY_VAULT_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-resource-group" ]; then
 				ACS_RESOURCE_GROUP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-service-name" ]; then
@@ -238,7 +235,6 @@ validate_secret_values() {
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
             fi
-			# echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME found in Key Vault $KEY_VAULT_NAME."
 		fi
 	fi
@@ -262,7 +258,6 @@ validate_AZURE_SUBSCRIPTION() {
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 	fi
-
 	echo "INFO ::: AZURE_TENANT_ID=$AZURE_TENANT_ID"
 	echo "INFO ::: AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
 	echo "INFO ::: AZURE Subscription Validation SUCCESS !!!"
@@ -272,16 +267,12 @@ provision_ACS_if_Not_Available(){
 ACS_SERVICE_NAME="$3"
 ACS_ADMIN_VAULT="$2"
 ACS_RESOURCE_GROUP="$1"
-# echo "INFO ::: Configured Azure Cognitive Search name is: $ACS_SERVICE_NAME"
 echo "INFO ::: Checking for ACS Availability Status . . . . "
-# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_VAULT $ACS_ADMIN_VAULT ################################"
 
 echo "INFO ::: Checking for acs Admin Key Vault $ACS_ADMIN_VAULT . . ."
 ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query properties.provisioningState --output tsv 2> /dev/null`
-echo "****************** $ACS_ADMIN_VAULT_STATUS ****************************"
 if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
 	validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name	
-	echo "1111111111111111111"
 	if [ "$ACS_SERVICE_NAME" == "" ]; then
 		### Service Not available in admin vault 
 		############ START : Provision ACS if Not Available ################
@@ -293,7 +284,6 @@ if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
 		echo "INFO ::: Service $ACS_SERVICE_NAME entry found in admin vault but not in running condition."
 		ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
 		if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
-			# echo "INFO ::: ACS not found. Start provisioning ACS"
 			############ START : Provision ACS if Not Available ################
 			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
 			############ END: Provision ACS if Not Available ################
@@ -307,7 +297,6 @@ else ## When Key Vault Not Available - 1st Run
 	provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
 	############ END: Provision ACS if Not Available ################
 fi	
-exit 8888888888
 }
 
 provision_Azure_Cognitive_Search(){
@@ -387,8 +376,7 @@ else
     echo "INFO ::: BEGIN ::: NACScheduler Provisioning . . . . . . . . . . . ."
 fi
 ##################################### END Azure CognitiveSearch ###################################################################
-echo "8888888888888888888888888888888888888888888888888888888888888888"
-exit 888888
+
 }
 
 check_if_acs_admin_vault_exists(){
@@ -643,9 +631,8 @@ ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 ACS_SERVICE_NAME=""
 ACS_ADMIN_VAULT_ID=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
-echo "check if_ACS_running  3333333333333333"
-exit 8888
 
+echo "########## CHAPTER 2 ##################"
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
