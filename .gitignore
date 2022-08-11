@@ -4,10 +4,10 @@
 *.zip
 *lock*
 .terraform
-nac-es
 *.tfvars
 *.json
-*copy.sh
-# .gitignore
+*copy.*
+.gitignore
 nasuni-azure*
 *.pem
+*.dat
