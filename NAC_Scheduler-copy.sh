@@ -362,7 +362,7 @@ if [ "$IS_ACS" == "N" ]; then
     echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
     echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
-	echo "cognitive_search_status='"N"'" >>$ACS_TFVARS_FILE_NAME
+	echo "cognitive_search_status="\"N\" >>$ACS_TFVARS_FILE_NAME
 	echo "" >>$ACS_TFVARS_FILE_NAME
 
 	echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
