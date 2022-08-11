@@ -238,8 +238,8 @@ validate_secret_values() {
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
             fi
-			# echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
-			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME in Key Vault $KEY_VAULT_NAME."
+			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
+			# echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME in Key Vault $KEY_VAULT_NAME."
 		fi
 	fi
 	if [ -z "$SECRET_VALUE" ] ; then
@@ -350,7 +350,7 @@ if [ "$IS_ACS" == "N" ]; then
 	### Dont Change the sequence of function calls
 	echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_VAULT $ACS_ADMIN_VAULT"
 	check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
-	check_if_acs_admin_vault_exists $ACS_ADMIN_VAULT
+	check_if_acs_admin_vault_exists $ACS_ADMIN_VAULT $ACS_RESOURCE_GROUP
     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
@@ -386,14 +386,16 @@ exit 888888
 
 check_if_acs_admin_vault_exists(){
 ACS_ADMIN_VAULT="$1"
-echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+ACS_RESOURCE_GROUP="$2"
 echo "INFO ::: Checking for Azure Key Vault $ACS_ADMIN_VAULT . . ."
 ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query properties.provisioningState --output tsv 2> /dev/null`
 if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
 	echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT is already exist. . "
-	COMMAND="terraform import azurerm_key_vault.acs_admin_vault $ACS_ADMIN_VAULT"
-    $COMMAND
-	validate_secret_values "$ACS_ADMIN_VAULT" acs-resource-group
+	# COMMAND="terraform import azurerm_key_vault.acs_admin_vault $ACS_ADMIN_VAULT"
+	echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
+    # COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/fb43991d-325b-404b-b0cd-9319b558a03f/resourceGroups/nasuni-labs-acs-rg/providers/Microsoft.KeyVault/vaults/nasuni-labs-acs-admin"
+	$COMMAND
 	validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name
 	# validate_secret_values "$ACS_ADMIN_VAULT" acs-key-vault  
 else
@@ -410,11 +412,11 @@ echo "INFO ::: Check if Resource Group $ACS_RESOURCE_GROUP exist . . . . "
 echo "****************************%%%%%%%%%%%****************"
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
 if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-pwd
+	pwd
 	echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
-echo "***********1323123221*************%%%%%%%%%%%****************"
-	# COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
-	# $COMMAND
+	echo "***********1323123221*************%%%%%%%%%%%****************"
+	COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+	$COMMAND
 else
 	echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
 fi
