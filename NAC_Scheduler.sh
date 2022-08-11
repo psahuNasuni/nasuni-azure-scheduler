@@ -47,10 +47,9 @@ get_destination_container_url(){
 	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
 	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
 	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
-	### Destination Bucket COnnection String ==> datasource_connection_string, Used for CognitiveSearch Provisioning ###datasource_connection_string=DefaultEndpointsProtocol=https;AccountName=destinationbktsa;AccountKey=ekOsyrbVEGCbOQFIM6CaM3Ne7zdnct33ZuvSvp1feo1xtpQ/IMq15WD9TGXIeVvvuS0DO1mRMYYB+ASt1lMVKw==;EndpointSuffix=core.windows.net
 
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
-	
+	echo "INFO ::: SUCCESS :: Get destination container url."
 
 }
 
@@ -63,7 +62,6 @@ get_volume_key_blob_url(){
 	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
 	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
 	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
-	### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
 	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
 }
 
@@ -185,8 +183,8 @@ validate_kvp() {
 validate_secret_values() {
 	KEY_VAULT_NAME=$1
 	SECRET_NAME=$2
-	echo "INFO ::: Validating Secret ::: $SECRET_NAME in Key Vault $KEY_VAULT_NAME"
-	SECRET_VALUE=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$SECRET_NAME" --query value --output tsv)
+	echo "INFO ::: Validating Secret ::: $SECRET_NAME"
+	SECRET_VALUE=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$SECRET_NAME" --query value --output tsv 2> /dev/null)
 
 	if [ -z "$SECRET_VALUE" ] ; then
         echo "ERROR ::: Validation FAILED as, Empty String Value passed to key vault $SECRET_NAME = $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
@@ -216,8 +214,6 @@ validate_secret_values() {
 				USE_PRIVATE_IP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "pem-key-path" ]; then
 				PEM_KEY_PATH=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "acs-key-vault-name" ]; then
-				ACS_KEY_VAULT_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-resource-group" ]; then
 				ACS_RESOURCE_GROUP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-service-name" ]; then
@@ -239,7 +235,7 @@ validate_secret_values() {
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
             fi
-			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
+			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME found in Key Vault $KEY_VAULT_NAME."
 		fi
 	fi
 	if [ -z "$SECRET_VALUE" ] ; then
@@ -262,59 +258,71 @@ validate_AZURE_SUBSCRIPTION() {
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 	fi
-
 	echo "INFO ::: AZURE_TENANT_ID=$AZURE_TENANT_ID"
 	echo "INFO ::: AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
 	echo "INFO ::: AZURE Subscription Validation SUCCESS !!!"
 }
-provision_Azure_Cognitice_Search(){
+
+provision_ACS_if_Not_Available(){
+ACS_SERVICE_NAME="$3"
+ACS_ADMIN_VAULT="$2"
+ACS_RESOURCE_GROUP="$1"
+echo "INFO ::: Checking for ACS Availability Status . . . . "
+
+echo "INFO ::: Checking for acs Admin Key Vault $ACS_ADMIN_VAULT . . ."
+ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query properties.provisioningState --output tsv 2> /dev/null`
+if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
+	validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name	
+	if [ "$ACS_SERVICE_NAME" == "" ]; then
+		### Service Not available in admin vault 
+		############ START : Provision ACS if Not Available ################
+		echo "INFO ::: Service $ACS_SERVICE_NAME is Not available in admin vault "
+		provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
+		############ END: Provision ACS if Not Available ################
+	else
+		### Service available in admin vault but not in running condition
+		echo "INFO ::: Service $ACS_SERVICE_NAME entry found in admin vault but not in running condition."
+		ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
+		if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
+			############ START : Provision ACS if Not Available ################
+			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
+			############ END: Provision ACS if Not Available ################
+		else
+			echo "INFO ::: ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
+		fi
+
+	fi 
+else ## When Key Vault Not Available - 1st Run
+	############ START : Provision ACS if Not Available ################	
+	provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
+	############ END: Provision ACS if Not Available ################
+fi	
+}
+
+provision_Azure_Cognitive_Search(){
 ######################## Check If Azure Cognitice Search Available ###############################################
-
-echo "INFO ::: ACS_DOMAIN NAME : $ACS_SERVICE_NAME"
-IS_ACS="N"
-if [ "$ACS_RESOURCE_GROUP" == "" ] || [ "$ACS_RESOURCE_GROUP" == null ]; then
-    echo "INFO ::: Azure Cognitive Search Resource Group is Not provided."
-    exit 1
-else
-    ### If resource group already available
-    echo "INFO ::: Azure Cognitive Search Resource Group is provided as $ACS_RESOURCE_GROUP"
-fi
-if [ "$ACS_SERVICE_NAME" == "" ] || [ "$ACS_SERVICE_NAME" == null ]; then
-    echo "INFO ::: Azure Cognitive Search is Not provided."
-    exit 1
-else
-    echo "INFO ::: Provided Azure Cognitive Search name is: $ACS_SERVICE_NAME"
-
-    echo "INFO ::: Checking for ACS Availability Status . . . . "
-
-    ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
-    if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
-        echo "INFO ::: ACS not found. Start provisioning ACS"
-        IS_ACS="N"
-    else
-        echo "ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
-        IS_ACS="Y"
-    fi
-fi
+#### ACS_SERVICE_NAME : Take it from KeyVault that is creted with ACS
+IS_ACS="$1"
+ACS_ADMIN_VAULT="$3"
+ACS_RESOURCE_GROUP="$2"
+IS_ADMIN_VAULT_YN="N"
+IS_ACS_RG_YN="N"
 if [ "$IS_ACS" == "N" ]; then
     echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
     echo "INFO ::: Begin Azure Cognitive Search Provisioning."
     ########## Download CognitiveSearch Provisioning Code from GitHub ##########
-    ### GITHUB_ORGANIZATION defaults to nasuni-labs
+    ########## GITHUB_ORGANIZATION defaults to nasuni-labs     		  ##########
     REPO_FOLDER="nasuni-azure-cognitive-search"
     validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
     ########################### Git Clone  ###############################################################
     echo "INFO ::: BEGIN - Git Clone !!!"
     ### Download Provisioning Code from GitHub
     GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
-    echo "INFO ::: $GIT_REPO"
-    echo "INFO ::: GIT_REPO_NAME $GIT_REPO_NAME"
-    pwd
-    ls
-    echo "INFO ::: Removing $GIT_REPO_NAME"
+    echo "INFO ::: GIT_REPO $GIT_REPO"
+    echo "INFO ::: GIT_REPO_NAME $GIT_BRANCH_NAME ::: GIT_BRANCH_NAME $GIT_BRANCH_NAME"
     rm -rf "${GIT_REPO_NAME}"
     pwd
-    COMMAND="git clone -b $GIT_BRANCH_NAME $GIT_REPO"
+    COMMAND="git clone -q -b $GIT_BRANCH_NAME $GIT_REPO"
     $COMMAND
     RESULT=$?
     if [ $RESULT -eq 0 ]; then
@@ -330,45 +338,32 @@ if [ "$IS_ACS" == "N" ]; then
     $COMMAND
 
     chmod 755 $(pwd)/*
+	### Dont Change the sequence of function calls
+	echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_VAULT $ACS_ADMIN_VAULT"
+	check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
+	check_if_acs_admin_vault_exists $ACS_ADMIN_VAULT $ACS_RESOURCE_GROUP
     echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
-    ### Check if Resource Group is already provisioned
-    ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
-    if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
-        COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
-        $COMMAND
-    else
-        echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
-    fi
-    ACS_KEY_VAULT_ID_STATUS=`az keyvault show --name $ACS_KEY_VAULT_NAME --query properties.provisioningState --output tsv 2> /dev/null`
-    if [ "$ACS_KEY_VAULT_ID_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME is already exist. Importing the existing KeyVault . . . "
-        ACS_KEY_VAULT_NAME=`az keyvault show --name $ACS_KEY_VAULT_NAME --query id --output tsv`
-        COMMAND="terraform import azurerm_key_vault.acs_key_vault $ACS_KEY_VAULT_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: Azure Key Vault $ACS_KEY_VAULT_NAME does not exist. It will provision a new internal KeyVault."
-    fi
-
     echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
     ACS_TFVARS_FILE_NAME="ACS.tfvars"
     rm -rf "$ACS_TFVARS_FILE_NAME"
-    echo "acs_service_name="\"$ACS_SERVICE_NAME\" >>$ACS_TFVARS_FILE_NAME
-    echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-    echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$ACS_TFVARS_FILE_NAME
-    echo "datasource-connection-string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-    echo "destination-container-name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_key_vault_id="\"$ACS_ADMIN_VAULT_ID\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_key_vault_YN="\"$IS_ADMIN_VAULT_YN\" >>$ACS_TFVARS_FILE_NAME
+    echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+    echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
     echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
+	echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
 	echo "" >>$ACS_TFVARS_FILE_NAME
 
 	echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
    
     COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
     $COMMAND
-
     if [ $? -eq 0 ]; then
         echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
     else
@@ -382,8 +377,47 @@ else
 fi
 ##################################### END Azure CognitiveSearch ###################################################################
 
+}
+
+check_if_acs_admin_vault_exists(){
+ACS_ADMIN_VAULT="$1"
+ACS_RESOURCE_GROUP="$2"
+echo "INFO ::: Checking for Azure Key Vault $ACS_ADMIN_VAULT . . ."
+ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query properties.provisioningState --output tsv 2> /dev/null`
+if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
+	echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT is already exist. . "
+	IS_ADMIN_VAULT_YN="Y"
+	ACS_ADMIN_VAULT_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
+	COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
+    # Sample COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/fb43991d-325b-404b-b0cd-9319b558a03f/resourceGroups/nasuni-labs-acs-rg/providers/Microsoft.KeyVault/vaults/nasuni-labs-acs-admin"
+	$COMMAND
+	validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name
+	# validate_secret_values "$ACS_ADMIN_VAULT" acs-key-vault  
+else
+	IS_ADMIN_VAULT_YN="N"
+	echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT does not exist. It will provision a new acs-admin-vault KeyVault with ACS Service."
+fi
 
 }
+
+check_if_resourcegroup_exist(){
+ACS_RESOURCE_GROUP="$1"
+AZURE_SUBSCRIPTION_ID="$2"
+### Check if Resource Group is already provisioned
+echo "INFO ::: Check if Resource Group $ACS_RESOURCE_GROUP exist . . . . "
+ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
+if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+	pwd
+	IS_ACS_RG_YN="Y"
+	echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
+	COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+	$COMMAND
+else
+	IS_ACS_RG_YN="N"
+	echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
+fi
+}
+
 ########################## Create CRON ############################################################
 Schedule_CRON_JOB() {
 	NAC_SCHEDULER_IP_ADDR=$1
@@ -466,9 +500,9 @@ Schedule_CRON_JOB() {
 	echo $USER_PRINCIPAL_NAME
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
-	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+	echo "acs_resource_group=nasuni-labs-acs-rg" >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
-	echo "acs_key_vault="$ACS_KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
+	echo "acs_key_vault=acs-admin-vault" >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
@@ -525,10 +559,8 @@ FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
 ACS_UID=$(( $RANDOM % 1000 )); 
-ACS_SERVICE_NAME="acs-service-$ACS_UID"
-ACS_RESOURCE_GROUP="acs-resource-group-$ACS_UID"
-ACS_KEY_VAULT_NAME="runtime-vault-$ACS_UID"
 SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+GIT_BRANCH_NAME="CTPROJECT-337"
 
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
 if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
@@ -589,19 +621,20 @@ else
 fi
 validate_AZURE_SUBSCRIPTION
 
-GIT_BRANCH_NAME="CTPROJECT-337"
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
-############ START : Provision ACS if Not Available ################
-provision_Azure_Cognitice_Search
+## Check if acs-admin-vault available or not
+ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+ACS_SERVICE_NAME=""
+ACS_ADMIN_VAULT_ID=""
+provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
 
-echo "*************************************************************"
-############ END: Provision ACS if Not Available ################
-
+echo "########## CHAPTER 2 ##################"
+######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
-######################  NAC Scheduler Instance is Available ##############################
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
 ### parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
 echo "INFO ::: nac_scheduler_name = $NAC_SCHEDULER_NAME "
@@ -718,8 +751,8 @@ else
 	if [[ "$USE_PRIVATE_IP" != "" ]]; then
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
 	fi
-	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
-	echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$TFVARS_NAC_SCHEDULER
+	echo "acs_resource_group=nasuni-labs-acs-rg" >>$TFVARS_NAC_SCHEDULER
+	echo "acs_key_vault=acs-admin-vault" >>$TFVARS_NAC_SCHEDULER
 	echo "$TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
