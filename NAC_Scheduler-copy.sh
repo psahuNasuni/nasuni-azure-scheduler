@@ -362,6 +362,7 @@ if [ "$IS_ACS" == "N" ]; then
     echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
     echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_key_vault_id="\"$ACS_ADMIN_VAULT_ID\" >>$ACS_TFVARS_FILE_NAME
     echo "acs_key_vault_YN="\"$IS_ADMIN_VAULT_YN\" >>$ACS_TFVARS_FILE_NAME
     echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
     echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
@@ -398,6 +399,7 @@ ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query propert
 if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
 	echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT is already exist. . "
 	IS_ADMIN_VAULT_YN="Y"
+	ACS_ADMIN_VAULT_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
 	COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
     # Sample COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/fb43991d-325b-404b-b0cd-9319b558a03f/resourceGroups/nasuni-labs-acs-rg/providers/Microsoft.KeyVault/vaults/nasuni-labs-acs-admin"
 	$COMMAND
@@ -639,7 +641,7 @@ get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
 ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 ACS_SERVICE_NAME=""
-
+ACS_ADMIN_VAULT_ID=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
 echo "check if_ACS_running  3333333333333333"
 exit 8888
