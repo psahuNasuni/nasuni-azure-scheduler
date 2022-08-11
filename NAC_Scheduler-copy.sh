@@ -359,6 +359,7 @@ if [ "$IS_ACS" == "N" ]; then
     ACS_TFVARS_FILE_NAME="ACS.tfvars"
     rm -rf "$ACS_TFVARS_FILE_NAME"
     echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
+    echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
     echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
     echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$ACS_TFVARS_FILE_NAME
     echo "acs_key_vault_YN="\"$IS_ADMIN_VAULT_YN\" >>$ACS_TFVARS_FILE_NAME
@@ -368,7 +369,7 @@ if [ "$IS_ACS" == "N" ]; then
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
 	echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
 	echo "" >>$ACS_TFVARS_FILE_NAME
-# exit 8888
+
 	echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
    
     COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
