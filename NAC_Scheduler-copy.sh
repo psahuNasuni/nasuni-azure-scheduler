@@ -116,35 +116,7 @@ validate_github() {
 	fi
 }
 
-nmc_endpoint_accessibility() {
-	NAC_SCHEDULER_NAME="$1"
-	NAC_SCHEDULER_IP_ADDR="$2"
-  NMC_API_ENDPOINT="$3"
-	NMC_API_USERNAME="$4"
-	NMC_API_PASSWORD="$5" #14-19
-	PEM="$PEM_KEY_PATH"
 
-	chmod 400 $PEM
-	### nac_scheduler_name = from FourthArgument of NAC_Scheduler.sh, user_sec.txt
-	echo "INFO ::: NAC_SCHEDULER_NAME ::: ${NAC_SCHEDULER_NAME}"
-	echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: ${NAC_SCHEDULER_IP_ADDR}"
-	echo "INFO ::: NMC_API_ENDPOINT ::: ${NMC_API_ENDPOINT}"
-	echo "INFO ::: NMC_API_USERNAME ::: ${NMC_API_USERNAME}"
-	echo "INFO ::: NMC_API_PASSWORD ::: ${NMC_API_PASSWORD}" # 31-37
-
-	echo "INFO ::: NAC_SCHEDULER_IP_ADDR : "$NAC_SCHEDULER_IP_ADDR
-	py_file_name=$(ls check_nmc_visiblity.py)
-	echo "INFO ::: Executing Python code file : "$py_file_name
-	cat $py_file_name | ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null python3 - $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_API_ENDPOINT
-	if [ $? -eq 0 ]; then
-		echo "INFO ::: NAC Scheduler with IP : ${NAC_SCHEDULER_IP_ADDR}, have access to NMC API ${NMC_API_ENDPOINT} "
-	else
-		echo "ERROR ::: NAC Scheduler with IP : ${NAC_SCHEDULER_IP_ADDR}, Does NOT have access to NMC API ${NMC_API_ENDPOINT}. Please configure access to NMC "
-		exit 1
-	fi
-	echo "INFO ::: Completed NMC endpoint accessibility Check. !!!"
-
-}
 
 append_nac_keys_values_to_tfvars() {
 	inputFile="$1" ### Read InputFile
@@ -435,22 +407,7 @@ Schedule_CRON_JOB() {
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
 
-	### NMC API CALL
-	###'Usage -- python3 fetch_volume_data_from_nmc_api.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-	python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}
-	### FILTER Values From NMC API Call
-
-	SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
-	UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
-	SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-	# SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-	rm -rf nmc_api_*.txt
-	SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
-	SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
-	SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
-
-    ### Generating NAC Resource group name dynamically
+	### Generating NAC Resource group name dynamically
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
 	### AzureSubscriptionID >>>>> Read from user_secret Key Vault
@@ -459,16 +416,12 @@ Schedule_CRON_JOB() {
     echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE_NAME
 	### ProductKey >>>>> Read from user_secret Key Vault
     echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE_NAME
-	### SourceContainer >>>>> Get from NMC_API Call
-    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
-	### SourceContainerSASURL >>>>> Generate Dynamically by using az CLI commands
-    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 	### VolumeKeySASURL >>>>> Generate Dynamically by using az CLI commands
     echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
 	### VolumeKeyPassphrase >>>>> Recommended as 'null' for AZURE NAC
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
-	### UniFSTOCHandle >>>>> Get from NMC_API Call
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+	# ### UniFSTOCHandle >>>>> Get from NMC_API Call
+    # echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
 	### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
@@ -502,17 +455,27 @@ Schedule_CRON_JOB() {
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
     echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
-	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
+	# echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
-	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
+	# echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	chmod 777 $NAC_TXT_FILE_NAME
+
+	### Create File to transfer data related to NMC 
+	NMC_DETAILS_TXT="nmc_details.txt"
+	echo "nmc_api_endpoint="$NMC_API_ENDPOINT >>$NMC_DETAILS_TXT
+	echo "nmc_api_username="$NMC_API_USERNAME >>$NMC_DETAILS_TXT
+	echo "nmc_api_password="$NMC_API_PASSWORD >>$NMC_DETAILS_TXT
+	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NMC_DETAILS_TXT
+	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NMC_DETAILS_TXT
+	echo "" >>$NMC_DETAILS_TXT
+    chmod 777 $NMC_DETAILS_TXT
+
 
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
-
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" "$NMC_DETAILS_TXT" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 	RES="$?"
 	if [ $RES -ne 0 ]; then
 		echo "ERROR ::: Failed to Copy $TFVARS_FILE_NAME to NAC_Scheduer Instance."
