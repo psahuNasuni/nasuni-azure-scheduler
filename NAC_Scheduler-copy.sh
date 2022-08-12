@@ -115,36 +115,6 @@ validate_github() {
 	fi
 }
 
-nmc_endpoint_accessibility() {
-	NAC_SCHEDULER_NAME="$1"
-	NAC_SCHEDULER_IP_ADDR="$2"
-  NMC_API_ENDPOINT="$3"
-	NMC_API_USERNAME="$4"
-	NMC_API_PASSWORD="$5" #14-19
-	PEM="$PEM_KEY_PATH"
-
-	chmod 400 $PEM
-	### nac_scheduler_name = from FourthArgument of NAC_Scheduler.sh, user_sec.txt
-	echo "INFO ::: NAC_SCHEDULER_NAME ::: ${NAC_SCHEDULER_NAME}"
-	echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: ${NAC_SCHEDULER_IP_ADDR}"
-	echo "INFO ::: NMC_API_ENDPOINT ::: ${NMC_API_ENDPOINT}"
-	echo "INFO ::: NMC_API_USERNAME ::: ${NMC_API_USERNAME}"
-	echo "INFO ::: NMC_API_PASSWORD ::: ${NMC_API_PASSWORD}" # 31-37
-
-	echo "INFO ::: NAC_SCHEDULER_IP_ADDR : "$NAC_SCHEDULER_IP_ADDR
-	py_file_name=$(ls check_nmc_visiblity.py)
-	echo "INFO ::: Executing Python code file : "$py_file_name
-	cat $py_file_name | ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null python3 - $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_API_ENDPOINT
-	if [ $? -eq 0 ]; then
-		echo "INFO ::: NAC Scheduler with IP : ${NAC_SCHEDULER_IP_ADDR}, have access to NMC API ${NMC_API_ENDPOINT} "
-	else
-		echo "ERROR ::: NAC Scheduler with IP : ${NAC_SCHEDULER_IP_ADDR}, Does NOT have access to NMC API ${NMC_API_ENDPOINT}. Please configure access to NMC "
-		exit 1
-	fi
-	echo "INFO ::: Completed NMC endpoint accessibility Check. !!!"
-
-}
-
 append_nac_keys_values_to_tfvars() {
 	inputFile="$1" ### Read InputFile
 	outFile="$2"
@@ -507,10 +477,20 @@ Schedule_CRON_JOB() {
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	chmod 777 $NAC_TXT_FILE_NAME
 
+	### Create File to transfer data related to NMC 
+	NMC_DETAILS_TXT="nmc_details.txt"
+	echo "nmc_api_endpoint="$NMC_API_ENDPOINT >>$NMC_DETAILS_TXT
+	echo "nmc_api_username="$NMC_API_USERNAME >>$NMC_DETAILS_TXT
+	echo "nmc_api_password="$NMC_API_PASSWORD >>$NMC_DETAILS_TXT
+	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NMC_DETAILS_TXT
+	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NMC_DETAILS_TXT
+	echo "" >>$NMC_DETAILS_TXT
+	chmod 777 $NMC_DETAILS_TXT
+
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 
 	RES="$?"
 	if [ $RES -ne 0 ]; then
