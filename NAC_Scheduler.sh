@@ -413,14 +413,10 @@ Schedule_CRON_JOB() {
     echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE_NAME
 	### ProductKey >>>>> Read from user_secret Key Vault
     echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE_NAME
-	### SourceContainer >>>>> Get from NMC_API Call
-    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	### VolumeKeySASURL >>>>> Generate Dynamically by using az CLI commands
     echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
 	### VolumeKeyPassphrase >>>>> Recommended as 'null' for AZURE NAC
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
-	### UniFSTOCHandle >>>>> Get from NMC_API Call
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
 	### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh

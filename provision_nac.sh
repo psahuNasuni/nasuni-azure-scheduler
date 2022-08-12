@@ -70,10 +70,17 @@ validate_github() {
             echo "INFO ::: git repo accessible. Continue . . . Provisioning . . . "
     fi
 }
-append_tochandle_to_config_dat(){
+append_nmc_details_to_config_dat()
+{
+    UNIFS_TOC_HANDLE=$1
+    SOURCE_CONTAINER=$2
+    SOURCE_CONTAINER_SAS_URL=$3
 	CONFIG_DAT_FILE_NAME="config.dat"
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME 
+    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
+    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 }
+
 nmc_api_call(){
 NMC_DETAILS_TXT=$1    
 parse_file_nmc_txt $NMC_DETAILS_TXT
@@ -129,7 +136,7 @@ NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
 nmc_api_call "nmc_details.txt"
 parse_file_NAC_txt "NAC.txt"
-append_tochandle_to_config_dat config.dat
+append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
