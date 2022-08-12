@@ -20,29 +20,6 @@ set -e
 START=$(date +%s)
 {
 
-parse_file_acs_txt() {
-    file="$1"
-
-    dos2unix $file
-    while IFS="=" read -r key value; do
-        case "$key" in
-            "acs_service_name") ACS_SERVICE_NAME="$value" ;;
-            "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-            "subscription_id") AZURE_SUBSCRIPTION_ID="$value" ;;
-            "tenant_id") AZURE_TENANT_ID="$value" ;;
-            "acs-key-vault") ACS_KEY_VAULT_NAME="$value" ;;
-            "datasource-connection-string") DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$value" ;;
-            "destination-container-name") DESTINATION_CONTAINER_NAME="$value" ;;
-            "github_organization") GITHUB_ORGANIZATION="$value" ;;
-            "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
-            "azure_location") AZURE_LOCATION="$value" ;;
-            "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
-            # "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
-            "user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
-          esac
-        done <"$file"
-}
-
 parse_file_nmc_txt() {
     file="$1"
 
@@ -58,7 +35,7 @@ parse_file_nmc_txt() {
         done <"$file"
 }
 
-parse_file() {
+parse_file_NAC_txt() {
 file="$1"
 
 dos2unix $file
@@ -156,8 +133,8 @@ WEB_ACCESS_APPLIANCE_ADDRESS=""
 echo ###########################
 nmc_api_call "nmc_details.txt"
 echo ###########NMC DONE################
-exit 888
-parse_file_acs_txt "ACS.txt"
+
+parse_file_NAC_txt "NAC.txt"
 append_tochandle_to_config_dat config.dat
 
 parse_config_file_for_user_secret_keys_values config.dat 
