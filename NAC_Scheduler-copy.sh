@@ -499,9 +499,9 @@ Schedule_CRON_JOB() {
 	echo $USER_PRINCIPAL_NAME
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
-	echo "acs_resource_group=nasuni-labs-acs-rg" >>$NAC_TXT_FILE_NAME
+	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
-    echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$NAC_TXT_FILE_NAME
+    echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
