@@ -93,8 +93,6 @@ SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} 
 SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
 SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
 
-###888  Till here 
-
 }
 
 parse_config_file_for_user_secret_keys_values() {
@@ -129,14 +127,9 @@ NMC_API_USERNAME=""
 NMC_API_PASSWORD=""
 NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
-#parse_TFVARS_file "ACS.tfvars"
-echo ###########################
 nmc_api_call "nmc_details.txt"
-echo ###########NMC DONE################
-
 parse_file_NAC_txt "NAC.txt"
 append_tochandle_to_config_dat config.dat
-
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
