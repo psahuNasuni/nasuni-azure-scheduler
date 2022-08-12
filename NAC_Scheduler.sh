@@ -434,7 +434,6 @@ Schedule_CRON_JOB() {
 	AZURE_CURRENT_USER=$(az ad signed-in-user show --query userPrincipalName)
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
-	LAMBDA_LAYER_SUFFIX=$(echo $RND)
 
 	### NMC API CALL
 	###'Usage -- python3 fetch_volume_data_from_nmc_api.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
@@ -500,9 +499,9 @@ Schedule_CRON_JOB() {
 	echo $USER_PRINCIPAL_NAME
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
-	echo "acs_resource_group=nasuni-labs-acs-rg" >>$NAC_TXT_FILE_NAME
+	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
-	echo "acs_key_vault=acs-admin-vault" >>$NAC_TXT_FILE_NAME
+    echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
@@ -751,9 +750,9 @@ else
 	if [[ "$USE_PRIVATE_IP" != "" ]]; then
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
 	fi
-	echo "acs_resource_group=nasuni-labs-acs-rg" >>$TFVARS_NAC_SCHEDULER
-	echo "acs_key_vault=acs-admin-vault" >>$TFVARS_NAC_SCHEDULER
-	echo "$TFVARS_NAC_SCHEDULER created"
+	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+    echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$TFVARS_NAC_SCHEDULER
+	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
 	$COMMAND
