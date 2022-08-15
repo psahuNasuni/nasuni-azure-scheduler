@@ -36,20 +36,20 @@ parse_file_nmc_txt() {
 }
 
 parse_file_NAC_txt() {
-file="$1"
+    file="$1"
 
-dos2unix $file
-while IFS="=" read -r key value; do
-    case "$key" in
-        "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-        "acs_key_vault") ACS_KEY_VAULT_NAME="$value" ;;
-        "github_organization") GITHUB_ORGANIZATION="$value" ;;
-        "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
-        "azure_location") AZURE_LOCATION="$value" ;;
-        "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
-        "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
-        esac
-    done <"$file"
+    dos2unix $file
+    while IFS="=" read -r key value; do
+        case "$key" in
+            "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+            "acs_key_vault") ACS_KEY_VAULT_NAME="$value" ;;
+            "github_organization") GITHUB_ORGANIZATION="$value" ;;
+            "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
+            "azure_location") AZURE_LOCATION="$value" ;;
+            "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+            "unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
+            esac
+        done <"$file"
 }
 
 validate_github() {
@@ -70,35 +70,39 @@ validate_github() {
             echo "INFO ::: git repo accessible. Continue . . . Provisioning . . . "
     fi
 }
+
 append_nmc_details_to_config_dat()
 {
     UNIFS_TOC_HANDLE=$1
     SOURCE_CONTAINER=$2
     SOURCE_CONTAINER_SAS_URL=$3
 	CONFIG_DAT_FILE_NAME="config.dat"
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
-    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
-    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
+    # echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+    # echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
+    # echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
+    sed -i "s/UniFSTOCHandle.*/UniFSTOCHandle: $UNIFS_TOC_HANDLE/g" config.dat
+    sed -i "s/SourceContainer.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
+    sed -i "s/SourceContainerSASURL.*/SourceContainerSASURL: $SOURCE_CONTAINER_SAS_URL/g" config.dat
 }
 
 nmc_api_call(){
-NMC_DETAILS_TXT=$1    
-parse_file_nmc_txt $NMC_DETAILS_TXT
-### NMC API CALL  ####888
-RND=$(( $RANDOM % 1000000 ));
-#'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
-# FILTER Values From NMC API Call
+    NMC_DETAILS_TXT=$1    
+    parse_file_nmc_txt $NMC_DETAILS_TXT
+    ### NMC API CALL  ####888
+    RND=$(( $RANDOM % 1000000 ));
+    #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
+    python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
+    # FILTER Values From NMC API Call
 
-SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
-UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
-SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-rm -rf nmc_api_*.txt
-SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
-SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
-SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
+    SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
+    UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
+    SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
+    SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+    rm -rf nmc_api_*.txt
+    SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+    SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
+    SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
+    SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
 
 }
 
@@ -114,7 +118,7 @@ parse_config_file_for_user_secret_keys_values() {
 
 
 install_NAC_CLI() {
-### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
+    ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
     sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
     sudo unzip '*.zip'
@@ -125,7 +129,7 @@ install_NAC_CLI() {
 
 ###### START - EXECUTION ####
 # GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="demo"
+GIT_BRANCH_NAME="CTPROJECT-337"
 if [ $GIT_BRANCH_NAME == "" ]; then
 GIT_BRANCH_NAME="main"
 fi
