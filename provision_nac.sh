@@ -77,15 +77,14 @@ append_nmc_details_to_config_dat()
     SOURCE_CONTAINER=$2
     SOURCE_CONTAINER_SAS_URL=$3
 	CONFIG_DAT_FILE_NAME="config.dat"
-    # echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
-    # echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
-    # echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
     ### Be careful while modifieng the values
-    sed -i "s/UniFSTOCHandle.*/UniFSTOCHandle: $UNIFS_TOC_HANDLE/g" config.dat
+    sed -i "s|\<UniFSTOCHandle\>:.*||g" config.dat
+    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >> config.dat
     sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
     sed -i "s|SourceContainerSASURL.*||g" config.dat
     echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> config.dat
-    sed '/^$/d' config.dat
+    sed -i '/^$/d' config.dat
+
 }
 
 nmc_api_call(){
