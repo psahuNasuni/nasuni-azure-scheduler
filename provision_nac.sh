@@ -80,9 +80,10 @@ append_nmc_details_to_config_dat()
     # echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
     # echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
     # echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
+    ### Be careful while modifieng the values
     sed -i "s/UniFSTOCHandle.*/UniFSTOCHandle: $UNIFS_TOC_HANDLE/g" config.dat
-    sed -i "s/SourceContainer.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
-    sed -i "s/SourceContainerSASURL.*/SourceContainerSASURL: $SOURCE_CONTAINER_SAS_URL/g" config.dat
+    sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
+    sed -i "s|SourceContainerSASURL.*|SourceContainerSASURL: $SOURCE_CONTAINER_SAS_URL|g" config.dat
 }
 
 nmc_api_call(){
@@ -139,8 +140,8 @@ NMC_API_PASSWORD=""
 NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
 nmc_api_call "nmc_details.txt"
-parse_file_NAC_txt "NAC.txt"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL
+parse_file_NAC_txt "NAC.txt"
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
