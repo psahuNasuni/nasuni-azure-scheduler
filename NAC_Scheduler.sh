@@ -456,7 +456,7 @@ Schedule_CRON_JOB() {
     echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
-	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
+	#echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	chmod 777 $NAC_TXT_FILE_NAME
 
