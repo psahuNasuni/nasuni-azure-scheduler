@@ -401,7 +401,10 @@ Schedule_CRON_JOB() {
 	AZURE_CURRENT_USER=$(az ad signed-in-user show --query userPrincipalName)
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
-
+	### Pass below 3 parameters as Blank values to Provision_nac.sh. 
+	UNIFS_TOC_HANDLE=""
+	SOURCE_CONTAINER=""
+	SOURCE_CONTAINER_SAS_URL=""
     ### Generating NAC Resource group name dynamically
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
@@ -436,6 +439,9 @@ Schedule_CRON_JOB() {
     echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
 	### ExcludeTempFiles >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
+	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
+	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 
     chmod 777 $CONFIG_DAT_FILE_NAME
 
