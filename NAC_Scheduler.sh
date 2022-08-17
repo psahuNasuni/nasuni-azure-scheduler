@@ -482,7 +482,7 @@ Schedule_CRON_JOB() {
 	#dos2unix command execute
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "dos2unix ~/$CRON_DIR_NAME/provision_nac.sh"
 	### Check If CRON JOB is running for a specific VOLUME_NAME
-	CRON_VOL=$(ssh -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@"$NAC_SCHEDULER_IP_ADDR" "crontab -l | grep /home/ubuntu/$CRON_DIR_NAME/$TFVARS_FILE_NAME")
+	CRON_VOL=$(ssh -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@"$NAC_SCHEDULER_IP_ADDR" "crontab -l | grep \"~/$CRON_DIR_NAME/$TFVARS_FILE_NAME\"")
 	if [ "$CRON_VOL" != "" ]; then
 		### DO Nothing. CRON JOB takes care of NAC Provisioning
 		echo "INFO ::: crontab does not require volume entry.As it is already present.:::::"
