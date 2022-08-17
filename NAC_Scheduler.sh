@@ -1,5 +1,4 @@
 #!/bin/bash
-
 ##############################################
 ## Pre-Requisite(S):						##
 ## 		- Git, AZURE CLI, JQ 				##
@@ -33,34 +32,65 @@ check_if_subnet_exists(){
 	echo "SUBNET_IS=$SUBNET_IS , VNET_IS=$VNET_IS"
 }
 
+get_destination_container_url(){
+	DESTINATION_CONTAINER_URL=$1
+	### DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
+	DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+
+	### https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
+
+	DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
+
+	### Destination account-key: 
+	DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
+	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
+	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
+
+	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
+	echo "INFO ::: SUCCESS :: Get destination container url."
+
+}
+
+get_volume_key_blob_url(){
+	VOLUME_KEY_BLOB_URL=$1
+
+	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
+	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
+	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
+	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
+	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
+	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
+}
+
 check_if_VNET_exists(){
-INPUT_VNET="$1"
-INPUT_RG="$2"
+	INPUT_VNET="$1"
+	INPUT_RG="$2"
 
-VNET_CHECK=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
-if [ "$VNET_CHECK" == "Succeeded" ]; then
-	echo "INFO ::: VNET $INPUT_VNET is Valid" 
-else
-	echo "ERROR ::: VNET $INPUT_VNET not available. Please provide a valid VNET NAME."
-	exit 1
-fi
+	VNET_CHECK=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
+	if [ "$VNET_CHECK" == "Succeeded" ]; then
+		echo "INFO ::: VNET $INPUT_VNET is Valid" 
+	else
+		echo "ERROR ::: VNET $INPUT_VNET not available. Please provide a valid VNET NAME."
+		exit 1
+	fi
 
-VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
-VNET_IS="$INPUT_VNET"
-SUBNET_IS="$VNET_0_SUBNET"
-echo "SUBNET_IS=$VNET_0_SUBNET , VNET_IS=$INPUT_VNET"
+	VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
+	VNET_IS="$INPUT_VNET"
+	SUBNET_IS="$VNET_0_SUBNET"
+	echo "SUBNET_IS=$VNET_0_SUBNET , VNET_IS=$INPUT_VNET"
 
 }
 
 check_if_pem_file_exists() {
-FILE=$(echo "$1" | tr -d '"')
-if [ -f "$FILE" ]; then
-	echo "INFO ::: $FILE exists."
-else 
-	echo "ERROR ::: $FILE does not exist."
-	exit 1
-fi
-
+	FILE=$(echo "$1" | tr -d '"')
+	if [ -f "$FILE" ]; then
+		echo "INFO ::: $FILE exists."
+	else 
+		echo "ERROR ::: $FILE does not exist."
+		exit 1
+	fi
 }
 
 validate_github() {
@@ -84,38 +114,8 @@ validate_github() {
 	fi
 }
 
-nmc_endpoint_accessibility() {
-	NAC_SCHEDULER_NAME="$1"
-	NAC_SCHEDULER_IP_ADDR="$2"
-  NMC_API_ENDPOINT="$3"
-	NMC_API_USERNAME="$4"
-	NMC_API_PASSWORD="$5" #14-19
-	PEM="$PEM_KEY_PATH"
-
-	chmod 400 $PEM
-	### nac_scheduler_name = from FourthArgument of NAC_Scheduler.sh, user_sec.txt
-	echo "INFO ::: NAC_SCHEDULER_NAME ::: ${NAC_SCHEDULER_NAME}"
-	echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: ${NAC_SCHEDULER_IP_ADDR}"
-	echo "INFO ::: NMC_API_ENDPOINT ::: ${NMC_API_ENDPOINT}"
-	echo "INFO ::: NMC_API_USERNAME ::: ${NMC_API_USERNAME}"
-	echo "INFO ::: NMC_API_PASSWORD ::: ${NMC_API_PASSWORD}" # 31-37
-
-	echo "INFO ::: NAC_SCHEDULER_IP_ADDR : "$NAC_SCHEDULER_IP_ADDR
-	py_file_name=$(ls check_nmc_visiblity.py)
-	echo "INFO ::: Executing Python code file : "$py_file_name
-	cat $py_file_name | ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null python3 - $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_API_ENDPOINT
-	if [ $? -eq 0 ]; then
-		echo "INFO ::: NAC Scheduler with IP : ${NAC_SCHEDULER_IP_ADDR}, have access to NMC API ${NMC_API_ENDPOINT} "
-	else
-		echo "ERROR ::: NAC Scheduler with IP : ${NAC_SCHEDULER_IP_ADDR}, Does NOT have access to NMC API ${NMC_API_ENDPOINT}. Please configure access to NMC "
-		exit 1
-	fi
-	echo "INFO ::: Completed NMC endpoint accessibility Check. !!!"
-
-}
-
 append_nac_keys_values_to_tfvars() {
-	inputFile="$1" ### Read InputFile
+	inputFile="$1"
 	outFile="$2"
 	dos2unix $inputFile
 	while IFS="=" read -r key value; do
@@ -151,8 +151,8 @@ validate_kvp() {
 validate_secret_values() {
 	KEY_VAULT_NAME=$1
 	SECRET_NAME=$2
-	echo "INFO ::: Validating Secret ::: $SECRET_NAME in Key Vault $KEY_VAULT_NAME"
-	SECRET_VALUE=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$SECRET_NAME" --query value --output tsv)
+	echo "INFO ::: Validating Secret ::: $SECRET_NAME"
+	SECRET_VALUE=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$SECRET_NAME" --query value --output tsv 2> /dev/null)
 
 	if [ -z "$SECRET_VALUE" ] ; then
         echo "ERROR ::: Validation FAILED as, Empty String Value passed to key vault $SECRET_NAME = $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
@@ -182,8 +182,6 @@ validate_secret_values() {
 				USE_PRIVATE_IP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "pem-key-path" ]; then
 				PEM_KEY_PATH=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "acs-key-vault-name" ]; then
-				ACS_KEY_VAULT_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-resource-group" ]; then
 				ACS_RESOURCE_GROUP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-service-name" ]; then
@@ -205,7 +203,7 @@ validate_secret_values() {
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
             fi
-			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME has value $SECRET_VALUE in Key Vault $KEY_VAULT_NAME."
+			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME found in Key Vault $KEY_VAULT_NAME."
 		fi
 	fi
 	if [ -z "$SECRET_VALUE" ] ; then
@@ -228,10 +226,160 @@ validate_AZURE_SUBSCRIPTION() {
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 	fi
-
 	echo "INFO ::: AZURE_TENANT_ID=$AZURE_TENANT_ID"
 	echo "INFO ::: AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
 	echo "INFO ::: AZURE Subscription Validation SUCCESS !!!"
+}
+
+provision_ACS_if_Not_Available(){
+	ACS_SERVICE_NAME="$3"
+	ACS_ADMIN_VAULT="$2"
+	ACS_RESOURCE_GROUP="$1"
+	echo "INFO ::: Checking for ACS Availability Status . . . . "
+
+	echo "INFO ::: Checking for acs Admin Key Vault $ACS_ADMIN_VAULT . . ."
+	ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query properties.provisioningState --output tsv 2> /dev/null`
+	if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
+		validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name	
+		if [ "$ACS_SERVICE_NAME" == "" ]; then
+			### Service Not available in admin vault 
+			############ START : Provision ACS if Not Available ################
+			echo "INFO ::: Service $ACS_SERVICE_NAME is Not available in admin vault "
+			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
+			############ END: Provision ACS if Not Available ################
+		else
+			### Service available in admin vault but not in running condition
+			echo "INFO ::: Service $ACS_SERVICE_NAME entry found in admin vault but not in running condition."
+			ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
+			if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
+				############ START : Provision ACS if Not Available ################
+				provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
+				############ END: Provision ACS if Not Available ################
+			else
+				echo "INFO ::: ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
+			fi
+
+		fi 
+	else ## When Key Vault Not Available - 1st Run
+		############ START : Provision ACS if Not Available ################	
+		provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT
+		############ END: Provision ACS if Not Available ################
+	fi	
+}
+
+provision_Azure_Cognitive_Search(){
+	######################## Check If Azure Cognitice Search Available ###############################################
+	#### ACS_SERVICE_NAME : Take it from KeyVault that is creted with ACS
+	IS_ACS="$1"
+	ACS_ADMIN_VAULT="$3"
+	ACS_RESOURCE_GROUP="$2"
+	IS_ADMIN_VAULT_YN="N"
+	IS_ACS_RG_YN="N"
+	if [ "$IS_ACS" == "N" ]; then
+		echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
+		echo "INFO ::: Begin Azure Cognitive Search Provisioning."
+		########## Download CognitiveSearch Provisioning Code from GitHub ##########
+		########## GITHUB_ORGANIZATION defaults to nasuni-labs     		  ##########
+		REPO_FOLDER="nasuni-azure-cognitive-search"
+		validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
+		########################### Git Clone  ###############################################################
+		echo "INFO ::: BEGIN - Git Clone !!!"
+		### Download Provisioning Code from GitHub
+		GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
+		echo "INFO ::: GIT_REPO $GIT_REPO"
+		echo "INFO ::: GIT_REPO_NAME $GIT_BRANCH_NAME ::: GIT_BRANCH_NAME $GIT_BRANCH_NAME"
+		rm -rf "${GIT_REPO_NAME}"
+		pwd
+		COMMAND="git clone -q -b $GIT_BRANCH_NAME $GIT_REPO"
+		$COMMAND
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
+		else
+			echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
+			exit 1
+		fi
+		cd "${GIT_REPO_NAME}"
+		### RUN terraform init
+		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
+		COMMAND="terraform init"
+		$COMMAND
+
+		chmod 755 $(pwd)/*
+		### Dont Change the sequence of function calls
+		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_VAULT $ACS_ADMIN_VAULT"
+		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
+		check_if_acs_admin_vault_exists $ACS_ADMIN_VAULT $ACS_RESOURCE_GROUP
+		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
+		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
+		USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
+		ACS_TFVARS_FILE_NAME="ACS.tfvars"
+		rm -rf "$ACS_TFVARS_FILE_NAME"
+		echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+		echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_key_vault_id="\"$ACS_ADMIN_VAULT_ID\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_key_vault_YN="\"$IS_ADMIN_VAULT_YN\" >>$ACS_TFVARS_FILE_NAME
+		echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+		echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
+		echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
+		echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
+		echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
+		echo "" >>$ACS_TFVARS_FILE_NAME
+
+		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
+	
+		COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
+		$COMMAND
+		if [ $? -eq 0 ]; then
+			echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
+		else
+			echo "ERROR ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: FAILED "
+			exit 1
+		fi
+		cd ..
+	else
+		echo "INFO ::: Azure Cognitive Search is Active . . . . . . . . . ."
+		echo "INFO ::: BEGIN ::: NACScheduler Provisioning . . . . . . . . . . . ."
+	fi
+	##################################### END Azure CognitiveSearch ###################################################################
+}
+
+check_if_acs_admin_vault_exists(){
+	ACS_ADMIN_VAULT="$1"
+	ACS_RESOURCE_GROUP="$2"
+	echo "INFO ::: Checking for Azure Key Vault $ACS_ADMIN_VAULT . . ."
+	ACS_ADMIN_VAULT_STATUS=`az keyvault show --name $ACS_ADMIN_VAULT --query properties.provisioningState --output tsv 2> /dev/null`
+	if [ "$ACS_ADMIN_VAULT_STATUS" == "Succeeded" ]; then
+		echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT is already exist. . "
+		IS_ADMIN_VAULT_YN="Y"
+		ACS_ADMIN_VAULT_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
+		COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
+		$COMMAND
+		validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name
+	else
+		IS_ADMIN_VAULT_YN="N"
+		echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT does not exist. It will provision a new acs-admin-vault KeyVault with ACS Service."
+	fi
+}
+
+check_if_resourcegroup_exist(){
+	ACS_RESOURCE_GROUP="$1"
+	AZURE_SUBSCRIPTION_ID="$2"
+	### Check if Resource Group is already provisioned
+	echo "INFO ::: Check if Resource Group $ACS_RESOURCE_GROUP exist . . . . "
+	ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
+	if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+		pwd
+		IS_ACS_RG_YN="Y"
+		echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
+		COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+		$COMMAND
+	else
+		IS_ACS_RG_YN="N"
+		echo "INFO ::: Cognitive Search Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
+	fi
 }
 
 ########################## Create CRON ############################################################
@@ -250,48 +398,10 @@ Schedule_CRON_JOB() {
 	AZURE_CURRENT_USER=$(az ad signed-in-user show --query userPrincipalName)
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
-	LAMBDA_LAYER_SUFFIX=$(echo $RND)
-
-	### NMC API CALL
-	###'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-	python3 fetch_volume_data_from_nmc_api.py ${NMC_API_ENDPOINT} ${NMC_API_USERNAME} ${NMC_API_PASSWORD} ${NMC_VOLUME_NAME} ${RND} ${WEB_ACCESS_APPLIANCE_ADDRESS}
-	### FILTER Values From NMC API Call
-
-	SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
-	UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
-	SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-	SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-	rm -rf nmc_api_*.txt
-	SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
-	SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
-	SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
-
-	### DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
-	DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-
-	### https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
-
-	DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
-
-	### Destination account-key: 
-	DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
-	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
-	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
-	### Destination Bucket COnnection String ==> datasource_connection_string, Used for CognitiveSearch Provisioning ###datasource_connection_string=DefaultEndpointsProtocol=https;AccountName=destinationbktsa;AccountKey=ekOsyrbVEGCbOQFIM6CaM3Ne7zdnct33ZuvSvp1feo1xtpQ/IMq15WD9TGXIeVvvuS0DO1mRMYYB+ASt1lMVKw==;EndpointSuffix=core.windows.net
-
-	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
-	### VOLUME_KEY_BUCKET_URL="https://keysa.blob.core.windows.net/key"  ##"From_Key_Vault"
-	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
-	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
-	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
-	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
-	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
-	### https://keysa.blob.core.windows.net/key/sa-filer-01-20220726.pgp?sp
-	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
-
+	### Pass below 3 parameters as Blank values to Provision_nac.sh. 
+	UNIFS_TOC_HANDLE=""
+	SOURCE_CONTAINER=""
+	SOURCE_CONTAINER_SAS_URL=""
     ### Generating NAC Resource group name dynamically
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
@@ -301,16 +411,10 @@ Schedule_CRON_JOB() {
     echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE_NAME
 	### ProductKey >>>>> Read from user_secret Key Vault
     echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE_NAME
-	### SourceContainer >>>>> Get from NMC_API Call
-    echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
-	### SourceContainerSASURL >>>>> Generate Dynamically by using az CLI commands
-    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 	### VolumeKeySASURL >>>>> Generate Dynamically by using az CLI commands
     echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
 	### VolumeKeyPassphrase >>>>> Recommended as 'null' for AZURE NAC
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
-	### UniFSTOCHandle >>>>> Get from NMC_API Call
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
 	### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
@@ -332,35 +436,40 @@ Schedule_CRON_JOB() {
     echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
 	### ExcludeTempFiles >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
     echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
+	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
+	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
+	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 
     chmod 777 $CONFIG_DAT_FILE_NAME
 
 	CRON_DIR_NAME="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
 	
 	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
-	ACS_TFVARS_FILE="ACS.txt"
-	rm -rf "$ACS_TFVARS_FILE"
-	echo "acs_service_name="$ACS_SERVICE_NAME >>$ACS_TFVARS_FILE
-	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$ACS_TFVARS_FILE
-	echo "subscription_id="$AZURE_SUBSCRIPTION_ID >>$ACS_TFVARS_FILE
-	echo "tenant_id="$AZURE_TENANT_ID >>$ACS_TFVARS_FILE
-	echo "azure_location="$AZURE_LOCATION >>$ACS_TFVARS_FILE
-	echo "acs-key-vault="$ACS_KEY_VAULT_NAME >>$ACS_TFVARS_FILE
-	echo "datasource-connection-string="$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING >>$ACS_TFVARS_FILE
-	echo "destination-container-name="$DESTINATION_CONTAINER_NAME >>$ACS_TFVARS_FILE
-	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$ACS_TFVARS_FILE
-	echo "github_organization="$GITHUB_ORGANIZATION >>$ACS_TFVARS_FILE
-	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$ACS_TFVARS_FILE
-	echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$ACS_TFVARS_FILE
-	echo "user_principal_name="$USER_PRINCIPAL_NAME >>$ACS_TFVARS_FILE
-	echo "" >>$ACS_TFVARS_FILE
-   
-    chmod 777 $ACS_TFVARS_FILE
+	echo $USER_PRINCIPAL_NAME
+	NAC_TXT_FILE_NAME="NAC.txt"
+	rm -rf "$NAC_TXT_FILE_NAME"
+	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
+    echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
+	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
+	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
+	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
+	chmod 777 $NAC_TXT_FILE_NAME
+
+	### Create File to transfer data related to NMC 
+	NMC_DETAILS_TXT="nmc_details.txt"
+	echo "nmc_api_endpoint="$NMC_API_ENDPOINT >>$NMC_DETAILS_TXT
+	echo "nmc_api_username="$NMC_API_USERNAME >>$NMC_DETAILS_TXT
+	echo "nmc_api_password="$NMC_API_PASSWORD >>$NMC_DETAILS_TXT
+	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NMC_DETAILS_TXT
+	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NMC_DETAILS_TXT
+	echo "" >>$NMC_DETAILS_TXT
+	chmod 777 $NMC_DETAILS_TXT
 
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh "$ACS_TFVARS_FILE" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 
 	RES="$?"
 	if [ $RES -ne 0 ]; then
@@ -406,6 +515,10 @@ ANALYTICS_SERVICE="$2" ### 2nd argument  ::: ANALYTICS_SERVICE
 FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
+ACS_UID=$(( $RANDOM % 1000 )); 
+SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+GIT_BRANCH_NAME="CTPROJECT-337"
+
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
 if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
 	echo "ERROR ::: Something went wrong. Please re-check 1st argument and provide a valid NMC Volume Name."
@@ -443,11 +556,8 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-subscription
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-location
 		validate_secret_values "$AZURE_KEYVAULT_NAME" product-key
-		validate_secret_values "$AZURE_KEYVAULT_NAME" acs-service-name
-		validate_secret_values "$AZURE_KEYVAULT_NAME" acs-resource-group
 		validate_secret_values "$AZURE_KEYVAULT_NAME" web-access-appliance-address
 		validate_secret_values "$AZURE_KEYVAULT_NAME" pem-key-path
-		validate_secret_values "$AZURE_KEYVAULT_NAME" acs-key-vault-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" github-organization
 		validate_secret_values "$AZURE_KEYVAULT_NAME" destination-container-url
 		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url
@@ -460,16 +570,26 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
 
-
-echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
+		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
 else
 	echo "INFO ::: Fourth argument is NOT provided, So, It will consider prod/nac/admin as the default key vault."
 fi
 validate_AZURE_SUBSCRIPTION
 
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+get_destination_container_url $DESTINATION_CONTAINER_URL
+get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
+
+## Check if acs-admin-vault available or not
+ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+ACS_SERVICE_NAME=""
+ACS_ADMIN_VAULT_ID=""
+provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
+
+######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
-######################  NAC Scheduler Instance is Available ##############################
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
 ### parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
 echo "INFO ::: nac_scheduler_name = $NAC_SCHEDULER_NAME "
@@ -487,15 +607,15 @@ if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 else
 	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 fi
+echo $PEM_KEY_PATH
+AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
+echo $AZURE_KEY
+PEM="$AZURE_KEY.pem"
+
 echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: $NAC_SCHEDULER_IP_ADDR"
 if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	echo "INFO ::: NAC Scheduler Instance is Available. IP Address: $NAC_SCHEDULER_IP_ADDR"
-	echo $PEM_KEY_PATH
-	AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-	echo $AZURE_KEY
-	PEM="$AZURE_KEY.pem"
 	### Copy the Pem Key from provided path to current folder
-	ls
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
 	### Call this function to add Local public IP to Network Security Group (NSG rule) of NAC_SCHEDULER IP
@@ -503,11 +623,10 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
-	exit 111
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
-	## "NAC Scheduler is not present. Creating new Virtual machine."
+	### "NAC Scheduler is not present. Creating new Virtual machine."
     if [ "$USER_VNET_RESOURCE_GROUP" == "" ] || [ "$USER_VNET_RESOURCE_GROUP" == null ]; then
         echo "INFO ::: Azure Virtual Network Resource Group is Not provided."
         exit 1
@@ -536,7 +655,6 @@ else
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-analyticsconnector-manager"
 	validate_github $GITHUB_ORGANIZATION $REPO_FOLDER 
-	GIT_BRANCH_NAME="main"
 	GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	echo "INFO ::: Begin - Git Clone to ${GIT_REPO}"
 	echo "INFO ::: $GIT_REPO"
@@ -565,9 +683,6 @@ else
 	pwd
 	TFVARS_NAC_SCHEDULER="NACScheduler.tfvars"
 	rm -rf "$TFVARS_NAC_SCHEDULER" 
-	AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-	echo $AZURE_KEY
-	PEM="$AZURE_KEY.pem"
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
@@ -592,8 +707,8 @@ else
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
 	fi
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
-	echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$TFVARS_NAC_SCHEDULER
-	echo "$TFVARS_NAC_SCHEDULER created"
+    echo "acs_key_vault="\"$ACS_ADMIN_VAULT\" >>$TFVARS_NAC_SCHEDULER
+	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
 	$COMMAND
