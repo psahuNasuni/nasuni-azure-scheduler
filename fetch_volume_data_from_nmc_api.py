@@ -38,7 +38,6 @@ except Exception as e:
     print('Runtime error while extracting aws keys')
 
 try:
-    #file_name, endpoint, username, password, volume_name, rid, web_access_appliance_address = sys.argv
     logging.info(sys.argv)
     url = 'https://' + endpoint + '/api/v1.1/auth/login/'
     logging.info(url)
@@ -46,7 +45,6 @@ try:
     data = urllib.parse.urlencode(values).encode("utf-8")
     logging.info(data)
     response = urllib.request.urlopen(url, data, timeout=5)
-    print(response)
     logging.info(response)
     result = json.loads(response.read().decode('utf-8'))
     logging.info(result)
@@ -64,13 +62,10 @@ try:
             print(i)
             toc_file = open('nmc_api_data_root_handle.txt', 'w')
             toc_file.write(i['root_handle'])
-            # print('toc_handle',i['root_handle'])
             src_bucket = open('nmc_api_data_source_container.txt', 'w')
             src_bucket.write(i['bucket'])
-            # print('source_bucket', i['bucket'])
             v_guid = open('nmc_api_data_source_storage_account_name.txt', 'w')
             v_guid.write(i['account_name'])
-            # vv_guid = i['guid']
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
         'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/filers/shares/\"'
     logging.info(cmd)
@@ -81,13 +76,5 @@ try:
     # My Accelerate Test
     share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
     share_url.write(web_access_appliance_address)
-    # for i in json_data['items']:
-    #     if i['volume_guid'] == vv_guid and i['browser_access_settings']['external_share_url'] == web_access_appliance_address:
-    #         print(i)
-    #         share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
-    #         share_url.write(i['browser_access_settings']['external_share_url'])
-    #     else:
-    #         share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
-    #         share_url.write('not_found')
 except Exception as e:
     print('Runtime Errors', e)

@@ -47,7 +47,6 @@ parse_file_NAC_txt() {
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
             "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
-            #"unifs_toc_handle") UNIFS_TOC_HANDLE="$value" ;;
             esac
         done <"$file"
 }
@@ -84,18 +83,16 @@ append_nmc_details_to_config_dat()
     sed -i "s|SourceContainerSASURL.*||g" config.dat
     echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> config.dat
     sed -i '/^$/d' config.dat
-
 }
 
 nmc_api_call(){
     NMC_DETAILS_TXT=$1    
     parse_file_nmc_txt $NMC_DETAILS_TXT
-    ### NMC API CALL  ####888
+    ### NMC API CALL  ####
     RND=$(( $RANDOM % 1000000 ));
     #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
     python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
-    # FILTER Values From NMC API Call
-
+    ### FILTER Values From NMC API Call
     SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
@@ -105,7 +102,6 @@ nmc_api_call(){
     SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
     SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
     SOURCE_CONTAINER_SAS_URL="https://$SOURCE_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$SOURCE_CONTAINER_TOCKEN"
-
 }
 
 parse_config_file_for_user_secret_keys_values() {
@@ -130,10 +126,10 @@ install_NAC_CLI() {
 }
 
 ###### START - EXECUTION ####
-# GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="CTPROJECT-337"
+### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
+GIT_BRANCH_NAME=""
 if [ $GIT_BRANCH_NAME == "" ]; then
-GIT_BRANCH_NAME="main"
+    GIT_BRANCH_NAME="main"
 fi
 NMC_API_ENDPOINT=""
 NMC_API_USERNAME=""
@@ -174,14 +170,11 @@ fi
 
 echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
-
 ### GITHUB_ORGANIZATION defaults to nasuni-labs
-### https://github.com/psahuNasuni/nasuni-azure-analyticsconnector.git
 REPO_FOLDER="nasuni-azure-analyticsconnector"
 validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
 ########################### Git Clone : NAC Provisioning Repo ###############################################################
 echo "INFO ::: BEGIN - Git Clone !!!"
-#### Download Provisioning Code from GitHub
 GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 echo "INFO ::: GIT_REPO : $GIT_REPO"
 echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
@@ -275,7 +268,6 @@ if [ $RESULT -eq 0 ]; then
 else
     echo "INFO ::: Key Vault Secret unifs-toc-handle does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
 fi
-##### CHECK IF NEEDED  -END
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"

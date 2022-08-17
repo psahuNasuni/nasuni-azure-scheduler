@@ -115,7 +115,7 @@ validate_github() {
 }
 
 append_nac_keys_values_to_tfvars() {
-	inputFile="$1" ### Read InputFile
+	inputFile="$1"
 	outFile="$2"
 	dos2unix $inputFile
 	while IFS="=" read -r key value; do
@@ -344,7 +344,6 @@ provision_Azure_Cognitive_Search(){
 		echo "INFO ::: BEGIN ::: NACScheduler Provisioning . . . . . . . . . . . ."
 	fi
 	##################################### END Azure CognitiveSearch ###################################################################
-
 }
 
 check_if_acs_admin_vault_exists(){
@@ -357,10 +356,8 @@ check_if_acs_admin_vault_exists(){
 		IS_ADMIN_VAULT_YN="Y"
 		ACS_ADMIN_VAULT_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
 		COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
-		# Sample COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/fb43991d-325b-404b-b0cd-9319b558a03f/resourceGroups/nasuni-labs-acs-rg/providers/Microsoft.KeyVault/vaults/nasuni-labs-acs-admin"
 		$COMMAND
 		validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name
-		# validate_secret_values "$ACS_ADMIN_VAULT" acs-key-vault  
 	else
 		IS_ADMIN_VAULT_YN="N"
 		echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT does not exist. It will provision a new acs-admin-vault KeyVault with ACS Service."
@@ -456,7 +453,6 @@ Schedule_CRON_JOB() {
     echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
-	#echo "unifs_toc_handle="$UNIFS_TOC_HANDLE >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	chmod 777 $NAC_TXT_FILE_NAME
 
@@ -574,8 +570,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
 
-
-echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
+		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
 else
 	echo "INFO ::: Fourth argument is NOT provided, So, It will consider prod/nac/admin as the default key vault."
@@ -593,7 +588,6 @@ ACS_SERVICE_NAME=""
 ACS_ADMIN_VAULT_ID=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
 
-echo "########## CHAPTER 2 ##################"
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
@@ -632,7 +626,7 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
-	## "NAC Scheduler is not present. Creating new Virtual machine."
+	### "NAC Scheduler is not present. Creating new Virtual machine."
     if [ "$USER_VNET_RESOURCE_GROUP" == "" ] || [ "$USER_VNET_RESOURCE_GROUP" == null ]; then
         echo "INFO ::: Azure Virtual Network Resource Group is Not provided."
         exit 1
