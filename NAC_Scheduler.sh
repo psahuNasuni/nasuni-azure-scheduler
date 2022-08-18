@@ -514,9 +514,9 @@ Schedule_CRON_JOB() {
 	echo $USER_PRINCIPAL_NAME
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
-	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+	# echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
-    echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
+    # echo "acs_key_vault="$ACS_ADMIN_VAULT >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
@@ -535,7 +535,10 @@ Schedule_CRON_JOB() {
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	# scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+    touch $RND
+    scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" "$RND" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+    rm -rf $RND
 
 	RES="$?"
 	if [ $RES -ne 0 ]; then

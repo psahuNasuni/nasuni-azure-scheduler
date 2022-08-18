@@ -41,8 +41,8 @@ parse_file_NAC_txt() {
     dos2unix $file
     while IFS="=" read -r key value; do
         case "$key" in
-            "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-            "acs_key_vault") ACS_KEY_VAULT_NAME="$value" ;;
+            # "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+            # "acs_key_vault") ACS_KEY_VAULT_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
             "azure_location") AZURE_LOCATION="$value" ;;
@@ -139,7 +139,6 @@ WEB_ACCESS_APPLIANCE_ADDRESS=""
 nmc_api_call "nmc_details.txt"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL
 parse_file_NAC_txt "NAC.txt"
-
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
@@ -148,8 +147,9 @@ if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    exit 1
 fi
 ################################################################################################################
-ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-ACS_KEY_VAULT_NAME=$ACS_KEY_VAULT_NAME
+# ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-"$(ls -I '*.*')
+ACS_KEY_VAULT_NAME="acs-admin-vault-$(ls -I '*.*')"
 
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
