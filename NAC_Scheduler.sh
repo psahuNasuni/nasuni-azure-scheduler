@@ -200,6 +200,8 @@ validate_secret_values() {
 				USER_VNET_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-username" ]; then
 				AZURE_USERNAME=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "uid" ]; then
+				ACS_UID=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
             fi
@@ -346,6 +348,70 @@ provision_Azure_Cognitive_Search(){
 	##################################### END Azure CognitiveSearch ###################################################################
 }
 
+
+import_secetes(){
+ACS_KEY_VAULT_NAME="$1"
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-url --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+    COMMAND="terraform import azurerm_key_vault_secret.acs-url $ACS_KEY_VAULT_SECRET_ID"
+    $COMMAND
+fi
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-api-key --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+    COMMAND="terraform import azurerm_key_vault_secret.acs-api-key $ACS_KEY_VAULT_SECRET_ID"
+    $COMMAND
+else
+    echo "INFO ::: Key Vault Secret acs-api-key does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+fi
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-service-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+    COMMAND="terraform import azurerm_key_vault_secret.acs_service_name_per $ACS_KEY_VAULT_SECRET_ID"
+    $COMMAND
+else
+    echo "INFO ::: Key Vault Secret nmc-volume-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+fi
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-resource-group --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+    COMMAND="terraform import azurerm_key_vault_secret.acs_resource_group_per $ACS_KEY_VAULT_SECRET_ID"
+    $COMMAND
+else
+    echo "INFO ::: Key Vault Secret acs-resource-group does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+fi
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name datasource-connection-string --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+    COMMAND="terraform import azurerm_key_vault_secret.datasource-connection-string $ACS_KEY_VAULT_SECRET_ID"
+    $COMMAND
+else
+    echo "INFO ::: Key Vault Secret datasource-connection-string does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+fi
+
+ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name destination-container-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+RESULT=$?
+if [ $RESULT -eq 0 ]; then
+    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+    COMMAND="terraform import azurerm_key_vault_secret.destination-container-name $ACS_KEY_VAULT_SECRET_ID"
+    $COMMAND
+else
+    echo "INFO ::: Key Vault Secret destination-container-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+fi
+
+}
+
 check_if_acs_admin_vault_exists(){
 	ACS_ADMIN_VAULT="$1"
 	ACS_RESOURCE_GROUP="$2"
@@ -358,6 +424,8 @@ check_if_acs_admin_vault_exists(){
 		COMMAND="terraform import azurerm_key_vault.acs_admin_vault /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$ACS_ADMIN_VAULT"
 		$COMMAND
 		validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name
+		### Import all the secretes 
+		import_secetes $ACS_ADMIN_VAULT
 	else
 		IS_ADMIN_VAULT_YN="N"
 		echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT does not exist. It will provision a new acs-admin-vault KeyVault with ACS Service."
@@ -470,7 +538,6 @@ Schedule_CRON_JOB() {
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
 	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
-
 	RES="$?"
 	if [ $RES -ne 0 ]; then
 		echo "ERROR ::: Failed to Copy $TFVARS_FILE_NAME to NAC_Scheduer Instance."
@@ -569,6 +636,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
+		validate_secret_values "$AZURE_KEYVAULT_NAME" uid
 
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
@@ -580,10 +648,11 @@ validate_AZURE_SUBSCRIPTION
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
-
+ACS_ADMIN_VAULT="nasuni-labs-acs-admin-$ACS_UID"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-$ACS_UID"
 ## Check if acs-admin-vault available or not
-ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+# ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
+# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 ACS_SERVICE_NAME=""
 ACS_ADMIN_VAULT_ID=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
