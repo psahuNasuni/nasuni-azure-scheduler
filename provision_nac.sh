@@ -128,7 +128,7 @@ install_NAC_CLI() {
 ###### START - EXECUTION ####
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
-if [ $GIT_BRANCH_NAME == "" ]; then
+if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
 NMC_API_ENDPOINT=""
@@ -139,7 +139,6 @@ WEB_ACCESS_APPLIANCE_ADDRESS=""
 nmc_api_call "nmc_details.txt"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL
 parse_file_NAC_txt "NAC.txt"
-
 parse_config_file_for_user_secret_keys_values config.dat 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`

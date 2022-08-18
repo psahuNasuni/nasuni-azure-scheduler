@@ -200,6 +200,8 @@ validate_secret_values() {
 				USER_VNET_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-username" ]; then
 				AZURE_USERNAME=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "uid" ]; then
+				ACS_UID=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
             fi
@@ -536,7 +538,6 @@ Schedule_CRON_JOB() {
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	### Copy TFVARS and provision_nac.sh to NACScheduler
 	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
-
 	RES="$?"
 	if [ $RES -ne 0 ]; then
 		echo "ERROR ::: Failed to Copy $TFVARS_FILE_NAME to NAC_Scheduer Instance."
@@ -635,6 +636,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
+		validate_secret_values "$AZURE_KEYVAULT_NAME" uid
 
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
@@ -646,10 +648,11 @@ validate_AZURE_SUBSCRIPTION
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
-
+ACS_ADMIN_VAULT="nasuni-labs-acs-admin-$ACS_UID"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-$ACS_UID"
 ## Check if acs-admin-vault available or not
-ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+# ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
+# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 ACS_SERVICE_NAME=""
 ACS_ADMIN_VAULT_ID=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
