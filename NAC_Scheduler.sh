@@ -214,6 +214,16 @@ validate_secret_values() {
 	fi
 }
 
+check_if_app_config_exists() {
+	AZURE_APP_CONFIG_NAME="$1"
+	AZURE_APP_CONFIG_RESOURCE_GROUP="$2"
+	# Verify the Secret Exists in KeyVault
+	if [[ "$(az appconfig show --name ${AZURE_APP_CONFIG_NAME} --resource-group ${AZURE_APP_CONFIG_RESOURCE_GROUP} --query provisioningState)" == "" ]]; then
+		echo "N"
+	else
+		echo "Y"
+	fi
+}
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
@@ -312,6 +322,8 @@ provision_Azure_Cognitive_Search(){
 		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_VAULT $ACS_ADMIN_VAULT"
 		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
 		check_if_acs_admin_vault_exists $ACS_ADMIN_VAULT $ACS_RESOURCE_GROUP
+		# check_if_acs_app_config_exists "acsConf" "acs-conf-rg" "uid1"
+		check_if_acs_app_config_exists "acsConf" $ACS_RESOURCE_GROUP "uid"
 		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
 		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 		USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
@@ -411,6 +423,28 @@ else
 fi
 
 }
+
+check_if_acs_app_config_exists(){
+	APP_CONFIG_SERVICE_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	APP_CONFIG_UID="$3"
+	echo "INFO ::: Checking for Azure Key Vault $ACS_ADMIN_VAULT . . ."
+	APP_CONFIG_STATUS=`az appconfig show --name $APP_CONFIG_SERVICE_NAME --resource-group $APP_CONFIG_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`
+	if [ "$APP_CONFIG_STATUS" == "Succeeded" ]; then
+		echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT is already exist. . "
+		IS_APP_CONFIG_YN="Y"
+		ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$APP_CONFIG_SERVICE_NAME"
+		COMMAND="terraform import azurerm_app_configuration.appconf /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$APP_CONFIG_SERVICE_NAME"
+		$COMMAND
+		# validate_secret_values "$ACS_ADMIN_VAULT" acs-service-name
+		### Import all the secretes 
+		# import_secetes $ACS_ADMIN_VAULT
+	else
+		IS_ADMIN_VAULT_YN="N"
+		echo "INFO ::: Azure Key Vault $ACS_ADMIN_VAULT does not exist. It will provision a new acs-admin-vault KeyVault with ACS Service."
+	fi
+}
+
 
 check_if_acs_admin_vault_exists(){
 	ACS_ADMIN_VAULT="$1"
@@ -582,9 +616,9 @@ ANALYTICS_SERVICE="$2" ### 2nd argument  ::: ANALYTICS_SERVICE
 FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
-ACS_UID=$(( $RANDOM % 1000 )); 
+# ACS_UID=$(( $RANDOM % 1000 )); 
 SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-GIT_BRANCH_NAME="main"
+GIT_BRANCH_NAME="app_config"
 
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
 if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
@@ -648,11 +682,33 @@ validate_AZURE_SUBSCRIPTION
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
+
+### Check the unique id from app config
+check_if_app_config_available(){
+	APP_CONFIG_SERVICE_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	APP_CONFIG_UID="$3"
+	echo "INFO ::: Checking for APP Config Availability Status . . . . "
+	APP_CONFIG_STATUS=`az appconfig show --name $APP_CONFIG_SERVICE_NAME --resource-group $APP_CONFIG_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`
+	if [ "$APP_CONFIG_STATUS" == "Succeeded" ]; then
+		ACS_UID=`az appconfig kv show --name $APP_CONFIG_SERVICE_NAME --key $APP_CONFIG_UID --label "acs_uid" --query value --output tsv 2> /dev/null`
+		if [ "$ACS_UID" == "" ]; then
+			### ACS UID no available in App Config 
+			echo "INFO ::: ACS_UID is Not available in $APP_CONFIG_SERVICE_NAME. Generating New ACS_UID"
+			ACS_UID=$(( $RANDOM % 1000 ))
+		else
+			echo "INFO ::: ACS_UID is : $ACS_UID is Available in APP_CONFIG : $APP_CONFIG_SERVICE_NAME"
+		fi 
+	else ## APP_CONFIG is Not Available - 1st Run
+		ACS_UID=$(( $RANDOM % 1000 ))
+	fi	
+}
+
+check_if_app_config_available "acsConf" "acs-conf-rg" "uid"
+
 ACS_ADMIN_VAULT="nasuni-labs-acs-admin-$ACS_UID"
 ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-$ACS_UID"
-## Check if acs-admin-vault available or not
-# ACS_ADMIN_VAULT="nasuni-labs-acs-admin"
-# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+
 ACS_SERVICE_NAME=""
 ACS_ADMIN_VAULT_ID=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_VAULT $ACS_SERVICE_NAME
