@@ -153,10 +153,11 @@ update_destination_container_url(){
 	DESTINATION_CONTAINER_NAME="$3"
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$4"
 
-	COMMAND="az appconfig update -g $ACS_RESOURCE_GROUP -n $ACS_ADMIN_APP_CONFIG_NAME --tags destination-container-name=$DESTINATION_CONTAINER_NAME datasource-connection-string=$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING"
+	# COMMAND SAMPLE="az appconfig kv set --endpoint https://nasuni-labs-acs-admin.azconfig.io --key test2 --value red2 --auth-mode login --yes"
+	COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --value $DESTINATION_CONTAINER_NAME --key datasource-connection-string --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
 	$COMMAND
 	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
+	if [ $RESULT -eq 0 ]; then 
 		echo "INFO ::: appconfig update SUCCESS"
 	else
 		echo "INFO ::: appconfig update FAILED"
