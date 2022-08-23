@@ -147,6 +147,22 @@ validate_kvp() {
 		echo "INFO ::: Value of ${key} is ${val}"
 	fi
 } 
+update_destination_container_url(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	ACS_RESOURCE_GROUP="$2"
+	DESTINATION_CONTAINER_NAME="$3"
+	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$4"
+
+	COMMAND="az appconfig update -g $ACS_RESOURCE_GROUP -n $ACS_ADMIN_APP_CONFIG_NAME --tags destination-container-name=$DESTINATION_CONTAINER_NAME datasource-connection-string=$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING"
+	$COMMAND
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: appconfig update SUCCESS"
+	else
+		echo "INFO ::: appconfig update FAILED"
+		exit 1
+	fi
+}
 get_acs_config_values(){
 	ACS_ADMIN_APP_CONFIG_NAME=$1
 	APP_CONFIG_KEY=$2
@@ -227,8 +243,6 @@ validate_secret_values() {
 				PEM_KEY_PATH=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "acs-resource-group" ]; then
 				ACS_RESOURCE_GROUP=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "acs-service-name" ]; then
-				ACS_SERVICE_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "github-organization" ]; then
 				GITHUB_ORGANIZATION=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "destination-container-url" ]; then
@@ -287,23 +301,25 @@ validate_AZURE_SUBSCRIPTION() {
 
 provision_ACS_if_Not_Available(){
 	ACS_SERVICE_NAME="$3"
-	ACS_ADMIN_APP_CONFIG="$2"
+	ACS_ADMIN_APP_CONFIG_NAME="$2"
 	ACS_RESOURCE_GROUP="$1"
 	echo "INFO ::: Checking for ACS Availability Status . . . . "
 
-	echo "INFO ::: Checking for ACS Admin App Config $ACS_ADMIN_APP_CONFIG . . ."
-	check_if_acs_app_config_exists $ACS_ADMIN_APP_CONFIG $ACS_RESOURCE_GROUP
+	echo "INFO ::: Checking for ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME . . ."
+	check_if_acs_app_config_exists $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 	echo "IS_ACS_ADMIN_APP_CONFIG $IS_ACS_ADMIN_APP_CONFIG"
 	
 	if [ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]; then
 		
-		get_acs_config_values "$ACS_ADMIN_APP_CONFIG" acs-service-name
+		### update the Destination bucket connection string in ACS_ADMIN_APP_CONFIG_NAME
+		update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING
+		get_acs_config_values "$ACS_ADMIN_APP_CONFIG_NAME" acs-service-name
 
 		if [ "$ACS_SERVICE_NAME" == "" ]; then
 			### Service Not available in ACS Admin App Configuration 
 			############ START : Provision ACS if Not Available ################
 			echo "INFO ::: Service $ACS_SERVICE_NAME is Not available in ACS Admin App Configuration "
-			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG
+			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
 			############ END: Provision ACS if Not Available ################
 		else
 			### Service available in ACS Admin App Configuration but not in running condition
@@ -311,7 +327,7 @@ provision_ACS_if_Not_Available(){
 			ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
 			if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
 				############ START : Provision ACS if Not Available ################
-				provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG
+				provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
 				############ END: Provision ACS if Not Available ################
 			else
 				echo "INFO ::: ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
@@ -320,7 +336,7 @@ provision_ACS_if_Not_Available(){
 		fi 
 	else ## When Key Vault Not Available - 1st Run
 		############ START : Provision ACS if Not Available ################	
-		provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG
+		provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
 		############ END: Provision ACS if Not Available ################
 	fi	
 }
@@ -329,7 +345,7 @@ provision_Azure_Cognitive_Search(){
 	######################## Check If Azure Cognitice Search Available ###############################################
 	#### ACS_SERVICE_NAME : Take it from KeyVault that is creted with ACS
 	IS_ACS="$1"
-	ACS_ADMIN_APP_CONFIG="$3"
+	ACS_ADMIN_APP_CONFIG_NAME="$3"
 	ACS_RESOURCE_GROUP="$2"
 	IS_ADMIN_VAULT_YN="N"
 	IS_ACS_RG_YN="N"
@@ -365,8 +381,8 @@ provision_Azure_Cognitive_Search(){
 
 		chmod 755 $(pwd)/*
 		### Dont Change the sequence of function calls
-		# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG $ACS_ADMIN_APP_CONFIG"
-		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG $ACS_ADMIN_APP_CONFIG"
+		# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
+		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
 				
 		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
@@ -377,7 +393,7 @@ provision_Azure_Cognitive_Search(){
 		echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
 		echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
 		echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-		echo "acs_admin_app_config="\"$ACS_ADMIN_APP_CONFIG\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$ACS_TFVARS_FILE_NAME
 		echo "acs_app_config_YN="\"$IS_ACS_ADMIN_APP_CONFIG\" >>$ACS_TFVARS_FILE_NAME
 		echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
 		echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
@@ -577,7 +593,7 @@ Schedule_CRON_JOB() {
 	rm -rf "$NAC_TXT_FILE_NAME"
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
-    echo "acs_admin_app_config="$ACS_ADMIN_APP_CONFIG >>$NAC_TXT_FILE_NAME
+    echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
@@ -705,12 +721,12 @@ DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
-ACS_ADMIN_APP_CONFIG="nasuni-labs-acs-admin"
+ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
 ACS_RESOURCE_GROUP="nasuni-labs-acs-rg1"
 IS_ACS_ADMIN_APP_CONFIG="N"
 
 ACS_SERVICE_NAME=""
-provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG $ACS_SERVICE_NAME
+provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
@@ -830,7 +846,7 @@ else
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
 	fi
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
-    echo "acs_admin_app_config="\"$ACS_ADMIN_APP_CONFIG\" >>$TFVARS_NAC_SCHEDULER
+    echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$TFVARS_NAC_SCHEDULER
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
