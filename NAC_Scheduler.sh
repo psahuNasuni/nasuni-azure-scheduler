@@ -147,6 +147,7 @@ validate_kvp() {
 		echo "INFO ::: Value of ${key} is ${val}"
 	fi
 } 
+
 update_destination_container_url(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
 	ACS_RESOURCE_GROUP="$2"
@@ -154,8 +155,23 @@ update_destination_container_url(){
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$4"
 
 	# COMMAND SAMPLE="az appconfig kv set --endpoint https://nasuni-labs-acs-admin.azconfig.io --key test2 --value red2 --auth-mode login --yes"
-	COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --value $DESTINATION_CONTAINER_NAME --key datasource-connection-string --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
-	$COMMAND
+	# COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --value $DESTINATION_CONTAINER_NAME --key datasource-connection-string --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
+	# $COMMAND
+	for config_value in destination-container-name datasource-connection-string 
+	do
+		option="${config_value}" 
+		case ${option} in 
+		"destination-container-name")
+			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --value $DESTINATION_CONTAINER_NAME --auth-mode login --yes"
+			$COMMAND
+			;; 
+		"datasource-connection-string") 
+			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key datasource-connection-string --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
+			$COMMAND
+			;; 
+		esac 
+	done
+
 	RESULT=$?
 	if [ $RESULT -eq 0 ]; then 
 		echo "INFO ::: appconfig update SUCCESS"
@@ -164,6 +180,7 @@ update_destination_container_url(){
 		exit 1
 	fi
 }
+
 get_acs_config_values(){
 	ACS_ADMIN_APP_CONFIG_NAME=$1
 	APP_CONFIG_KEY=$2
