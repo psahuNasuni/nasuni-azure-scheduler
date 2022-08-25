@@ -274,19 +274,25 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
-
 if [ $? -eq 0 ]; then
+    ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
     APP_CONFIG_KEY="index-endpoint"
     ### Read index-endpoint from app config
     function_url=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
-    echo "$function_url"
-    ### Trigger Azure Indexing Function
-    curl -X GET -H "Content-Type: application/json" "$function_url"
+    echo "INFO ::: Discovery Function URL ::: $function_url"
+    RES=`curl -X GET -H "Content-Type: application/json" "$function_url"`
+    if [ $? -eq 0 ]; then
+        echo "INFO ::: Discovery Function Trigger ::: SUCCESS"
+    else
+        echo "INFO ::: Discovery Function Trigger ::: FAILED"
+    fi
+    echo "INFO ::: Discovery Function Trigger Response ::: $RES"
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 else
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
     exit 1
 fi
+
 cd ..
 ##################################### END NAC Provisioning ###################################################################
 
