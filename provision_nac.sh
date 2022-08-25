@@ -275,12 +275,17 @@ COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
 if [ $? -eq 0 ]; then
-    ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
     APP_CONFIG_KEY="index-endpoint"
     ### Read index-endpoint from app config
-    function_url=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
-    echo "INFO ::: Discovery Function URL ::: $function_url"
-    RES=`curl -X GET -H "Content-Type: application/json" "$function_url"`
+    FUNCTION_URL=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
+    FUNCTION_APP_NAME=$(echo $FUNCTION_URL | cut -d/ -f3|cut -d. -f1)
+    ### Fetch Connection App Config Connection String
+    APP_CONFIG_CONNECTION_STRING=`az appconfig credential list --name $ACS_APP_CONFIG_NAME --resource-group $ACS_RESOURCE_GROUP --query "[?name=='Primary Read Only'] .connectionString" -o tsv`
+    ### Set Environemnt Variale for App Config Connection String
+    SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=`az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=$APP_CONFIG_CONNECTION_STRING`
+    ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
+    echo "INFO ::: Discovery Function URL ::: $FUNCTION_URL"
+    RES=`curl -X GET -H "Content-Type: application/json" "$FUNCTION_URL"`
     if [ $? -eq 0 ]; then
         echo "INFO ::: Discovery Function Trigger ::: SUCCESS"
     else
