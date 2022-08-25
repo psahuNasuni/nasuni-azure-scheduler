@@ -232,43 +232,47 @@ echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFV
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
-# ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name index-endpoint --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-# RESULT=$?
-# if [ $RESULT -eq 0 ]; then
-#     echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-#     COMMAND="terraform import azurerm_key_vault_secret.index-endpoint $ACS_KEY_VAULT_SECRET_ID"
-#     $COMMAND
-# else
-#     echo "INFO ::: Key Vault Secret index-endpoint does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-# fi
+### Import Configurations details if exist
+INDEX_ENDPOINT_KEY="index-endpoint"
+INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
+if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
+    COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+    $COMMAND
+else
+    echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
+fi
 
-# ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name web-access-appliance-address --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-# RESULT=$?
-# if [ $RESULT -eq 0 ]; then
-#     echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-#     COMMAND="terraform import azurerm_key_vault_secret.web-access-appliance-address $ACS_KEY_VAULT_SECRET_ID"
-#     $COMMAND
-# fi
-##### CHECK IF NEEDED  -START
-# ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name nmc-volume-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-# RESULT=$?
-# if [ $RESULT -eq 0 ]; then
-#     echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-#     COMMAND="terraform import azurerm_key_vault_secret.nmc-volume-name $ACS_KEY_VAULT_SECRET_ID"
-#     $COMMAND
-# else
-#     echo "INFO ::: Key Vault Secret nmc-volume-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-# fi
+WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
+WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
+if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
+    COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+    $COMMAND
+else
+    echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
+fi
 
-# ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name unifs-toc-handle --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-# RESULT=$?
-# if [ $RESULT -eq 0 ]; then
-#     echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-#     COMMAND="terraform import azurerm_key_vault_secret.unifs-toc-handle $ACS_KEY_VAULT_SECRET_ID"
-#     $COMMAND
-# else
-#     echo "INFO ::: Key Vault Secret unifs-toc-handle does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-# fi
+NMC_VOLUME_NAME_KEY="nmc-volume-name"
+NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
+if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
+    COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
+    $COMMAND
+else
+    echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
+fi
+
+UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
+UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
+if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
+    COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
+    $COMMAND
+else
+    echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
+fi
+
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
