@@ -42,7 +42,7 @@ parse_file_NAC_txt() {
     while IFS="=" read -r key value; do
         case "$key" in
             "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-            "acs_key_vault") ACS_KEY_VAULT_NAME="$value" ;;
+            "acs_admin_app_config_name") ACS_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
             "azure_location") AZURE_LOCATION="$value" ;;
@@ -114,7 +114,6 @@ parse_config_file_for_user_secret_keys_values() {
     done <"$file"
 }
 
-
 install_NAC_CLI() {
     ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
@@ -125,7 +124,7 @@ install_NAC_CLI() {
     echo "@@@@@@@@@@@@@@@@@@@@@ FINISHED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
 }
 
-###### START - EXECUTION ####
+###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
@@ -148,9 +147,7 @@ if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
 fi
 ################################################################################################################
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-ACS_KEY_VAULT_NAME=$(echo "$ACS_KEY_VAULT_NAME" | tr -d '"')
-# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-"$(ls -I '*.*')
-# ACS_KEY_VAULT_NAME="acs-admin-vault-$(ls -I '*.*')"
+ACS_APP_CONFIG_NAME=$(echo "$ACS_APP_CONFIG_NAME" | tr -d '"')
 
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
@@ -227,61 +224,88 @@ rm -rf "$NAC_TFVARS_FILE_NAME"
 
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
-echo "acs_key_vault="\"$ACS_KEY_VAULT_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_admin_app_config_name="\"$ACS_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name index-endpoint --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.index-endpoint $ACS_KEY_VAULT_SECRET_ID"
+### Import Configurations details if exist
+INDEX_ENDPOINT_KEY="index-endpoint"
+INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
+if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
+    COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
     $COMMAND
 else
-    echo "INFO ::: Key Vault Secret index-endpoint does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+    echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
 fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name web-access-appliance-address --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.web-access-appliance-address $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-fi
-##### CHECK IF NEEDED  -START
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name nmc-volume-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.nmc-volume-name $ACS_KEY_VAULT_SECRET_ID"
+WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
+WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
+if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
+    COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
     $COMMAND
 else
-    echo "INFO ::: Key Vault Secret nmc-volume-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+    echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
 fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name unifs-toc-handle --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.unifs-toc-handle $ACS_KEY_VAULT_SECRET_ID"
+NMC_VOLUME_NAME_KEY="nmc-volume-name"
+NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
+if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
+    COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
     $COMMAND
 else
-    echo "INFO ::: Key Vault Secret unifs-toc-handle does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+    echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
 fi
+
+UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
+UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
+if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
+    echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
+    COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
+    $COMMAND
+else
+    echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
+fi
+
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
+
 if [ $? -eq 0 ]; then
-    function_url=`az keyvault secret show --name index-endpoint --vault-name $ACS_KEY_VAULT_NAME | jq -r .value`
-    echo "$function_url"
-    curl -X GET -H "Content-Type: application/json" "$function_url"
+    APP_CONFIG_KEY="index-endpoint"
+    ### Read index-endpoint from app config
+    FUNCTION_URL=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
+    echo "INFO ::: Fucntion URL : $FUNCTION_URL"
+    FUNCTION_APP_NAME=$(echo $FUNCTION_URL | cut -d/ -f3|cut -d. -f1)
+    echo "INFO ::: FUNCTION_APP_NAME: $FUNCTION_APP_NAME"
+    ### Fetch Connection App Config Connection String
+    RES=`az appconfig credential list --name $ACS_APP_CONFIG_NAME --resource-group $ACS_RESOURCE_GROUP --query "[?name=='Primary Read Only'] .connectionString" -o tsv`
+    APP_CONFIG_CONNECTION_STRING=$(echo $RES)
+    echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $APP_CONFIG_CONNECTION_STRING"
+    ### Set Environemnt Variale for App Config Connection String
+    SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=`az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings AZURE_APP_CONFIG=$APP_CONFIG_CONNECTION_STRING`
+    echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING"
+
+    ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
+    echo "INFO ::: Discovery Function URL ::: $FUNCTION_URL"
+    sleep 30
+    RES=`curl -X GET -H "Content-Type: application/json" "$FUNCTION_URL"`
+    if [ $? -eq 0 ]; then
+        echo "INFO ::: Discovery Function Trigger ::: SUCCESS"
+    else
+        echo "INFO ::: Discovery Function Trigger ::: FAILED"
+    fi
+    echo "INFO ::: Discovery Function Trigger Response ::: $RES"
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 else
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
     exit 1
 fi
+
 cd ..
 ##################################### END NAC Provisioning ###################################################################
 
