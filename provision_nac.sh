@@ -279,7 +279,6 @@ COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
 if [ $? -eq 0 ]; then
-    sleep 30
     APP_CONFIG_KEY="index-endpoint"
     ### Read index-endpoint from app config
     FUNCTION_URL=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
@@ -296,6 +295,7 @@ if [ $? -eq 0 ]; then
 
     ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
     echo "INFO ::: Discovery Function URL ::: $FUNCTION_URL"
+    sleep 30
     RES=`curl -X GET -H "Content-Type: application/json" "$FUNCTION_URL"`
     if [ $? -eq 0 ]; then
         echo "INFO ::: Discovery Function Trigger ::: SUCCESS"
