@@ -291,7 +291,7 @@ if [ $? -eq 0 ]; then
     APP_CONFIG_CONNECTION_STRING=$(echo $RES)
     echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $APP_CONFIG_CONNECTION_STRING"
     ### Set Environemnt Variale for App Config Connection String
-    SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=`az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=$APP_CONFIG_CONNECTION_STRING`
+    SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=`az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings AZURE_APP_CONFIG=$APP_CONFIG_CONNECTION_STRING`
     echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING"
 
     ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
