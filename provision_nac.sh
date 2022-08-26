@@ -114,7 +114,6 @@ parse_config_file_for_user_secret_keys_values() {
     done <"$file"
 }
 
-
 install_NAC_CLI() {
     ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
@@ -125,11 +124,11 @@ install_NAC_CLI() {
     echo "@@@@@@@@@@@@@@@@@@@@@ FINISHED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
 }
 
-###### START - EXECUTION ####
+###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
-    GIT_BRANCH_NAME="app_config"
+    GIT_BRANCH_NAME="main"
 fi
 NMC_API_ENDPOINT=""
 NMC_API_USERNAME=""
@@ -149,8 +148,6 @@ fi
 ################################################################################################################
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 ACS_APP_CONFIG_NAME=$(echo "$ACS_APP_CONFIG_NAME" | tr -d '"')
-# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-"$(ls -I '*.*')
-# ACS_APP_CONFIG_NAME="acs-admin-vault-$(ls -I '*.*')"
 
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"

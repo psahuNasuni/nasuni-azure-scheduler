@@ -36,11 +36,8 @@ get_destination_container_url(){
 	DESTINATION_CONTAINER_URL=$1
 	### DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
 	DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
-
 	### https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
-
 	DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
-
 	### Destination account-key: 
 	DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
@@ -221,8 +218,8 @@ get_acs_config_values(){
         echo "ERROR ::: Validation FAILED as, Empty String Value passed to key $APP_CONFIG_KEY = $APP_CONFIG_VALUE in secret $APP_CONFIG_KEY."
         exit 1
 	fi
-
 }
+
 validate_secret_values() {
 	KEY_VAULT_NAME=$1
 	SECRET_NAME=$2
@@ -285,17 +282,6 @@ validate_secret_values() {
 	fi
 }
 
-
-# check_if_app_config_exists() {
-# 	AZURE_APP_CONFIG_NAME="$1"
-# 	AZURE_APP_CONFIG_RESOURCE_GROUP="$2"
-# 	# Verify the Secret Exists in KeyVault
-# 	if [[ "$(az appconfig show --name ${AZURE_APP_CONFIG_NAME} --resource-group ${AZURE_APP_CONFIG_RESOURCE_GROUP} --query provisioningState)" == "" ]]; then
-# 		echo "N"
-# 	else
-# 		echo "Y"
-# 	fi
-# }
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
@@ -438,66 +424,65 @@ provision_Azure_Cognitive_Search(){
 
 
 import_secetes(){
-ACS_KEY_VAULT_NAME="$1"
+	ACS_KEY_VAULT_NAME="$1"
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-url --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.acs-url $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-fi
+	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-url --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+		COMMAND="terraform import azurerm_key_vault_secret.acs-url $ACS_KEY_VAULT_SECRET_ID"
+		$COMMAND
+	fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-api-key --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.acs-api-key $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-else
-    echo "INFO ::: Key Vault Secret acs-api-key does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-fi
+	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-api-key --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+		COMMAND="terraform import azurerm_key_vault_secret.acs-api-key $ACS_KEY_VAULT_SECRET_ID"
+		$COMMAND
+	else
+		echo "INFO ::: Key Vault Secret acs-api-key does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+	fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-service-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.acs_service_name_per $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-else
-    echo "INFO ::: Key Vault Secret nmc-volume-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-fi
+	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-service-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+		COMMAND="terraform import azurerm_key_vault_secret.acs_service_name_per $ACS_KEY_VAULT_SECRET_ID"
+		$COMMAND
+	else
+		echo "INFO ::: Key Vault Secret nmc-volume-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+	fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-resource-group --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.acs_resource_group_per $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-else
-    echo "INFO ::: Key Vault Secret acs-resource-group does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-fi
+	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-resource-group --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+		COMMAND="terraform import azurerm_key_vault_secret.acs_resource_group_per $ACS_KEY_VAULT_SECRET_ID"
+		$COMMAND
+	else
+		echo "INFO ::: Key Vault Secret acs-resource-group does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+	fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name datasource-connection-string --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.datasource-connection-string $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-else
-    echo "INFO ::: Key Vault Secret datasource-connection-string does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-fi
+	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name datasource-connection-string --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+		COMMAND="terraform import azurerm_key_vault_secret.datasource-connection-string $ACS_KEY_VAULT_SECRET_ID"
+		$COMMAND
+	else
+		echo "INFO ::: Key Vault Secret datasource-connection-string does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+	fi
 
-ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name destination-container-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-    COMMAND="terraform import azurerm_key_vault_secret.destination-container-name $ACS_KEY_VAULT_SECRET_ID"
-    $COMMAND
-else
-    echo "INFO ::: Key Vault Secret destination-container-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-fi
-
+	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name destination-container-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
+		COMMAND="terraform import azurerm_key_vault_secret.destination-container-name $ACS_KEY_VAULT_SECRET_ID"
+		$COMMAND
+	else
+		echo "INFO ::: Key Vault Secret destination-container-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
+	fi
 }
 
 check_if_acs_app_config_exists(){
@@ -509,19 +494,11 @@ check_if_acs_app_config_exists(){
 		echo "INFO ::: Azure App Configuration $APP_CONFIG_SERVICE_NAME is already exist. . "
 		IS_ACS_ADMIN_APP_CONFIG="Y"
 		ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$APP_CONFIG_SERVICE_NAME"
-		#### Check below 2 line needed or not IMPORT
-		# COMMAND="terraform import azurerm_app_configuration.appconf /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.KeyVault/vaults/$APP_CONFIG_SERVICE_NAME"
-		# $COMMAND
-		### Import all the secretes 
-		# import_secetes $ACS_ADMIN_VAUL
 	else
 		IS_ACS_ADMIN_APP_CONFIG="N"
 		echo "INFO ::: Azure App Configuration $APP_CONFIG_SERVICE_NAME does not exist. It will provision a new acs-admin-app-config Configuration with ACS Service."
 	fi
 }
-
-
-
 
 check_if_resourcegroup_exist(){
 	ACS_RESOURCE_GROUP="$1"
