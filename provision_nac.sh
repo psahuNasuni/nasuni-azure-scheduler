@@ -110,6 +110,8 @@ parse_config_file_for_user_secret_keys_values() {
         case "$key" in
             "Name") NAC_RESOURCE_GROUP_NAME="$value" ;;
             "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
+            "DestinationContainer") DESTINATION_CONTAINER_NAME="$value" ;;
+            "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
         esac
     done <"$file"
 }
@@ -123,6 +125,36 @@ install_NAC_CLI() {
     sudo apt update
     echo "@@@@@@@@@@@@@@@@@@@@@ FINISHED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
 }
+
+add_metadat_to_destination_blob(){
+    ### Add the metadata to the all files in container of destination blob store 
+    DESTINATION_CONTAINER_NAME="$1"
+    DESTINATION_CONTAINER_SAS_URL="$2"
+    NMC_VOLUME_NAME="$3"
+    UNIFS_TOC_HANDLE="$4"
+
+    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
+    DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
+    
+    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
+    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query [].name`
+
+    for FILE in $FILES
+    do
+        if [ "$FILE" == "]" ] || [ "$FILE" == "[" ];then
+            continue
+        else
+            FILE_NAME=$(echo "$FILE" | tr -d '"' | sed 's/\,//g')
+            COMMAND="az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name $FILE_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE"
+            $COMMAND
+        fi
+    done  
+    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
+}
+
+
+
+
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
@@ -272,10 +304,15 @@ fi
 
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
-COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
+# COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
+# $COMMAND
+COMMAND="terraform fmt"
 $COMMAND
 
 if [ $? -eq 0 ]; then
+
+    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE   
+    exit 88888
     APP_CONFIG_KEY="index-endpoint"
     ### Read index-endpoint from app config
     FUNCTION_URL=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
