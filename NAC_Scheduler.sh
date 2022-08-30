@@ -289,7 +289,7 @@ validate_AZURE_SUBSCRIPTION() {
 	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
 	echo "$AZURE_SUBSCRIPTION_STATUS"
 	if [ "$AZURE_SUBSCRIPTION_STATUS" == "" ]; then
-		echo "ERROR ::: AZURE Subscrip ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
+		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
 		exit 1
 	else
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`

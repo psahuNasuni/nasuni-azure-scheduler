@@ -152,10 +152,6 @@ add_metadat_to_destination_blob(){
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
-
-
-
-
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME="CTPROJECT-336"
@@ -309,8 +305,9 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform fmt"
 $COMMAND
 
+DESTINATION_STORAGE_ACCOUNT_NAME=""
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 if [ $? -eq 0 ]; then
-
     add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE   
     APP_CONFIG_KEY="index-endpoint"
     ### Read index-endpoint from app config
@@ -347,24 +344,26 @@ cd ..
 ##################################### Blob Store Cleanup #####################################################################
 destination_blob_cleanup(){
 	DESTINATION_CONTAINER_NAME="$1"
-	DESTINATION_CONTAINER_SAS_URL="$2"
+    DESTINATION_STORAGE_ACCOUNT_NAME="$2"
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$3"
 	ACS_INDEXER_NAME="indexer"
 		
     ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
-    echo "INFO ::: Fucntion URL : $ACS_SERVICE_NAME"
+    echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
 
     ACS_API_KEY=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
     echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
-	BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_CONTAINER_SA --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
-
+	BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
+    echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
 	while :
 	do
+        sleep 5
 		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type: application/json" -H "api-key: ${ACS_API_KEY}"`
 		INDEXED_FILE_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
-		
-		if [[ $BLOB_FILE_COUNT == $INDEXED_FILE_COUNT ]];then
+		echo "INFO ::: INDEXED_FILE_COUNT : $INDEXED_FILE_COUNT"
+
+		if [[ $BLOB_FILE_COUNT -eq $INDEXED_FILE_COUNT ]];then
 			echo "All files are indexed, Start cleanup"
 			### Post Indexing Cleanup from Destination Bucket
 			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
@@ -376,7 +375,7 @@ destination_blob_cleanup(){
 	done
 }
 
-destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SA $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING
+destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING
 ##################################### Blob Store Cleanup END #####################################################################
 
 END=$(date +%s)
