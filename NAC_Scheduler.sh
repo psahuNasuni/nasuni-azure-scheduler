@@ -715,7 +715,7 @@ get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg1"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 IS_ACS_ADMIN_APP_CONFIG="N"
 
 ACS_SERVICE_NAME=""

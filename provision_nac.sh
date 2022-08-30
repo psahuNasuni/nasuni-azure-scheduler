@@ -300,9 +300,7 @@ fi
 
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
-# COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
-# $COMMAND
-COMMAND="terraform fmt"
+COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
 DESTINATION_STORAGE_ACCOUNT_NAME=""
