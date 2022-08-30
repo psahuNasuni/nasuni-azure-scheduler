@@ -154,7 +154,7 @@ add_metadat_to_destination_blob(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="CTPROJECT-336"
+GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -373,7 +373,7 @@ destination_blob_cleanup(){
 	done
 }
 
-destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING
+# destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING
 ##################################### Blob Store Cleanup END #####################################################################
 
 END=$(date +%s)
