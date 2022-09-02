@@ -289,7 +289,7 @@ validate_AZURE_SUBSCRIPTION() {
 	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
 	echo "$AZURE_SUBSCRIPTION_STATUS"
 	if [ "$AZURE_SUBSCRIPTION_STATUS" == "" ]; then
-		echo "ERROR ::: AZURE Subscrip ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
+		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
 		exit 1
 	else
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
@@ -651,7 +651,7 @@ FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
 SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-GIT_BRANCH_NAME="app_config"
+GIT_BRANCH_NAME="main"
 
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
 if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
@@ -715,7 +715,7 @@ get_destination_container_url $DESTINATION_CONTAINER_URL
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg1"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 IS_ACS_ADMIN_APP_CONFIG="N"
 
 ACS_SERVICE_NAME=""
