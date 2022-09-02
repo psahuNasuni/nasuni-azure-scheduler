@@ -168,11 +168,13 @@ run_cognitive_search_indexer(){
 
 destination_blob_cleanup(){
 	DESTINATION_CONTAINER_NAME="$1"
-    DESTINATION_STORAGE_ACCOUNT_NAME="$2"
-	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$3"
-    ACS_SERVICE_NAME=$4
-    ACS_API_KEY=$5
+    DESTINATION_CONTAINER_SAS_URL=$2
+    ACS_SERVICE_NAME=$3
+    ACS_API_KEY=$4
 	ACS_INDEXER_NAME="indexer"
+
+    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
+    DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 
 	BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
@@ -400,7 +402,7 @@ echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
 run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
-destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING $ACS_SERVICE_NAME $ACS_API_KEY
+destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY
 
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
