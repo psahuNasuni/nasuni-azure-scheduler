@@ -152,6 +152,48 @@ add_metadat_to_destination_blob(){
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
+run_cognitive_search_indexer(){
+    ACS_SERVICE_NAME=$1
+    ACS_API_KEY=$2
+    ACS_INDEXER_NAME="indexer"
+
+    INDEXER_RUN_STATUS=`curl -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type: application/json" -H "api-key: ${ACS_API_KEY}"`
+    if [ $? -eq 0 ]; then
+        echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
+    else
+        echo "INFO ::: Cognitive Search Indexer Run ::: FAILED"
+        exit 1
+    fi
+}
+
+destination_blob_cleanup(){
+	DESTINATION_CONTAINER_NAME="$1"
+    DESTINATION_STORAGE_ACCOUNT_NAME="$2"
+	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$3"
+    ACS_SERVICE_NAME=$4
+    ACS_API_KEY=$5
+	ACS_INDEXER_NAME="indexer"
+
+	BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
+    echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
+	while :
+	do
+        sleep 30
+		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type: application/json" -H "api-key: ${ACS_API_KEY}"`
+		INDEXED_FILE_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
+		echo "INFO ::: INDEXED_FILE_COUNT : $INDEXED_FILE_COUNT"
+
+		if [[ $BLOB_FILE_COUNT -eq $INDEXED_FILE_COUNT ]];then
+			echo "All files are indexed, Start cleanup"
+			### Post Indexing Cleanup from Destination Buckets
+			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
+			COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
+			$COMMAND
+			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
+			exit 1
+		fi
+	done
+}
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
@@ -303,14 +345,13 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
-DESTINATION_STORAGE_ACCOUNT_NAME=""
-DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 if [ $? -eq 0 ]; then
-    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE   
     APP_CONFIG_KEY="index-endpoint"
     ### Read index-endpoint from app config
     FUNCTION_URL=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
-    echo "INFO ::: Fucntion URL : $FUNCTION_URL"
+    
+    echo "INFO ::: Discovery Function URL ::: $FUNCTION_URL"
+
     FUNCTION_APP_NAME=$(echo $FUNCTION_URL | cut -d/ -f3|cut -d. -f1)
     echo "INFO ::: FUNCTION_APP_NAME: $FUNCTION_APP_NAME"
     ### Fetch Connection App Config Connection String
@@ -321,8 +362,6 @@ if [ $? -eq 0 ]; then
     SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=`az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings AZURE_APP_CONFIG=$APP_CONFIG_CONNECTION_STRING`
     echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING"
 
-    ### Trigger Discovery Function : Discover data from destination bucket and index into the ACS 
-    echo "INFO ::: Discovery Function URL ::: $FUNCTION_URL"
     sleep 30
     RES=`curl -X GET -H "Content-Type: application/json" "$FUNCTION_URL"`
     if [ $? -eq 0 ]; then
@@ -337,43 +376,33 @@ else
     exit 1
 fi
 
-cd ..
+echo "START ::::: Provision NAC ::::: "
+COMMAND="sh nac-auth.sh"
+$COMMAND
+
+DESTINATION_STORAGE_ACCOUNT_NAME=""
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+if [ $? -eq 0 ]; then
+    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE    
+    echo "INFO ::: Provision NAC ::: SUCCESS"
+else
+    echo "INFO ::: Provision NAC ::: FAILED"
+    exit 1
+fi
+
 ##################################### END NAC Provisioning ###################################################################
-##################################### Blob Store Cleanup #####################################################################
-destination_blob_cleanup(){
-	DESTINATION_CONTAINER_NAME="$1"
-    DESTINATION_STORAGE_ACCOUNT_NAME="$2"
-	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING="$3"
-	ACS_INDEXER_NAME="indexer"
-		
-    ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
-    echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
+##################################### Blob Store Cleanup START #####################################################################
+ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
+echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
 
-    ACS_API_KEY=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
-    echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
+ACS_API_KEY=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
+echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
-	BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
-    echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
-	while :
-	do
-        sleep 60
-		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type: application/json" -H "api-key: ${ACS_API_KEY}"`
-		INDEXED_FILE_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
-		echo "INFO ::: INDEXED_FILE_COUNT : $INDEXED_FILE_COUNT"
+run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
-		if [[ $BLOB_FILE_COUNT -eq $INDEXED_FILE_COUNT ]];then
-			echo "All files are indexed, Start cleanup"
-			### Post Indexing Cleanup from Destination Buckets
-			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
-			COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
-			$COMMAND
-			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
-			exit 1
-		fi
-	done
-}
+destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING $ACS_SERVICE_NAME $ACS_API_KEY
 
-# destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_STORAGE_ACCOUNT_NAME $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING
+cd ..
 ##################################### Blob Store Cleanup END #####################################################################
 
 END=$(date +%s)
