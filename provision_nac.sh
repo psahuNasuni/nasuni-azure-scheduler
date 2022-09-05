@@ -157,7 +157,7 @@ run_cognitive_search_indexer(){
     ACS_API_KEY=$2
     ACS_INDEXER_NAME="indexer"
 
-    INDEXER_RUN_STATUS=`curl -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type: application/json" -H "api-key: ${ACS_API_KEY}"`
+    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
     if [ $? -eq 0 ]; then
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
     else
@@ -181,7 +181,7 @@ destination_blob_cleanup(){
 	while :
 	do
         sleep 30
-		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type: application/json" -H "api-key: ${ACS_API_KEY}"`
+		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
 		INDEXED_FILE_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
 		echo "INFO ::: INDEXED_FILE_COUNT : $INDEXED_FILE_COUNT"
 
@@ -347,48 +347,13 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
-if [ $? -eq 0 ]; then
-    APP_CONFIG_KEY="index-endpoint"
-    ### Read index-endpoint from app config
-    FUNCTION_URL=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
-    
-    echo "INFO ::: Discovery Function URL ::: $FUNCTION_URL"
-
-    FUNCTION_APP_NAME=$(echo $FUNCTION_URL | cut -d/ -f3|cut -d. -f1)
-    echo "INFO ::: FUNCTION_APP_NAME: $FUNCTION_APP_NAME"
-    ### Fetch Connection App Config Connection String
-    RES=`az appconfig credential list --name $ACS_APP_CONFIG_NAME --resource-group $ACS_RESOURCE_GROUP --query "[?name=='Primary Read Only'] .connectionString" -o tsv`
-    APP_CONFIG_CONNECTION_STRING=$(echo $RES)
-    echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $APP_CONFIG_CONNECTION_STRING"
-    ### Set Environemnt Variale for App Config Connection String
-    SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING=`az functionapp config appsettings set --name $FUNCTION_APP_NAME --resource-group $ACS_RESOURCE_GROUP --settings AZURE_APP_CONFIG=$APP_CONFIG_CONNECTION_STRING`
-    echo "INFO ::: APP_CONFIG_CONNECTION_STRING: $SET_ACS_ADMIN_APP_CONFIG_CONNECTION_STRING"
-
-    sleep 30
-    RES=`curl -X GET -H "Content-Type: application/json" "$FUNCTION_URL"`
-    if [ $? -eq 0 ]; then
-        echo "INFO ::: Discovery Function Trigger ::: SUCCESS"
-    else
-        echo "INFO ::: Discovery Function Trigger ::: FAILED"
-    fi
-    echo "INFO ::: Discovery Function Trigger Response ::: $RES"
+DESTINATION_STORAGE_ACCOUNT_NAME=""
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+if [ $? -eq 0 ]; then 
+    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 else
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
-    exit 1
-fi
-
-echo "START ::::: Provision NAC ::::: "
-COMMAND="sh nac-auth.sh"
-$COMMAND
-
-DESTINATION_STORAGE_ACCOUNT_NAME=""
-DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
-if [ $? -eq 0 ]; then
-    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE    
-    echo "INFO ::: Provision NAC ::: SUCCESS"
-else
-    echo "INFO ::: Provision NAC ::: FAILED"
     exit 1
 fi
 
