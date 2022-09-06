@@ -157,7 +157,7 @@ run_cognitive_search_indexer(){
     ACS_API_KEY=$2
     ACS_INDEXER_NAME="indexer"
 
-    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
+    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}" 2> /dev/null`
     if [ $? -eq 0 ]; then
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
     else
@@ -181,7 +181,7 @@ destination_blob_cleanup(){
 	while :
 	do
         sleep 30
-		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
+		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}" 2> /dev/null`
 		INDEXED_FILE_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
 		echo "INFO ::: INDEXED_FILE_COUNT : $INDEXED_FILE_COUNT"
 
@@ -189,7 +189,7 @@ destination_blob_cleanup(){
 			echo "All files are indexed, Start cleanup"
 			### Post Indexing Cleanup from Destination Buckets
 			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
-			COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
+			COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose 2> /dev/null"
 			$COMMAND
 			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
 			exit 1
