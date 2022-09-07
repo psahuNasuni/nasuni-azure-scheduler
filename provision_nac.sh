@@ -176,9 +176,9 @@ destination_blob_cleanup(){
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
     DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 
-	BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
+    BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
-	while :
+    while :
     do
         sleep 30
         INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
