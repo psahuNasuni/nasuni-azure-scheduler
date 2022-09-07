@@ -167,11 +167,11 @@ run_cognitive_search_indexer(){
 }
 
 destination_blob_cleanup(){
-	DESTINATION_CONTAINER_NAME="$1"
+    DESTINATION_CONTAINER_NAME="$1"
     DESTINATION_CONTAINER_SAS_URL=$2
     ACS_SERVICE_NAME=$3
     ACS_API_KEY=$4
-	ACS_INDEXER_NAME="indexer"
+    ACS_INDEXER_NAME="indexer"
 
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
     DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
@@ -181,19 +181,26 @@ destination_blob_cleanup(){
 	while :
 	do
         sleep 30
-		INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
-		INDEXED_FILE_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
-		echo "INFO ::: INDEXED_FILE_COUNT : $INDEXED_FILE_COUNT"
+        INDEXED_FILE_COUNT=`curl -X GET "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/status?api-version=2020-06-30&failIfCannotDecrypt=false" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
 
-		if [[ $BLOB_FILE_COUNT -eq $INDEXED_FILE_COUNT ]];then
-			echo "All files are indexed, Start cleanup"
-			### Post Indexing Cleanup from Destination Buckets
-			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
-			COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
-			$COMMAND
-			echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
-			exit 1
-		fi
+        FILE_PROCESSED_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsProcessed)
+        echo "INFO ::: FILE_PROCESSED_COUNT : $FILE_PROCESSED_COUNT"
+
+        FILE_FAILED_COUNT=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.itemsFailed)
+        echo "INFO ::: FILE_FAILED_COUNT : $FILE_FAILED_COUNT"
+
+        TOTAL_INDEX_FILE_COUNT=$(("$FILE_PROCESSED_COUNT"+"$FILE_FAILED_COUNT"))
+        echo "INFO ::: TOTAL_INDEX_FILE_COUNT : $TOTAL_INDEX_FILE_COUNT"
+
+        if [[ $BLOB_FILE_COUNT -eq $TOTAL_INDEX_FILE_COUNT ]];then
+            echo "All files are indexed, Start cleanup"
+            ### Post Indexing Cleanup from Destination Buckets
+            echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
+            COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
+            $COMMAND
+            echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
+            exit 1
+        fi
 	done
 }
 ###### START - EXECUTION ######
