@@ -42,13 +42,38 @@ parse_file_NAC_txt() {
     while IFS="=" read -r key value; do
         case "$key" in
             "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-            "acs_admin_app_config_name") ACS_APP_CONFIG_NAME="$value" ;;
+            "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
             "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
+            "user_secret") KEY_VAULT_NAME="$value" ;;
+            "user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+            "analytic_service") ANALYTICS_SERVICE="$value" ;;
+            "frequency") FREQUENCY="$value" ;;
+            "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             esac
         done <"$file"
+}
+
+generate_tracker_json(){
+	echo "INFO ::: Updating TRACKER JSON ... "
+	ACS_URL=$1
+	ACS_REQUEST_URL=$2
+	DEFAULT_URL=$3
+	FREQUENCY=$4
+	USER_SECRET=$5
+	CREATED_BY=$6
+	CREATED_ON=$7
+	TRACKER_NMC_VOLUME_NAME=$8
+	ANALYTICS_SERVICE=$9
+	MOST_RECENT_RUN=${10}
+	CURRENT_STATE=${11}
+	LATEST_TOC_HANDLE_PROCESSED=${12}
+	NAC_SCHEDULER_NAME=$(echo "${13}" | tr -d '"')
+	sudo chmod -R 777 /var/www/Tracker_UI/docs/
+	python3 /var/www/Tracker_UI/docs/tracker_json.py $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+	echo "INFO ::: TRACKER JSON  Updated"
 }
 
 validate_github() {
@@ -67,14 +92,14 @@ validate_github() {
             exit 1
     else
             echo "INFO ::: git repo accessible. Continue . . . Provisioning . . . "
-    fi
+    fi 
 }
 
-append_nmc_details_to_config_dat()
-{
+append_nmc_details_to_config_dat(){
     UNIFS_TOC_HANDLE=$1
     SOURCE_CONTAINER=$2
     SOURCE_CONTAINER_SAS_URL=$3
+    PREV_UNIFS_TOC_HANDLE=$4
 	CONFIG_DAT_FILE_NAME="config.dat"
     ### Be careful while modifieng the values
     sed -i "s|\<UniFSTOCHandle\>:.*||g" config.dat
@@ -82,6 +107,8 @@ append_nmc_details_to_config_dat()
     sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
     sed -i "s|SourceContainerSASURL.*||g" config.dat
     echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> config.dat
+    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" config.dat
+    echo "PrevUniFSTOCHandle: "$PREV_UNIFS_TOC_HANDLE >> config.dat
     sed -i '/^$/d' config.dat
 }
 
@@ -203,6 +230,7 @@ destination_blob_cleanup(){
         fi
     done
 }
+
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
@@ -214,10 +242,49 @@ NMC_API_USERNAME=""
 NMC_API_PASSWORD=""
 NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
-nmc_api_call "nmc_details.txt"
-append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL
 parse_file_NAC_txt "NAC.txt"
-parse_config_file_for_user_secret_keys_values config.dat 
+
+##################################### START TRACKER JSON Creation ###################################################################
+
+echo "NAC_Activity : Export In Progress"
+ACS_URL=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key nmc-api-acs-url --label nmc-api-acs-url --query value --output tsv 2> /dev/null`
+ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&search=*"
+DEFAULT_URL="/search/index.html"
+FREQUENCY=$(echo "$FREQUENCY" | tr -d '"')
+USER_SECRET=$KEY_VAULT_NAME
+CREATED_BY=$(echo "$USER_PRINCIPAL_NAME" | tr -d '"')
+CREATED_ON=$(date "+%Y%m%d-%H%M%S")
+TRACKER_NMC_VOLUME_NAME=$NMC_VOLUME_NAME
+ANALYTICS_SERVICE=$(echo "$ANALYTICS_SERVICE" | tr -d '"')
+MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
+CURRENT_STATE="Export-In-progress"
+LATEST_TOC_HANDLE_PROCESSED="-"
+NAC_SCHEDULER_NAME=$(echo "$NAC_SCHEDULER_NAME" | tr -d '"')
+echo "INFO ::: NAC scheduler name: " ${NAC_SCHEDULER_NAME}
+JSON_FILE_PATH="/var/www/Tracker_UI/docs/${NAC_SCHEDULER_NAME}_tracker.json"
+echo "INFO ::: JSON_FILE_PATH:" $JSON_FILE_PATH
+if [ -f "$JSON_FILE_PATH" ] ; then
+	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
+	TRACKER_JSON=$(cat $JSON_FILE_PATH)
+	echo "Tracker json" $TRACKER_JSON
+	LATEST_TOC_HANDLE_PROCESSED=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
+	#if [ -z "$LATEST_TOC_HANDLE_PROCESSED" -a "$LATEST_TOC_HANDLE_PROCESSED" == " " ]; then	
+	if [ -z "$LATEST_TOC_HANDLE_PROCESSED" ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == " " ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == "null" ]; then	
+ 		LATEST_TOC_HANDLE_PROCESSED="-"
+	fi
+	echo "INFO LATEST_TOC_HANDLE PROCESSED"  $LATEST_TOC_HANDLE_PROCESSED
+fi
+
+generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+pwd
+echo "INFO ::: current user :-"`whoami`
+################################################
+
+nmc_api_call "nmc_details.txt"
+echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
+append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
+parse_config_file_for_user_secret_keys_values config.dat
+ 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
@@ -226,7 +293,7 @@ if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
 fi
 ################################################################################################################
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-ACS_APP_CONFIG_NAME=$(echo "$ACS_APP_CONFIG_NAME" | tr -d '"')
+ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
 
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
@@ -303,56 +370,108 @@ rm -rf "$NAC_TFVARS_FILE_NAME"
 
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
-echo "acs_admin_app_config_name="\"$ACS_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
-### Import Configurations details if exist
-INDEX_ENDPOINT_KEY="index-endpoint"
-INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
-if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
-    echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
-    COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
-    $COMMAND
+import_configuration(){
+    ### Import Configurations details if exist
+    INDEX_ENDPOINT_KEY="index-endpoint"
+    INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
+    if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
+        COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
+    fi
+
+    WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
+    WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
+    if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
+        COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
+    fi
+
+    NMC_VOLUME_NAME_KEY="nmc-volume-name"
+    NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
+    if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
+        COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
+    fi
+
+    UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
+    UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
+    if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
+        COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
+    fi
+}
+import_configuration
+
+echo $JSON_FILE_PATH
+LATEST_TOC_HANDLE=""
+if [ -f "$JSON_FILE_PATH" ] ; then
+	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
+	echo $TRACEPATH
+	TRACKER_JSON=$(cat $JSON_FILE_PATH)
+	echo "Tracker json" $TRACKER_JSON
+	LATEST_TOC_HANDLE=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
+	if [ "$LATEST_TOC_HANDLE" =  "-" ] ; then
+		LATEST_TOC_HANDLE=""
+	fi
+	echo "LATEST_TOC_HANDLE: $LATEST_TOC_HANDLE"
 else
-    echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
+	LATEST_TOC_HANDLE=""
+	echo "ERROR:::Tracker JSON folder Not present"
 fi
 
-WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
-WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
-if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
-    echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
-    COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
-    $COMMAND
-else
-    echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
-fi
+echo "INFO ::: LATEST_TOC_HANDLE" $LATEST_TOC_HANDLE
+LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE
 
-NMC_VOLUME_NAME_KEY="nmc-volume-name"
-NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
-if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
-    echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
-    COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
-    $COMMAND
-else
-    echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
-fi
+FOLDER_PATH=`pwd`
 
-UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
-UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
-if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
-    echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
-    COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
-    $COMMAND
-else
-    echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
-fi
-
+##appending latest_toc_handle_processed to TFVARS_FILE
+echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$TFVARS_FILE
 
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
+
+####################### 2nd Run for Tracker_UI #########################
+if [ $? -eq 0 ]; then
+	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
+	echo "NAC_Activity : Export Completed. Indexing in Progress"
+	CURRENT_STATE="Export-completed-And-Indexing-In-progress"
+	# LATEST_TOC_HANDLE_PROCESSED=$(terraform output -raw latest_toc_handle_processed)
+    LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
+	echo "INFO ::: LATEST_TOC_HANDLE_PROCESSED for NAC Discovery is : $LATEST_TOC_HANDLE_PROCESSED"
+	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+else
+	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
+	echo "NAC_Activity : Export Failed/Indexing Failed"
+ 	CURRENT_STATE="Export-Failed-And-Indexing-Failed"
+	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+	##exit 1
+fi
+
+echo "NAC_Activity : Indexing Completed"
+MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
+CURRENT_STATE="Indexing-Completed"
+
+generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+
+#################### 2nd Run for Tracker_UI Complete##########################
 
 DESTINATION_STORAGE_ACCOUNT_NAME=""
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
@@ -366,10 +485,10 @@ fi
 
 ##################################### END NAC Provisioning ###################################################################
 ##################################### Blob Store Cleanup START #####################################################################
-ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
+ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
 echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
 
-ACS_API_KEY=`az appconfig kv show --name $ACS_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
+ACS_API_KEY=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
 echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
 run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
