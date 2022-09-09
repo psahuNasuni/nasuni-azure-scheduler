@@ -76,10 +76,6 @@ generate_tracker_json(){
 	echo "INFO ::: TRACKER JSON  Updated"
 }
 
-sudo chmod -R 777 /var/www/Tracker_UI/docs/
-python3 /var/www/Tracker_UI/docs/tracker_json.py $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-echo "INFO ::: TRACKER JSON  Updated"
-
 validate_github() {
     GITHUB_ORGANIZATION=$1
     REPO_FOLDER=$2
@@ -99,8 +95,7 @@ validate_github() {
     fi 
 }
 
-append_nmc_details_to_config_dat()
-{
+append_nmc_details_to_config_dat(){
     UNIFS_TOC_HANDLE=$1
     SOURCE_CONTAINER=$2
     SOURCE_CONTAINER_SAS_URL=$3
