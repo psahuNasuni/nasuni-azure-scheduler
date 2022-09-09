@@ -180,7 +180,7 @@ get_acs_config_values(){
 	ACS_ADMIN_APP_CONFIG_NAME=$1
 	APP_CONFIG_KEY=$2
 	echo "INFO ::: Validating Secret ::: $APP_CONFIG_KEY"
-	APP_CONFIG_VALUE=`az appconfig kv show --name $APP_CONFIG_SERVICE_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
+	APP_CONFIG_VALUE=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $APP_CONFIG_KEY --label $APP_CONFIG_KEY --query value --output tsv 2> /dev/null`
 
 	if [ -z "$APP_CONFIG_VALUE" ] ; then
         echo "ERROR ::: Validation FAILED as, Empty String Value passed to key vault $APP_CONFIG_KEY = $APP_CONFIG_VALUE in Key Vault $ACS_ADMIN_APP_CONFIG_NAME."
@@ -486,17 +486,17 @@ import_secetes(){
 }
 
 check_if_acs_app_config_exists(){
-	APP_CONFIG_SERVICE_NAME="$1"
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
 	APP_CONFIG_RESOURCE_GROUP="$2"
-	echo "INFO ::: Checking for Azure App Configuration $APP_CONFIG_SERVICE_NAME . . ."
-	APP_CONFIG_STATUS=`az appconfig show --name $APP_CONFIG_SERVICE_NAME --resource-group $APP_CONFIG_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`
+	echo "INFO ::: Checking for Azure App Configuration $ACS_ADMIN_APP_CONFIG_NAME . . ."
+	APP_CONFIG_STATUS=`az appconfig show --name $ACS_ADMIN_APP_CONFIG_NAME --resource-group $APP_CONFIG_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`
 	if [ "$APP_CONFIG_STATUS" == "Succeeded" ]; then
-		echo "INFO ::: Azure App Configuration $APP_CONFIG_SERVICE_NAME is already exist. . "
+		echo "INFO ::: Azure App Configuration $ACS_ADMIN_APP_CONFIG_NAME is already exist. . "
 		IS_ACS_ADMIN_APP_CONFIG="Y"
-		ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$APP_CONFIG_SERVICE_NAME"
+		ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
 	else
 		IS_ACS_ADMIN_APP_CONFIG="N"
-		echo "INFO ::: Azure App Configuration $APP_CONFIG_SERVICE_NAME does not exist. It will provision a new acs-admin-app-config Configuration with ACS Service."
+		echo "INFO ::: Azure App Configuration $ACS_ADMIN_APP_CONFIG_NAME does not exist. It will provision a new acs-admin-app-config Configuration with ACS Service."
 	fi
 }
 
@@ -590,6 +590,11 @@ Schedule_CRON_JOB() {
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
+	echo "user_secret="$KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
+	echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$NAC_TXT_FILE_NAME
+	echo "analytic_service="\"$ANALYTICS_SERVICE\" >>$NAC_TXT_FILE_NAME
+	echo "frequency="\"$FREQUENCY\" >>$NAC_TXT_FILE_NAME
+	echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$NAC_TXT_FILE_NAME
 	chmod 777 $NAC_TXT_FILE_NAME
 
 	### Create File to transfer data related to NMC 
@@ -602,10 +607,15 @@ Schedule_CRON_JOB() {
 	echo "" >>$NMC_DETAILS_TXT
 	chmod 777 $NMC_DETAILS_TXT
 
+	JSON_FILE_PATH="/var/www/Tracker_UI/docs/"
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
+	echo "Creating $JSON_FILE_PATH Directory"
+	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p $JSON_FILE_PATH"
+	echo "$JSON_FILE_PATH Directory Created"
+
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py tracker_json.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 	RES="$?"
 	if [ $RES -ne 0 ]; then
 		echo "ERROR ::: Failed to Copy $TFVARS_FILE_NAME to NAC_Scheduer Instance."
@@ -614,9 +624,12 @@ Schedule_CRON_JOB() {
 		echo "INFO ::: $TFVARS_FILE_NAME Uploaded Successfully to NAC_Scheduer Instance."
 	fi
 	rm -rf $TFVARS_FILE_NAME
+	echo "Copying file tracker_json.py $JSON_FILE_PATH Creating Direcotory "
 	#dos2unix command execute
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "dos2unix ~/$CRON_DIR_NAME/provision_nac.sh"
+	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo cp ~/$CRON_DIR_NAME/tracker_json.py $JSON_FILE_PATH"
 	### Check If CRON JOB is running for a specific VOLUME_NAME
+	echo "Copy completed file tracker_json.py $JSON_FILE_PATH Creating Direcotory  *****************"
 	CRON_VOL=$(ssh -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@"$NAC_SCHEDULER_IP_ADDR" "crontab -l | grep \"~/$CRON_DIR_NAME/$TFVARS_FILE_NAME\"")
 	if [ "$CRON_VOL" != "" ]; then
 		### DO Nothing. CRON JOB takes care of NAC Provisioning
