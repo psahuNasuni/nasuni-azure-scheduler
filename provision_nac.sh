@@ -258,7 +258,7 @@ TRACKER_NMC_VOLUME_NAME=$NMC_VOLUME_NAME
 ANALYTICS_SERVICE=$(echo "$ANALYTICS_SERVICE" | tr -d '"')
 MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
 CURRENT_STATE="Export-In-progress"
-LATEST_TOC_HANDLE_PROCESSED="-"
+LATEST_TOC_HANDLE_PROCESSED="null"
 NAC_SCHEDULER_NAME=$(echo "$NAC_SCHEDULER_NAME" | tr -d '"')
 echo "INFO ::: NAC scheduler name: " ${NAC_SCHEDULER_NAME}
 JSON_FILE_PATH="/var/www/Tracker_UI/docs/${NAC_SCHEDULER_NAME}_tracker.json"
@@ -270,7 +270,7 @@ if [ -f "$JSON_FILE_PATH" ] ; then
 	LATEST_TOC_HANDLE_PROCESSED=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
 	#if [ -z "$LATEST_TOC_HANDLE_PROCESSED" -a "$LATEST_TOC_HANDLE_PROCESSED" == " " ]; then	
 	if [ -z "$LATEST_TOC_HANDLE_PROCESSED" ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == " " ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == "null" ]; then	
- 		LATEST_TOC_HANDLE_PROCESSED="-"
+ 		LATEST_TOC_HANDLE_PROCESSED="null"
 	fi
 	echo "INFO LATEST_TOC_HANDLE PROCESSED"  $LATEST_TOC_HANDLE_PROCESSED
 fi
@@ -427,8 +427,8 @@ if [ -f "$JSON_FILE_PATH" ] ; then
 	TRACKER_JSON=$(cat $JSON_FILE_PATH)
 	echo "Tracker json" $TRACKER_JSON
 	LATEST_TOC_HANDLE=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
-	if [ "$LATEST_TOC_HANDLE" =  "-" ] ; then
-		LATEST_TOC_HANDLE=""
+	if [ "$LATEST_TOC_HANDLE" =  "null" ] ; then
+		LATEST_TOC_HANDLE="null"
 	fi
 	echo "LATEST_TOC_HANDLE: $LATEST_TOC_HANDLE"
 else
