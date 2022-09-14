@@ -233,7 +233,7 @@ destination_blob_cleanup(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="CTPROJECT-361"
+GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
