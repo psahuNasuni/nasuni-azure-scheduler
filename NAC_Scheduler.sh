@@ -111,6 +111,92 @@ validate_github() {
 	fi
 }
 
+feed_config_Data_default_values() {
+CONFIG_DAT_FILE_NAME="$1"
+KEY="$2"
+STARTINGPOINT="/"
+INCLUDEFILTERPATTERN='*'
+INCLUDEFILTERTYPE="glob"
+EXCLUDEFILTERPATTERN="null"
+EXCLUDEFILTERTYPE="glob"
+MINFILESIZEFILTER="0b"
+MAXFILESIZEFILTER="500gb"
+EXCLUDETEMPFILES='True'
+case "$KEY" in
+    "StartingPoint") VAL=$STARTINGPOINT 
+    ;;
+    "IncludeFilterPattern") VAL=\'$INCLUDEFILTERPATTERN\'
+    ;;
+    "IncludeFilterType") VAL=$INCLUDEFILTERTYPE 
+    ;;
+    "ExcludeFilterPattern") VAL=$EXCLUDEFILTERPATTERN 
+    ;;
+    "ExcludeFilterType") VAL=$EXCLUDEFILTERTYPE 
+    ;;
+    "MinFileSizeFilter") VAL=$MINFILESIZEFILTER 
+    ;;
+    "MaxFileSizeFilter") VAL=$MAXFILESIZEFILTER 
+    ;;
+    "ExcludeTempFiles") VAL=\'$EXCLUDETEMPFILES\' 
+    ;;
+esac
+echo "$KEY: "$VAL >>$CONFIG_DAT_FILE_NAME
+}
+
+feed_config_Data_user_overridden_values() {
+    CONFIG_DAT_FILE_NAME="$1"
+    KEY="$2"
+    VALUE="$3"
+    echo "$KEY: "$VALUE >>$CONFIG_DAT_FILE_NAME
+}
+feed_config_Data_user() {
+    CONFIG_DAT_FILE_NAME="config.dat"
+    st_array=(StartingPoint IncludeFilterPattern IncludeFilterType ExcludeFilterPattern ExcludeFilterType MinFileSizeFilter MaxFileSizeFilter MaxInvocations ExcludeTempFiles)
+    for key in "${st_array[@]}"
+    do
+        feed_config_Data_default_values $CONFIG_DAT_FILE_NAME $key 
+    done
+    
+}
+append_nac_static_values_to_config_dat() {
+NAC_INPUT_KVP_FILE="$1"
+CONFIG_DAT_FILE_NAME="$2"
+st_array=(StartingPoint IncludeFilterPattern IncludeFilterType ExcludeFilterPattern ExcludeFilterType MinFileSizeFilter MaxFileSizeFilter MaxInvocations ExcludeTempFiles)
+if [ -f $NAC_INPUT_KVP_FILE ]; then
+    echo "INFO ::: KVP file $NAC_INPUT_KVP_FILE is Provided as 5th argument. Appending the Overriding parameters values !!!!" 
+    dos2unix $NAC_INPUT_KVP_FILE
+    input_items_array=()
+    needful_items_array=()
+    i=0
+    while IFS="=" read -r key value; do
+        inarray=$(echo ${st_array[@]} | grep -ow "$key" | wc -w)
+        if [ ${#key} -ne 0 ]; then
+            if [ $inarray -ne 0 ];then # zero value indicates a match was found
+                input_items_array[$i]=${key}
+                VAL=""
+                VAL=`echo $value | tr -d '"'`
+                echo "INFO ::: KEY Provided in 5th params KVP file = $key , VALUE = $VAL"
+                feed_config_Data_user_overridden_values $CONFIG_DAT_FILE_NAME $key $VAL
+                let i+=1
+            fi
+        fi
+    done <"$NAC_INPUT_KVP_FILE" 
+    for key in "${st_array[@]}"
+    do
+        ok=$(echo ${input_items_array[@]} | grep -ow "$key" | wc -w)
+        if [ $ok -eq 0 ];then 
+            echo "INFO ::: KEY Not Provided in 5th params KVP file $key" 
+           feed_config_Data_default_values $CONFIG_DAT_FILE_NAME $key 
+        fi
+    done
+else
+    ### KVP file as 5th argument Not Provided. Appending all static parameters with default values !!!!" 
+    echo "INFO ::: KVP file as 5th argument Not Provided. Appending all static parameters with default values !!!!" 
+    feed_config_Data_user
+fi
+}
+
+
 append_nac_keys_values_to_tfvars() {
 	inputFile="$1"
 	outFile="$2"
@@ -553,25 +639,34 @@ Schedule_CRON_JOB() {
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
 	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
     echo "PrevUniFSTOCHandle: "null >>$CONFIG_DAT_FILE_NAME
-	### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "StartingPoint: "/ >>$CONFIG_DAT_FILE_NAME
-	### IncludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE_NAME
-	### IncludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
-	### ExcludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE_NAME
-	### ExcludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
-	### MinFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE_NAME
-	### MaxFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE_NAME
+	if [ $ARG_COUNT -eq 5 ]; then
+		echo "INFO ::: $ARG_COUNT th Argument is supplied as ::: $NAC_INPUT_KVP"
+		### Appending Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+		append_nac_static_values_to_config_dat $NAC_INPUT_KVP $CONFIG_DAT_FILE_NAME
+	else
+		append_nac_static_values_to_config_dat "4_Arguments_Passed" $CONFIG_DAT_FILE_NAME
+	fi
+
+
+	# ### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "StartingPoint: "/ >>$CONFIG_DAT_FILE_NAME
+	# ### IncludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE_NAME
+	# ### IncludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
+	# ### ExcludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE_NAME
+	# ### ExcludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
+	# ### MinFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE_NAME
+	# ### MaxFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE_NAME
     echo "DestinationContainer: "$DESTINATION_CONTAINER_NAME >>$CONFIG_DAT_FILE_NAME
     echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
-    echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
-	### ExcludeTempFiles >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
+    # echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
+	# ### ExcludeTempFiles >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
+    # echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
 	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
