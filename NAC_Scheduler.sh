@@ -646,27 +646,8 @@ Schedule_CRON_JOB() {
 	else
 		append_nac_static_values_to_config_dat "4_Arguments_Passed" $CONFIG_DAT_FILE_NAME
 	fi
-
-
-	# ### StartingPoint >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "StartingPoint: "/ >>$CONFIG_DAT_FILE_NAME
-	# ### IncludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "IncludeFilterPattern: "\'*\' >>$CONFIG_DAT_FILE_NAME
-	# ### IncludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "IncludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
-	# ### ExcludeFilterPattern >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "ExcludeFilterPattern: "null >>$CONFIG_DAT_FILE_NAME
-	# ### ExcludeFilterType >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "ExcludeFilterType: "glob >>$CONFIG_DAT_FILE_NAME
-	# ### MinFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "MinFileSizeFilter: "0b >>$CONFIG_DAT_FILE_NAME
-	# ### MaxFileSizeFilter >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "MaxFileSizeFilter: "5gb >>$CONFIG_DAT_FILE_NAME
     echo "DestinationContainer: "$DESTINATION_CONTAINER_NAME >>$CONFIG_DAT_FILE_NAME
     echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
-    # echo "DestinationPrefix: "/ >>$CONFIG_DAT_FILE_NAME
-	# ### ExcludeTempFiles >>>>> Static Variables, Can be overriden from 5th Argument to NAC_Scheduler.sh
-    # echo "ExcludeTempFiles: "\'True\' >>$CONFIG_DAT_FILE_NAME
 	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
