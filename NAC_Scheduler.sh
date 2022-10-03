@@ -812,16 +812,16 @@ IS_ACS_ADMIN_APP_CONFIG="N"
 APP_CONFIG_PURGE_STATUS=`az appconfig show-deleted --name $ACS_ADMIN_APP_CONFIG_NAME --query purgeProtectionEnabled 2> /dev/null`
 
 if [ "$APP_CONFIG_PURGE_STATUS" == "false" ]; then
-    echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
 	echo "INFO ::: Permanently Deleting the ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME ..."
-    COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
-    $COMMAND
+	COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
+	$COMMAND
 elif [ "$APP_CONFIG_PURGE_STATUS" == "true" ]; then
 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME can NOT be Permanently Deleted ..."
 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME Purge Protection Enabled was set to TRUE ..."
 	exit 1
 else
-    echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
 fi
 
 ###################################################################################################
