@@ -807,6 +807,25 @@ ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
 ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 IS_ACS_ADMIN_APP_CONFIG="N"
 
+######################  Check : If appconfig is permanently deleted ##############################
+
+APP_CONFIG_PURGE_STATUS=`az appconfig show-deleted --name $ACS_ADMIN_APP_CONFIG_NAME --query purgeProtectionEnabled 2> /dev/null`
+
+if [ "$APP_CONFIG_PURGE_STATUS" == "false" ]; then
+    echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
+	echo "INFO ::: Permanently Deleting the ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME ..."
+    COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
+    $COMMAND
+elif [ "$APP_CONFIG_PURGE_STATUS" == "true" ]; then
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME can NOT be Permanently Deleted ..."
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME Purge Protection Enabled was set to TRUE ..."
+	exit 1
+else
+    echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
+fi
+
+###################################################################################################
+
 ACS_SERVICE_NAME=""
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 ######################  Check : if NAC Scheduler Instance is Available ##############################
