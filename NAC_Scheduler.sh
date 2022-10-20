@@ -792,6 +792,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
+		validate_secret_values "$AZURE_KEYVAULT_NAME" use-private-ip
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
 else
@@ -799,35 +800,35 @@ else
 fi
 validate_AZURE_SUBSCRIPTION
 
-DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
-get_destination_container_url $DESTINATION_CONTAINER_URL
-get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
+# DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+# get_destination_container_url $DESTINATION_CONTAINER_URL
+# get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
-ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
-IS_ACS_ADMIN_APP_CONFIG="N"
+# ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
+# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+# IS_ACS_ADMIN_APP_CONFIG="N"
 
-######################  Check : If appconfig is permanently deleted ##############################
+# ######################  Check : If appconfig is permanently deleted ##############################
 
-APP_CONFIG_PURGE_STATUS=`az appconfig show-deleted --name $ACS_ADMIN_APP_CONFIG_NAME --query purgeProtectionEnabled 2> /dev/null`
+# APP_CONFIG_PURGE_STATUS=`az appconfig show-deleted --name $ACS_ADMIN_APP_CONFIG_NAME --query purgeProtectionEnabled 2> /dev/null`
 
-if [ "$APP_CONFIG_PURGE_STATUS" == "false" ]; then
-	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
-	echo "INFO ::: Permanently Deleting the ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME ..."
-	COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
-	$COMMAND
-elif [ "$APP_CONFIG_PURGE_STATUS" == "true" ]; then
-	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME can NOT be Permanently Deleted ..."
-	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME Purge Protection Enabled was set to TRUE ..."
-	exit 1
-else
-	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
-fi
+# if [ "$APP_CONFIG_PURGE_STATUS" == "false" ]; then
+# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
+# 	echo "INFO ::: Permanently Deleting the ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME ..."
+# 	COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
+# 	$COMMAND
+# elif [ "$APP_CONFIG_PURGE_STATUS" == "true" ]; then
+# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME can NOT be Permanently Deleted ..."
+# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME Purge Protection Enabled was set to TRUE ..."
+# 	exit 1
+# else
+# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
+# fi
 
-###################################################################################################
+# ###################################################################################################
 
-ACS_SERVICE_NAME=""
-provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
+# ACS_SERVICE_NAME=""
+# provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
@@ -862,7 +863,7 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	ls
 	echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
-	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
+	# Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
@@ -946,8 +947,8 @@ else
 	if [[ "$USE_PRIVATE_IP" != "" ]]; then
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
 	fi
-	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
-    echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$TFVARS_NAC_SCHEDULER
+	# echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+    # echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$TFVARS_NAC_SCHEDULER
     echo "git_branch="\"$GIT_BRANCH_NAME\" >>$TFVARS_NAC_SCHEDULER
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
@@ -967,7 +968,7 @@ else
 	pwd
 	echo "Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM
-	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
+	# Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 fi
 
 END=$(date +%s)
