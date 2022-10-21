@@ -863,7 +863,7 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	ls
 	echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
-	# Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
+	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
@@ -968,7 +968,7 @@ else
 	pwd
 	echo "Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM
-	# Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
+	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 fi
 
 END=$(date +%s)
