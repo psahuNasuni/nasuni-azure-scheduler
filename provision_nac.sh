@@ -195,9 +195,9 @@ run_cognitive_search_indexer(){
 
 destination_blob_cleanup(){
     DESTINATION_CONTAINER_NAME="$1"
-    DESTINATION_CONTAINER_SAS_URL=$2
-    ACS_SERVICE_NAME=$3
-    ACS_API_KEY=$4
+    DESTINATION_CONTAINER_SAS_URL="$2"
+    ACS_SERVICE_NAME="$3"
+    ACS_API_KEY="$4"
     ACS_INDEXER_NAME="indexer"
 
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
@@ -226,11 +226,65 @@ destination_blob_cleanup(){
             COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
             $COMMAND
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
+            remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             exit 1
         fi
     done
 }
 
+create_shared_private_access(){
+    
+    DESTINATION_CONTAINER_SAS_URL="$1"
+    ACS_URL="$2"
+    ENDPOINT_NAME="$3"
+
+    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=$(echo ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup')
+    DESTINATION_STORAGE_ACCOUNT_ID=$(echo ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.id')
+
+    ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+
+    SHARED_LINK=`az search shared-private-link-resource create --name $ENDPOINT_NAME --service-name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --group-id blob --resource-id "${DESTINATION_STORAGE_ACCOUNT_ID}" --request-message "Please Approve the Request"`
+
+    SHARED_LINK_STATUS=$(echo $SHARED_LINK | jq -r '.properties.status')
+    SHARED_LINK_PROVISIONING_STATE=$(echo $SHARED_LINK | jq -r '.properties.provisioningState')
+
+    if [ "$SHARED_LINK_STATUS" == "Pending" ] && [ "$SHARED_LINK_PROVISIONING_STATE" == "Succeeded" ] ; then
+     	
+        PRIVATE_ENDPOINT_LIST=`az network private-endpoint-connection list -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts`
+
+        PRIVATE_CONNECTION_NAME=$(echo "$PRIVATE_ENDPOINT_LIST" | jq '.[]' | jq 'select(.properties.privateEndpoint.id | contains("${ENDPOINT_NAME}"))'| jq -r '.name')
+
+        CONNECTION_APPROVE=`az network private-endpoint-connection approve -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts --description "Request Approved"`
+        if [[ "$(echo $CONNECTION_APPROVE | jq -r '.properties.privateLinkServiceConnectionState.status')" == "Approved" ]]; then
+            echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
+        else
+            echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
+            exit 1
+        fi
+    else
+        echo "INFO ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
+        exit 1
+    fi
+}
+
+remove_shared_private_access(){
+    
+    DESTINATION_CONTAINER_SAS_URL="$1"
+    PRIVATE_CONNECTION_NAME="$2"
+    ENDPOINT_NAME="$3"
+    ACS_URL="$4"
+
+    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=$(echo ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup')
+    
+    DELETE_PRIVATE_ENDPOINT_CONNECTION=`az network private-endpoint-connection delete -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME  --type Microsoft.Storage/storageAccounts --yes -y`
+
+    ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+
+    DELETE_SHARED_LINK=`az search shared-private-link-resource delete --name $ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --service-name $ACS_NAME --yes -y`
+
+}
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
@@ -242,6 +296,10 @@ NMC_API_USERNAME=""
 NMC_API_PASSWORD=""
 NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
+DESTINATION_STORAGE_ACCOUNT_NAME=""
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+PRIVATE_CONNECTION_NAME=""
+ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt"
 
 ##################################### START TRACKER JSON Creation ###################################################################
@@ -284,7 +342,9 @@ nmc_api_call "nmc_details.txt"
 echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
- 
+
+shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
+
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
@@ -474,8 +534,7 @@ generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SE
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 #################### 2nd Run for Tracker_UI Complete##########################
 
-DESTINATION_STORAGE_ACCOUNT_NAME=""
-DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+
 if [ $? -eq 0 ]; then 
     add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"

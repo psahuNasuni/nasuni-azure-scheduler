@@ -488,6 +488,16 @@ provision_Azure_Cognitive_Search(){
 		echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
 		echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
 		echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
+		echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+		if [[ "$VNET_IS" != "" ]]; then
+			echo "user_vnet_name="\"$VNET_IS\" >>$ACS_TFVARS_FILE_NAME
+		fi
+		if [[ "$SUBNET_IS" != "" ]]; then
+			echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
+		fi
+		if [[ "$USE_PRIVATE_IP" != "" ]]; then
+			echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$ACS_TFVARS_FILE_NAME
+		fi
 		echo "" >>$ACS_TFVARS_FILE_NAME
 
 		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
@@ -800,35 +810,36 @@ else
 fi
 validate_AZURE_SUBSCRIPTION
 
-# DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
-# get_destination_container_url $DESTINATION_CONTAINER_URL
-# get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+get_destination_container_url $DESTINATION_CONTAINER_URL
+get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
-# ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
-# ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
-# IS_ACS_ADMIN_APP_CONFIG="N"
+ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+IS_ACS_ADMIN_APP_CONFIG="N"
 
-# ######################  Check : If appconfig is permanently deleted ##############################
+######################  Check : If appconfig is permanently deleted ##############################
 
-# APP_CONFIG_PURGE_STATUS=`az appconfig show-deleted --name $ACS_ADMIN_APP_CONFIG_NAME --query purgeProtectionEnabled 2> /dev/null`
+APP_CONFIG_PURGE_STATUS=`az appconfig show-deleted --name $ACS_ADMIN_APP_CONFIG_NAME --query purgeProtectionEnabled 2> /dev/null`
 
-# if [ "$APP_CONFIG_PURGE_STATUS" == "false" ]; then
-# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
-# 	echo "INFO ::: Permanently Deleting the ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME ..."
-# 	COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
-# 	$COMMAND
-# elif [ "$APP_CONFIG_PURGE_STATUS" == "true" ]; then
-# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME can NOT be Permanently Deleted ..."
-# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME Purge Protection Enabled was set to TRUE ..."
-# 	exit 1
-# else
-# 	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
-# fi
+if [ "$APP_CONFIG_PURGE_STATUS" == "false" ]; then
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is NOT Permanently Deleted ..."
+	echo "INFO ::: Permanently Deleting the ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME ..."
+	COMMAND="az appconfig purge --name $ACS_ADMIN_APP_CONFIG_NAME -y"
+	$COMMAND
+elif [ "$APP_CONFIG_PURGE_STATUS" == "true" ]; then
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME can NOT be Permanently Deleted ..."
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME Purge Protection Enabled was set to TRUE ..."
+	exit 1
+else
+	echo "INFO ::: ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME is Already Permanently Deleted ..."
+fi
 
-# ###################################################################################################
+###################################################################################################
 
-# ACS_SERVICE_NAME=""
-# provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
+ACS_SERVICE_NAME=""
+provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
+
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
