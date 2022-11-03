@@ -518,6 +518,30 @@ provision_Azure_Cognitive_Search(){
 	##################################### END Azure CognitiveSearch ###################################################################
 }
 
+check_network_availability(){
+	if [ "$USER_VNET_RESOURCE_GROUP" == "" ] || [ "$USER_VNET_RESOURCE_GROUP" == null ]; then
+		echo "INFO ::: Azure Virtual Network Resource Group is Not provided."
+		exit 1
+	else
+		### If resource group already available
+		echo "INFO ::: Azure Virtual Network Resource Group is provided as $USER_VNET_RESOURCE_GROUP"
+	fi
+	if [ "$USER_VNET_NAME" == "" ] || [ "$USER_VNET_NAME" == "null" ]; then
+		echo "INFO ::: USER_VNET_NAME not provided in the user Secret"  
+		exit 1
+	else
+	### If USER_VNET_NAME provided
+		if [ "$USER_SUBNET_NAME" == "" ] || [ "$USER_SUBNET_NAME" == "null" ]; then
+			### If USER_VNET_NAME provided and USER_SUBNET_NAME not Provided, It will take the provided VNET NAME and its default Subnet
+			echo "INFO ::: USER_SUBNET_NAME not provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and its default Subnet"
+			check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
+		else
+			### If USER_VNET_NAME provided and USER_SUBNET_NAME Provided, It will take the provided VNET NAME and provided Subnet
+			echo "INFO ::: USER_VNET_NAME and USER_SUBNET_NAME Provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and Subnet $USER_SUBNET_NAME"
+			check_if_subnet_exists $USER_SUBNET_NAME $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
+		fi
+	fi
+}
 
 import_secetes(){
 	ACS_KEY_VAULT_NAME="$1"
@@ -838,6 +862,9 @@ fi
 ###################################################################################################
 
 ACS_SERVICE_NAME=""
+
+check_network_availability
+
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
 ######################  Check : if NAC Scheduler Instance is Available ##############################
@@ -879,29 +906,6 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
 	### "NAC Scheduler is not present. Creating new Virtual machine."
-    if [ "$USER_VNET_RESOURCE_GROUP" == "" ] || [ "$USER_VNET_RESOURCE_GROUP" == null ]; then
-        echo "INFO ::: Azure Virtual Network Resource Group is Not provided."
-        exit 1
-    else
-          ### If resource group already available
-            echo "INFO ::: Azure Virtual Network Resource Group is provided as $USER_VNET_RESOURCE_GROUP"
-    fi
-	if [ "$USER_VNET_NAME" == "" ] || [ "$USER_VNET_NAME" == "null" ]; then
-		echo "INFO ::: USER_VNET_NAME not provided in the user Secret"  
-        exit 1
-	else
-		### If USER_VNET_NAME provided
-		if [ "$USER_SUBNET_NAME" == "" ] || [ "$USER_SUBNET_NAME" == "null" ]; then
-		### If USER_VNET_NAME provided and USER_SUBNET_NAME not Provided, It will take the provided VNET NAME and its default Subnet
-			echo "INFO ::: USER_SUBNET_NAME not provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and its default Subnet"
-			check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
-
-		else
-		### If USER_VNET_NAME provided and USER_SUBNET_NAME Provided, It will take the provided VNET NAME and provided Subnet
-			echo "INFO ::: USER_VNET_NAME and USER_SUBNET_NAME Provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and Subnet $USER_SUBNET_NAME"
-			check_if_subnet_exists $USER_SUBNET_NAME $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
-		fi
-	fi
 	echo "INFO ::: NAC Scheduler Instance is not present. Creating new Virtual Machine."
 	########## Download NAC Scheduler Instance Provisioning Code from GitHub ##########
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
