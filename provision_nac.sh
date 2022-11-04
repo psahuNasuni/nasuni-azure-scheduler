@@ -244,8 +244,9 @@ create_shared_private_access(){
 
     ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
 
+    echo "INFO ::: Shared Private Link Resource Creation ::: STARTED"
     SHARED_LINK=`az search shared-private-link-resource create --name $ENDPOINT_NAME --service-name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --group-id blob --resource-id "${DESTINATION_STORAGE_ACCOUNT_ID}" --request-message "Please Approve the Request"`
-
+    echo "INFO ::: Shared Private Link Resource Creation ::: FINISHED"
     SHARED_LINK_STATUS=$(echo $SHARED_LINK | jq -r '.properties.status')
     SHARED_LINK_PROVISIONING_STATE=$(echo $SHARED_LINK | jq -r '.properties.provisioningState')
 
@@ -255,6 +256,7 @@ create_shared_private_access(){
 
         PRIVATE_CONNECTION_NAME=$(echo "$PRIVATE_ENDPOINT_LIST" | jq '.[]' | jq 'select(.properties.privateEndpoint.id | contains('\"$ENDPOINT_NAME\"'))'| jq -r '.name')
 
+        echo "INFO ::: Approve Private Endpoint Connection ::: STARTED"
         CONNECTION_APPROVE=`az network private-endpoint-connection approve -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts --description "Request Approved"`
         if [[ "$(echo $CONNECTION_APPROVE | jq -r '.properties.privateLinkServiceConnectionState.status')" == "Approved" ]]; then
             echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
