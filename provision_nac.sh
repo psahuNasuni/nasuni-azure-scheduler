@@ -239,8 +239,8 @@ create_shared_private_access(){
     ENDPOINT_NAME="$3"
 
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
-    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=$(echo ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup')
-    DESTINATION_STORAGE_ACCOUNT_ID=$(echo ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.id')
+    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup'`
+    DESTINATION_STORAGE_ACCOUNT_ID=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.id'`
 
     ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
 
@@ -253,7 +253,7 @@ create_shared_private_access(){
      	
         PRIVATE_ENDPOINT_LIST=`az network private-endpoint-connection list -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts`
 
-        PRIVATE_CONNECTION_NAME=$(echo "$PRIVATE_ENDPOINT_LIST" | jq '.[]' | jq 'select(.properties.privateEndpoint.id | contains("${ENDPOINT_NAME}"))'| jq -r '.name')
+        PRIVATE_CONNECTION_NAME=$(echo "$PRIVATE_ENDPOINT_LIST" | jq '.[]' | jq 'select(.properties.privateEndpoint.id | contains('\"$ENDPOINT_NAME\"'))'| jq -r '.name')
 
         CONNECTION_APPROVE=`az network private-endpoint-connection approve -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts --description "Request Approved"`
         if [[ "$(echo $CONNECTION_APPROVE | jq -r '.properties.privateLinkServiceConnectionState.status')" == "Approved" ]]; then

@@ -863,13 +863,14 @@ fi
 
 ACS_SERVICE_NAME=""
 
+USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
 check_network_availability
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
-USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
+
 ### parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
 echo "INFO ::: nac_scheduler_name = $NAC_SCHEDULER_NAME "
 if [ "$NAC_SCHEDULER_NAME" != "" ]; then
