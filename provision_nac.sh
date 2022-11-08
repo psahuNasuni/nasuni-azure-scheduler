@@ -147,7 +147,12 @@ parse_config_file_for_user_secret_keys_values() {
 install_NAC_CLI() {
     ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
-    sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
+    ### Check for BETA NAC installation
+    if [ "$USE_PRIVATE_IP" = "Y" ]; then
+        https://nac.cs.nasuni.com/downloads/beta/nac-manager-1.0.7.dev8-linux-x86_64.zip
+    else
+        sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
+    fi
     sudo unzip '*.zip'
     sudo mv nac_manager /usr/local/bin/
     sudo apt update

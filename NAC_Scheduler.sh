@@ -358,6 +358,44 @@ validate_secret_values() {
 				AZURE_USERNAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "azure-password" ]; then
 				AZURE_PASSWORD=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subscription-id" ]; then
+				VNET_SUBSCRIPTION_ID=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-resource-group" ]; then
+				VNET_RESOURCE_GROUP=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-name" ]; then
+				VNET_NAME=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-0" ]; then
+				VNET_SUBNET_NAME_0=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-1" ]; then
+				VNET_SUBNET_NAME_1=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-2" ]; then
+				VNET_SUBNET_NAME_2=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-3" ]; then
+				VNET_SUBNET_NAME_3=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-4" ]; then
+				VNET_SUBNET_NAME_4=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-5" ]; then
+				VNET_SUBNET_NAME_5=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-6" ]; then
+				VNET_SUBNET_NAME_6=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-7" ]; then
+				VNET_SUBNET_NAME_7=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-8" ]; then
+				VNET_SUBNET_NAME_8=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-9" ]; then
+				VNET_SUBNET_NAME_9=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-10" ]; then
+				VNET_SUBNET_NAME_10=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-11" ]; then
+				VNET_SUBNET_NAME_11=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-12" ]; then
+				VNET_SUBNET_NAME_12=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-13" ]; then
+				VNET_SUBNET_NAME_13=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-14" ]; then
+				VNET_SUBNET_NAME_14=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "vnet-subnet-name-15" ]; then
+				VNET_SUBNET_NAME_15=$SECRET_VALUE
             fi
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME found in Key Vault $KEY_VAULT_NAME."
 		fi
@@ -685,6 +723,25 @@ Schedule_CRON_JOB() {
 	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubscriptionId: "$VNET_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
+	echo "vnetResourceGroup: "$VNET_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
+	echo "vnetName: "$VNET_NAME >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-0: "$VNET_SUBNET_NAME_0 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-1: "$VNET_SUBNET_NAME_1 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-2: "$VNET_SUBNET_NAME_2 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-3: "$VNET_SUBNET_NAME_3 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-4: "$VNET_SUBNET_NAME_4 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-5: "$VNET_SUBNET_NAME_5 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-6: "$VNET_SUBNET_NAME_6 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-7: "$VNET_SUBNET_NAME_7 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-8: "$VNET_SUBNET_NAME_8 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-9: "$VNET_SUBNET_NAME_9 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-10: "$VNET_SUBNET_NAME_10 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-11: "$VNET_SUBNET_NAME_11 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-12: "$VNET_SUBNET_NAME_12 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-13: "$VNET_SUBNET_NAME_13 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-14: "$VNET_SUBNET_NAME_14 >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubnetName-15: "$VNET_SUBNET_NAME_15 >>$CONFIG_DAT_FILE_NAME
 
     chmod 777 $CONFIG_DAT_FILE_NAME
 
@@ -832,6 +889,28 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
 		validate_secret_values "$AZURE_KEYVAULT_NAME" use-private-ip
+		### Check for private network variables
+		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subscription-id
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-resource-group
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-name
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-0
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-1
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-2
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-3
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-4
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-5
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-6
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-7
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-8
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-9
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-10
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-11
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-12
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-13
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-14
+			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-15
+		fi
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	fi
 else
