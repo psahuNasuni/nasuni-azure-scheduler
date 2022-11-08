@@ -706,9 +706,9 @@ Schedule_CRON_JOB() {
 	echo "frequency="\"$FREQUENCY\" >>$NAC_TXT_FILE_NAME
 	echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$NAC_TXT_FILE_NAME
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
+		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$NAC_TXT_FILE_NAME
 	else
-		echo "use_private_ip="\"N\" >>$TFVARS_NAC_SCHEDULER
+		echo "use_private_ip="\"N\" >>$NAC_TXT_FILE_NAME
 	fi
 	chmod 777 $NAC_TXT_FILE_NAME
 

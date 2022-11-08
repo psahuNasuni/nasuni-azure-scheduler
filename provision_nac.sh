@@ -228,7 +228,7 @@ destination_blob_cleanup(){
             COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
             $COMMAND
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
-            if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+            if [ "$USE_PRIVATE_IP" = "Y" ]; then
                 remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
             exit 1
@@ -309,7 +309,7 @@ DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 PRIVATE_CONNECTION_NAME=""
 ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt"
-
+USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
 ##################################### START TRACKER JSON Creation ###################################################################
 
 echo "NAC_Activity : Export In Progress"
@@ -351,7 +351,7 @@ echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
 
-if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
 fi
 
