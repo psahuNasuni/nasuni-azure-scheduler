@@ -705,6 +705,11 @@ Schedule_CRON_JOB() {
 	echo "analytic_service="\"$ANALYTICS_SERVICE\" >>$NAC_TXT_FILE_NAME
 	echo "frequency="\"$FREQUENCY\" >>$NAC_TXT_FILE_NAME
 	echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$NAC_TXT_FILE_NAME
+	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
+	else
+		echo "use_private_ip="\"N\" >>$TFVARS_NAC_SCHEDULER
+	fi
 	chmod 777 $NAC_TXT_FILE_NAME
 
 	### Create File to transfer data related to NMC 
@@ -864,7 +869,10 @@ fi
 ACS_SERVICE_NAME=""
 
 USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
-check_network_availability
+
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+	check_network_availability
+fi
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
@@ -906,6 +914,9 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
+
+	check_network_availability
+
 	### "NAC Scheduler is not present. Creating new Virtual machine."
 	echo "INFO ::: NAC Scheduler Instance is not present. Creating new Virtual Machine."
 	########## Download NAC Scheduler Instance Provisioning Code from GitHub ##########

@@ -52,6 +52,7 @@ parse_file_NAC_txt() {
             "analytic_service") ANALYTICS_SERVICE="$value" ;;
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
+            "use_private_ip") USE_PRIVATE_IP="$value" ;;
             esac
         done <"$file"
 }
@@ -184,7 +185,7 @@ run_cognitive_search_indexer(){
     ACS_API_KEY=$2
     ACS_INDEXER_NAME="indexer"
 
-    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
+    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:applicauion/json" -H "api-key:${ACS_API_KEY}"`
     if [ $? -eq 0 ]; then
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
     else
@@ -198,6 +199,7 @@ destination_blob_cleanup(){
     DESTINATION_CONTAINER_SAS_URL="$2"
     ACS_SERVICE_NAME="$3"
     ACS_API_KEY="$4"
+    USE_PRIVATE_IP="$5"
     ACS_INDEXER_NAME="indexer"
 
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
@@ -226,7 +228,9 @@ destination_blob_cleanup(){
             COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
             $COMMAND
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
-            remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
+            if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+                remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
+            fi
             exit 1
         fi
     done
@@ -347,7 +351,9 @@ echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
 
-create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+    create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
+fi
 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
@@ -557,7 +563,7 @@ echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
 run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
-destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY
+destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP
 
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
