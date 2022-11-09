@@ -725,7 +725,7 @@ Schedule_CRON_JOB() {
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 	echo "vnetSubscriptionId: "$VNET_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
 	echo "vnetResourceGroup: "$VNET_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
-	echo "vnetName: "$VNET_NAME >>$CONFIG_DAT_FILE_NAME
+	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
 	echo "vnetSubnetName-0: "$VNET_SUBNET_NAME_0 >>$CONFIG_DAT_FILE_NAME
 	echo "vnetSubnetName-1: "$VNET_SUBNET_NAME_1 >>$CONFIG_DAT_FILE_NAME
 	echo "vnetSubnetName-2: "$VNET_SUBNET_NAME_2 >>$CONFIG_DAT_FILE_NAME
@@ -893,7 +893,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subscription-id
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-resource-group
-			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-name
+			#validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-name
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-0
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-1
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subnet-name-2
