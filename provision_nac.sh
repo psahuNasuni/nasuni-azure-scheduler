@@ -117,7 +117,7 @@ nmc_api_call(){
     NMC_DETAILS_TXT=$1    
     parse_file_nmc_txt $NMC_DETAILS_TXT
     ### NMC API CALL  ####
-    RND=$(( $RANDOM % 1000000 ));
+    RND=$(( $RANDOM % 1000000 ))
     #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
     python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
     ### FILTER Values From NMC API Call
@@ -149,7 +149,7 @@ install_NAC_CLI() {
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
     ### Check for BETA NAC installation
     if [ "$USE_PRIVATE_IP" = "Y" ]; then
-        https://nac.cs.nasuni.com/downloads/beta/nac-manager-1.0.7.dev8-linux-x86_64.zip
+        sudo wget https://nac.cs.nasuni.com/downloads/beta/nac-manager-1.0.7.dev8-linux-x86_64.zip
     else
         sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
     fi
