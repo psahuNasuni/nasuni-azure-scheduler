@@ -34,6 +34,7 @@ check_if_subnet_exists(){
 
 get_destination_container_url(){
 	DESTINATION_CONTAINER_URL=$1
+	USER_VNET_RESOURCE_GROUP=$2
 	### DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
 	DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	### https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
@@ -44,7 +45,7 @@ get_destination_container_url(){
 	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
 	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
 
-	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
+	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string -g $USER_VNET_RESOURCE_GROUP --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 	echo "INFO ::: SUCCESS :: Get destination container url."
 
 }
@@ -112,34 +113,34 @@ validate_github() {
 }
 
 feed_config_Data_default_values() {
-CONFIG_DAT_FILE_NAME="$1"
-KEY="$2"
-STARTINGPOINT="/"
-INCLUDEFILTERPATTERN='*'
-INCLUDEFILTERTYPE="glob"
-EXCLUDEFILTERPATTERN="null"
-EXCLUDEFILTERTYPE="glob"
-MINFILESIZEFILTER="0b"
-MAXFILESIZEFILTER="5gb"
-EXCLUDETEMPFILES='True'
-case "$KEY" in
-    "StartingPoint") VAL=$STARTINGPOINT 
-    ;;
-    "IncludeFilterPattern") VAL=\'$INCLUDEFILTERPATTERN\'
-    ;;
-    "IncludeFilterType") VAL=$INCLUDEFILTERTYPE 
-    ;;
-    "ExcludeFilterPattern") VAL=$EXCLUDEFILTERPATTERN 
-    ;;
-    "ExcludeFilterType") VAL=$EXCLUDEFILTERTYPE 
-    ;;
-    "MinFileSizeFilter") VAL=$MINFILESIZEFILTER 
-    ;;
-    "MaxFileSizeFilter") VAL=$MAXFILESIZEFILTER 
-    ;;
-    "ExcludeTempFiles") VAL=\'$EXCLUDETEMPFILES\' 
-    ;;
-esac
+	CONFIG_DAT_FILE_NAME="$1"
+	KEY="$2"
+	STARTINGPOINT="/"
+	INCLUDEFILTERPATTERN='*'
+	INCLUDEFILTERTYPE="glob"
+	EXCLUDEFILTERPATTERN="null"
+	EXCLUDEFILTERTYPE="glob"
+	MINFILESIZEFILTER="0b"
+	MAXFILESIZEFILTER="5gb"
+	EXCLUDETEMPFILES='True'
+	case "$KEY" in
+		"StartingPoint") VAL=$STARTINGPOINT 
+		;;
+		"IncludeFilterPattern") VAL=\'$INCLUDEFILTERPATTERN\'
+		;;
+		"IncludeFilterType") VAL=$INCLUDEFILTERTYPE 
+		;;
+		"ExcludeFilterPattern") VAL=$EXCLUDEFILTERPATTERN 
+		;;
+		"ExcludeFilterType") VAL=$EXCLUDEFILTERTYPE 
+		;;
+		"MinFileSizeFilter") VAL=$MINFILESIZEFILTER 
+		;;
+		"MaxFileSizeFilter") VAL=$MAXFILESIZEFILTER 
+		;;
+		"ExcludeTempFiles") VAL=\'$EXCLUDETEMPFILES\' 
+		;;
+	esac
 echo "$KEY: "$VAL >>$CONFIG_DAT_FILE_NAME
 }
 
@@ -149,6 +150,7 @@ feed_config_Data_user_overridden_values() {
     VALUE="$3"
     echo "$KEY: "$VALUE >>$CONFIG_DAT_FILE_NAME
 }
+
 feed_config_Data_user() {
     CONFIG_DAT_FILE_NAME="config.dat"
     st_array=(StartingPoint IncludeFilterPattern IncludeFilterType ExcludeFilterPattern ExcludeFilterType MinFileSizeFilter MaxFileSizeFilter MaxInvocations ExcludeTempFiles)
@@ -158,44 +160,44 @@ feed_config_Data_user() {
     done
     
 }
-append_nac_static_values_to_config_dat() {
-NAC_INPUT_KVP_FILE="$1"
-CONFIG_DAT_FILE_NAME="$2"
-st_array=(StartingPoint IncludeFilterPattern IncludeFilterType ExcludeFilterPattern ExcludeFilterType MinFileSizeFilter MaxFileSizeFilter MaxInvocations ExcludeTempFiles)
-if [ -f $NAC_INPUT_KVP_FILE ]; then
-    echo "INFO ::: KVP file $NAC_INPUT_KVP_FILE is Provided as 5th argument. Appending the Overriding parameters values !!!!" 
-    dos2unix $NAC_INPUT_KVP_FILE
-    input_items_array=()
-    needful_items_array=()
-    i=0
-    while IFS="=" read -r key value; do
-        inarray=$(echo ${st_array[@]} | grep -ow "$key" | wc -w)
-        if [ ${#key} -ne 0 ]; then
-            if [ $inarray -ne 0 ];then # zero value indicates a match was found
-                input_items_array[$i]=${key}
-                VAL=""
-                VAL=`echo $value | tr -d '"'`
-                echo "INFO ::: KEY Provided in 5th params KVP file = $key , VALUE = $VAL"
-                feed_config_Data_user_overridden_values $CONFIG_DAT_FILE_NAME $key $VAL
-                let i+=1
-            fi
-        fi
-    done <"$NAC_INPUT_KVP_FILE" 
-    for key in "${st_array[@]}"
-    do
-        ok=$(echo ${input_items_array[@]} | grep -ow "$key" | wc -w)
-        if [ $ok -eq 0 ];then 
-            echo "INFO ::: KEY Not Provided in 5th params KVP file $key" 
-           feed_config_Data_default_values $CONFIG_DAT_FILE_NAME $key 
-        fi
-    done
-else
-    ### KVP file as 5th argument Not Provided. Appending all static parameters with default values !!!!" 
-    echo "INFO ::: KVP file as 5th argument Not Provided. Appending all static parameters with default values !!!!" 
-    feed_config_Data_user
-fi
-}
 
+append_nac_static_values_to_config_dat() {
+	NAC_INPUT_KVP_FILE="$1"
+	CONFIG_DAT_FILE_NAME="$2"
+	st_array=(StartingPoint IncludeFilterPattern IncludeFilterType ExcludeFilterPattern ExcludeFilterType MinFileSizeFilter MaxFileSizeFilter MaxInvocations ExcludeTempFiles)
+	if [ -f $NAC_INPUT_KVP_FILE ]; then
+		echo "INFO ::: KVP file $NAC_INPUT_KVP_FILE is Provided as 5th argument. Appending the Overriding parameters values !!!!" 
+		dos2unix $NAC_INPUT_KVP_FILE
+		input_items_array=()
+		needful_items_array=()
+		i=0
+		while IFS="=" read -r key value; do
+			inarray=$(echo ${st_array[@]} | grep -ow "$key" | wc -w)
+			if [ ${#key} -ne 0 ]; then
+				if [ $inarray -ne 0 ];then # zero value indicates a match was found
+					input_items_array[$i]=${key}
+					VAL=""
+					VAL=`echo $value | tr -d '"'`
+					echo "INFO ::: KEY Provided in 5th params KVP file = $key , VALUE = $VAL"
+					feed_config_Data_user_overridden_values $CONFIG_DAT_FILE_NAME $key $VAL
+					let i+=1
+				fi
+			fi
+		done <"$NAC_INPUT_KVP_FILE" 
+		for key in "${st_array[@]}"
+		do
+			ok=$(echo ${input_items_array[@]} | grep -ow "$key" | wc -w)
+			if [ $ok -eq 0 ];then 
+				echo "INFO ::: KEY Not Provided in 5th params KVP file $key" 
+			feed_config_Data_default_values $CONFIG_DAT_FILE_NAME $key 
+			fi
+		done
+	else
+		### KVP file as 5th argument Not Provided. Appending all static parameters with default values !!!!" 
+		echo "INFO ::: KVP file as 5th argument Not Provided. Appending all static parameters with default values !!!!" 
+		feed_config_Data_user
+	fi
+}
 
 append_nac_keys_values_to_tfvars() {
 	inputFile="$1"
@@ -406,6 +408,124 @@ validate_secret_values() {
 	fi
 }
 
+### Import App Config Private Endpoint
+import_app_config_endpoint(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	ACS_RESOURCE_GROUP="$2"
+
+	ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME="${ACS_ADMIN_APP_CONFIG_NAME}_private_endpoint"
+	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --query value --output tsv 2> /dev/null`	
+    if [ "$PRIVAE_ENDPOINT_STATUS" != "" ]; then
+        echo "INFO ::: Private endpoint already exist. Importing the existing index-endpoint."
+        COMMAND="terraform import azurerm_private_endpoint.appconf_private_endpoint /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
+        $COMMAND
+    else
+        echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
+    fi
+}
+
+### Import ACS App Config 
+import_acs_app_config(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
+	COMMAND="terraform import azurerm_app_configuration.appconf $ACS_APP_CONFIG_ID"
+    $COMMAND
+}
+
+import_app_config_private_dns_zone(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
+	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+
+		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" != "" ]; then
+			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
+			PRIVAE_DNS_ZONE_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone.appconf_dns_zone $PRIVAE_DNS_ZONE_APP_CONFIG_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $PRIVAE_DNS_ZONE_APP_CONFIG_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_APP_CONFIG_NAME."
+		fi
+}
+
+import_app_config_private_dns_zone_virtual_network_link(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${APP_CONFIG_RESOURCE_GROUP}_link"
+	
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+			
+		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
+			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
+			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		fi
+}
+
+###########################################START ACS Import #######################################
+
+import_app_config_endpoint(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	ACS_RESOURCE_GROUP="$2"
+
+	### SMG Read value of ACS Service from azure app config
+	ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME="${ACS_ADMIN_APP_CONFIG_NAME}_private_endpoint"
+	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --query value --output tsv 2> /dev/null`	
+    if [ "$PRIVAE_ENDPOINT_STATUS" != "" ]; then
+        echo "INFO ::: Private endpoint already exist. Importing the existing index-endpoint."
+        COMMAND="terraform import azurerm_private_endpoint.appconf_private_endpoint /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
+        $COMMAND
+    else
+        echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
+    fi
+}
+
+
+import_acs_private_dns_zone(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
+	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+
+		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" != "" ]; then
+			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
+			PRIVAE_DNS_ZONE_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone.appconf_dns_zone $PRIVAE_DNS_ZONE_APP_CONFIG_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $PRIVAE_DNS_ZONE_APP_CONFIG_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_APP_CONFIG_NAME."
+		fi
+}
+
+import_acs_private_dns_zone_virtual_network_link(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${APP_CONFIG_RESOURCE_GROUP}_link"
+	
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+			
+		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
+			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
+			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		fi
+}
+
+############################################### END ACS Import #######################################
+
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
@@ -446,6 +566,8 @@ provision_ACS_if_Not_Available(){
 			############ START : Provision ACS if Not Available ################
 			echo "INFO ::: Service $ACS_SERVICE_NAME is Not available in ACS Admin App Configuration "
 			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
+			### SMG ###
+			### import acs dns zone, endpoint, virtual_link 
 			############ END: Provision ACS if Not Available ################
 		else
 			### Service available in ACS Admin App Configuration but not in running condition
@@ -537,7 +659,15 @@ provision_Azure_Cognitive_Search(){
 			echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$ACS_TFVARS_FILE_NAME
 		fi
 		echo "" >>$ACS_TFVARS_FILE_NAME
-
+		### SMG ###
+		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
+			# Import if acs app config is already provisioned.
+			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+			#import_acs_app_config_keys
+			import_private_dns_zone $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+			import_app_config_private_dns_zone_virtual_network_link $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+			import_app_config_endpoint 	$ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+		fi
 		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
 		
 		COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
@@ -581,7 +711,7 @@ check_network_availability(){
 	fi
 }
 
-import_secetes(){
+import_secretes(){
 	ACS_KEY_VAULT_NAME="$1"
 
 	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-url --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
@@ -641,6 +771,15 @@ import_secetes(){
 	else
 		echo "INFO ::: Key Vault Secret destination-container-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
 	fi
+}
+
+### SMG ####
+import_acs_app_config(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_RESOURCE_GROUP="$2"
+	ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
+	COMMAND="terraform import azurerm_app_configuration.appconf $ACS_APP_CONFIG_ID"
+    $COMMAND
 }
 
 check_if_acs_app_config_exists(){
@@ -918,10 +1057,6 @@ else
 fi
 validate_AZURE_SUBSCRIPTION
 
-DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
-get_destination_container_url $DESTINATION_CONTAINER_URL
-get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
-
 ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
 ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
 IS_ACS_ADMIN_APP_CONFIG="N"
@@ -952,6 +1087,10 @@ USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	check_network_availability
 fi
+
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+get_destination_container_url $DESTINATION_CONTAINER_URL $USER_VNET_RESOURCE_GROUP 
+get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
