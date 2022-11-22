@@ -1,5 +1,6 @@
 #!/bin/bash
-
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 #############################################################################################
 #### This Script Targets NAC Deployment from any Linux Box
 #### Prequisites:
@@ -16,6 +17,8 @@
 #### 2.2. Azure Subscription
 #############################################################################################
 set -e
+DATE_WITH_TIME=$(date "+%Y%m%d-%H%M%S")
+LOG_FILE=provision_nac_$DATE_WITH_TIME.log
 
 START=$(date +%s)
 {
