@@ -433,25 +433,25 @@ echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
 ### Check if Resource Group is already provisioned
 AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
-
-ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
-if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-    echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group. "
-    COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
-    $COMMAND
-else
-    echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
-fi
+# ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
+# if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
+#     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group. "
+#     COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ "
+#     $COMMAND
+# else
+#     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
+# fi
 
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
-
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
+
+sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
 import_configuration(){
     ### Import Configurations details if exist
