@@ -444,11 +444,11 @@ fi
 
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
-echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TFVARS_FILE_NAME
-echo "azure_location="$AZURE_LOCATION >>$NAC_TFVARS_FILE_NAME
-echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TFVARS_FILE_NAME
+echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
+echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
-echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TFVARS_FILE_NAME
+echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
