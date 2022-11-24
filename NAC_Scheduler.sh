@@ -891,6 +891,8 @@ Schedule_CRON_JOB() {
 	echo $USER_PRINCIPAL_NAME
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
+	# ACS_RESOURCE_GROUP=$($ACS_RESOURCE_GROUP | tr -d '"')
+	# ACS_ADMIN_APP_CONFIG_NAME=$($ACS_ADMIN_APP_CONFIG_NAME | tr -d '"')
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
     echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
@@ -898,14 +900,14 @@ Schedule_CRON_JOB() {
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	echo "user_secret="$KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
-	echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$NAC_TXT_FILE_NAME
-	echo "analytic_service="\"$ANALYTICS_SERVICE\" >>$NAC_TXT_FILE_NAME
-	echo "frequency="\"$FREQUENCY\" >>$NAC_TXT_FILE_NAME
-	echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$NAC_TXT_FILE_NAME
+	echo "user_principal_name="$USER_PRINCIPAL_NAME >>$NAC_TXT_FILE_NAME
+	echo "analytic_service="$ANALYTICS_SERVICE >>$NAC_TXT_FILE_NAME
+	echo "frequency="$FREQUENCY >>$NAC_TXT_FILE_NAME
+	echo "nac_scheduler_name="$NAC_SCHEDULER_NAME >>$NAC_TXT_FILE_NAME
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$NAC_TXT_FILE_NAME
+		echo "use_private_ip="$USE_PRIVATE_IP >>$NAC_TXT_FILE_NAME
 	else
-		echo "use_private_ip="\"N\" >>$NAC_TXT_FILE_NAME
+		echo "use_private_ip="N >>$NAC_TXT_FILE_NAME
 	fi
 	chmod 777 $NAC_TXT_FILE_NAME
 
