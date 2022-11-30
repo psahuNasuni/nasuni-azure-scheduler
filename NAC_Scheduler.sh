@@ -492,45 +492,65 @@ import_app_config_endpoint(){
 import_acs_app_config_keys(){
     ### Import Configurations details if exist
 	ACS_ADMIN_APP_CONFIG_NAME=$1
-    INDEX_ENDPOINT_KEY="index-endpoint"
-    INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
-    if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
-        COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+    DESTINATION_CONTAINER_NAME="destination-container-name"
+    DESTINATION_CONTAINER_NAME_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $DESTINATION_CONTAINER_NAME --label $DESTINATION_CONTAINER_NAME --query value --output tsv 2> /dev/null`
+    if [ "$DESTINATION_CONTAINER_NAME_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: destination-container-name already exist in the App Config. Importing the existing destination-container-name. "
+        COMMAND="terraform import azurerm_app_configuration_key.destination_container_name /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$DESTINATION_CONTAINER_NAME/Label/$DESTINATION_CONTAINER_NAME"
         $COMMAND
     else
-        echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
+        echo "INFO ::: $DESTINATION_CONTAINER_NAME does not exist. It will provision a new $DESTINATION_CONTAINER_NAME."
     fi
 
-    WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
-    WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
-    if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
-        COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+    DATASOURCE_CONNECTION_STRING="datasource-connection-string"
+    DATASOURCE_CONNECTION_STRING_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $DATASOURCE_CONNECTION_STRING --label $DATASOURCE_CONNECTION_STRING --query value --output tsv 2> /dev/null`
+    if [ "$DATASOURCE_CONNECTION_STRING_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: datasource-connection-string already exist in the App Config. Importing the existing datasource-connection-string. "
+        COMMAND="terraform import azurerm_app_configuration_key.datasource_connection_string /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$DATASOURCE_CONNECTION_STRING/Label/$DATASOURCE_CONNECTION_STRING"
         $COMMAND
     else
-        echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
+        echo "INFO ::: $DATASOURCE_CONNECTION_STRING does not exist. It will provision a new $DATASOURCE_CONNECTION_STRING."
     fi
 
-    NMC_VOLUME_NAME_KEY="nmc-volume-name"
-    NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
-    if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
-        COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
+    ACS_RESOURCE_GROUP="acs-resource-group"
+    ACS_RESOURCE_GROUP_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_RESOURCE_GROUP --label $ACS_RESOURCE_GROUP --query value --output tsv 2> /dev/null`
+    if [ "$ACS_RESOURCE_GROUP_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: acs-resource-group already exist in the App Config. Importing the acs-resource-group. "
+        COMMAND="terraform import azurerm_app_configuration_key.acs_resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_RESOURCE_GROUP/Label/$ACS_RESOURCE_GROUP"
         $COMMAND
     else
-        echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
+        echo "INFO ::: $ACS_RESOURCE_GROUP does not exist. It will provision a new $ACS_RESOURCE_GROUP."
     fi
 
-    UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
-    UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
-    if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
-        COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
+    ACS_SERVICE_NAME="acs-service-name"
+    ACS_SERVICE_NAME_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_SERVICE_NAME --label $ACS_SERVICE_NAME --query value --output tsv 2> /dev/null`
+    if [ "$ACS_SERVICE_NAME_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: acs-service-name already exist in the App Config. Importing the acs-service-name."
+        COMMAND="terraform import azurerm_app_configuration_key.acs_service_name /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_SERVICE_NAME/Label/$ACS_SERVICE_NAME"
         $COMMAND
     else
-        echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
+        echo "INFO ::: $ACS_SERVICE_NAME does not exist. It will provision a new $ACS_SERVICE_NAME."
     fi
+	
+	ACS_API_KEY="acs-api-key"
+    ACS_API_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_SERVICE_NAME --label $ACS_API_KEY --query value --output tsv 2> /dev/null`
+    if [ "$ACS_API_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: acs-api-key already exist in the App Config. Importing the acs-api-key."
+        COMMAND="terraform import azurerm_app_configuration_key.acs_api_key /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_API_KEY/Label/$ACS_API_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $ACS_API_KEY does not exist. It will provision a new $ACS_API_KEY."
+    fi
+
+	NMC_API_ACS_URL="nmc-api-acs-url"
+    NMC_API_ACS_URL_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_API_ACS_URL --label $NMC_API_ACS_URL --query value --output tsv 2> /dev/null`
+    if [ "$NMC_API_ACS_URL_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: acs-api-key already exist in the App Config. Importing the acs-api-key."
+        COMMAND="terraform import azurerm_app_configuration_key.nmc_api_acs_url /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_API_ACS_URL/Label/$NMC_API_ACS_URL"
+        $COMMAND
+    else
+        echo "INFO ::: $NMC_API_ACS_URL does not exist. It will provision a new $NMC_API_ACS_URL."
+    fi	
 }
 
 import_acs_private_dns_zone(){
