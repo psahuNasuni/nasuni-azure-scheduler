@@ -512,14 +512,14 @@ import_acs_app_config_keys(){
         echo "INFO ::: $DATASOURCE_CONNECTION_STRING does not exist. It will provision a new $DATASOURCE_CONNECTION_STRING."
     fi
 
-    ACS_RESOURCE_GROUP="acs-resource-group"
-    ACS_RESOURCE_GROUP_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_RESOURCE_GROUP --label $ACS_RESOURCE_GROUP --query value --output tsv 2> /dev/null`
-    if [ "$ACS_RESOURCE_GROUP_APP_CONFIG_STATUS" != "" ]; then
+    ACS_APP_CONFIG_RESOURCE_GROUP="acs-resource-group"
+    ACS_APP_CONFIG_RESOURCE_GROUP_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_APP_CONFIG_RESOURCE_GROUP --label $ACS_APP_CONFIG_RESOURCE_GROUP --query value --output tsv 2> /dev/null`
+    if [ "$ACS_APP_CONFIG_RESOURCE_GROUP_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: acs-resource-group already exist in the App Config. Importing the acs-resource-group. "
-        COMMAND="terraform import azurerm_app_configuration_key.acs_resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_RESOURCE_GROUP/Label/$ACS_RESOURCE_GROUP"
+        COMMAND="terraform import azurerm_app_configuration_key.acs_resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_APP_CONFIG_RESOURCE_GROUP/Label/$ACS_APP_CONFIG_RESOURCE_GROUP"
         $COMMAND
     else
-        echo "INFO ::: $ACS_RESOURCE_GROUP does not exist. It will provision a new $ACS_RESOURCE_GROUP."
+        echo "INFO ::: $ACS_APP_CONFIG_RESOURCE_GROUP does not exist. It will provision a new $ACS_APP_CONFIG_RESOURCE_GROUP."
     fi
 
     ACS_SERVICE_NAME="acs-service-name"
