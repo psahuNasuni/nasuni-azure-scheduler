@@ -545,7 +545,7 @@ import_acs_app_config_keys(){
 	NMC_API_ACS_URL="nmc-api-acs-url"
     NMC_API_ACS_URL_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_API_ACS_URL --label $NMC_API_ACS_URL --query value --output tsv 2> /dev/null`
     if [ "$NMC_API_ACS_URL_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: acs-api-key already exist in the App Config. Importing the acs-api-key."
+        echo "INFO ::: nmc-api-acs-url already exist in the App Config. Importing the nmc-api-acs-url."
         COMMAND="terraform import azurerm_app_configuration_key.nmc_api_acs_url /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_API_ACS_URL/Label/$NMC_API_ACS_URL"
         $COMMAND
     else
