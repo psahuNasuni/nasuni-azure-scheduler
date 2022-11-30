@@ -488,6 +488,50 @@ import_app_config_endpoint(){
     fi
 }
 
+#####################################################################
+import_acs_app_config_keys(){
+    ### Import Configurations details if exist
+	ACS_ADMIN_APP_CONFIG_NAME=$1
+    INDEX_ENDPOINT_KEY="index-endpoint"
+    INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
+    if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
+        COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
+    fi
+
+    WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
+    WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
+    if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
+        COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
+    fi
+
+    NMC_VOLUME_NAME_KEY="nmc-volume-name"
+    NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
+    if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
+        COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
+    fi
+
+    UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
+    UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
+    if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
+        COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
+    fi
+}
 
 import_acs_private_dns_zone(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
@@ -594,8 +638,8 @@ provision_Azure_Cognitive_Search(){
 	######################## Check If Azure Cognitice Search Available ###############################################
 	#### ACS_SERVICE_NAME : Take it from KeyVault that is creted with ACS
 	IS_ACS="$1"
-	ACS_ADMIN_APP_CONFIG_NAME="$3"
 	ACS_RESOURCE_GROUP="$2"
+	ACS_ADMIN_APP_CONFIG_NAME="$3"
 	IS_ADMIN_VAULT_YN="N"
 	IS_ACS_RG_YN="N"
 	if [ "$IS_ACS" == "N" ]; then
@@ -649,22 +693,22 @@ provision_Azure_Cognitive_Search(){
 		echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
 		echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
 		echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
-		echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-		if [[ "$VNET_IS" != "" ]]; then
-			echo "user_vnet_name="\"$VNET_IS\" >>$ACS_TFVARS_FILE_NAME
-		fi
-		if [[ "$SUBNET_IS" != "" ]]; then
-			echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
-		fi
-		if [[ "$USE_PRIVATE_IP" != "" ]]; then
+		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 			echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$ACS_TFVARS_FILE_NAME
+			echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+			if [[ "$VNET_IS" != "" ]]; then
+				echo "user_vnet_name="\"$VNET_IS\" >>$ACS_TFVARS_FILE_NAME
+			fi
+			if [[ "$SUBNET_IS" != "" ]]; then
+				echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
+			fi
 		fi
 		echo "" >>$ACS_TFVARS_FILE_NAME
 		### SMG ###
 		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
 			# Import if acs app config is already provisioned.
 			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
-			#import_acs_app_config_keys
+			import_acs_app_config_keys $ACS_ADMIN_APP_CONFIG_NAME
 			import_private_dns_zone $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 			import_app_config_private_dns_zone_virtual_network_link $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 			import_app_config_endpoint 	$ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
