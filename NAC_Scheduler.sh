@@ -817,15 +817,6 @@ import_secretes(){
 	fi
 }
 
-### SMG ####
-import_acs_app_config(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
-	ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
-	COMMAND="terraform import azurerm_app_configuration.appconf $ACS_APP_CONFIG_ID"
-    $COMMAND
-}
-
 check_if_acs_app_config_exists(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
 	APP_CONFIG_RESOURCE_GROUP="$2"
