@@ -534,38 +534,36 @@ import_acs_app_config_keys(){
 }
 
 import_acs_private_dns_zone(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
-	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
-	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+	ACS_RESOURCE_GROUP="$1"
+	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
+	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query value --output tsv 2> /dev/null`	
 
-		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" != "" ]; then
+		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" != "" ]; then
 			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
-			PRIVAE_DNS_ZONE_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME"
+			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
 			
-			COMMAND="terraform import azurerm_private_dns_zone.appconf_dns_zone $PRIVAE_DNS_ZONE_APP_CONFIG_ID"
+			COMMAND="terraform import azurerm_private_dns_zone.appconf_dns_zone $PRIVAE_DNS_ZONE_ACS_CONFIG_ID"
 			$COMMAND
 		else
-			echo "INFO ::: $PRIVAE_DNS_ZONE_APP_CONFIG_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_APP_CONFIG_NAME."
+			echo "INFO ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_ACS_NAME."
 		fi
 }
 
 import_acs_private_dns_zone_virtual_network_link(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
-	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
-	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${APP_CONFIG_RESOURCE_GROUP}_link"
+	ACS_RESOURCE_GROUP="$1"
+	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${ACS_RESOURCE_GROUP}_link"
 	
-	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query value --output tsv 2> /dev/null`	
 			
-		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
+		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
 			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
-			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
 			
-			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
+			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
 			$COMMAND
 		else
-			echo "INFO ::: $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			echo "INFO ::: $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
 		fi
 }
 
@@ -677,7 +675,8 @@ provision_Azure_Cognitive_Search(){
 		# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
-				
+		import_acs_private_dns_zone $ACS_RESOURCE_GROUP
+		import_acs_private_dns_zone_virtual_network_link $ACS_RESOURCE_GROUP
 		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
 		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 		USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
