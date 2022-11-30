@@ -435,8 +435,7 @@ import_acs_app_config(){
 }
 
 import_app_config_private_dns_zone(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
+	APP_CONFIG_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
 	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
 
@@ -452,8 +451,7 @@ import_app_config_private_dns_zone(){
 }
 
 import_app_config_private_dns_zone_virtual_network_link(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
+	APP_CONFIG_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
 	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${APP_CONFIG_RESOURCE_GROUP}_link"
 	
@@ -728,8 +726,8 @@ provision_Azure_Cognitive_Search(){
 			# Import if acs app config is already provisioned.
 			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 			import_acs_app_config_keys $ACS_ADMIN_APP_CONFIG_NAME
-			import_private_dns_zone $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
-			import_app_config_private_dns_zone_virtual_network_link $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+			import_app_config_private_dns_zone $ACS_RESOURCE_GROUP
+			import_app_config_private_dns_zone_virtual_network_link $ACS_RESOURCE_GROUP
 			import_app_config_endpoint 	$ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 		fi
 		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
