@@ -422,7 +422,9 @@ import_app_config_private_dns_zone(){
 	APP_CONFIG_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
 	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
-
+	# remove the existing object from the state
+	COMMAND="terraform state rm azurerm_private_dns_zone.appconf_dns_zone[0]"
+	$COMMAND
 		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" != "" ]; then
 			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
 			PRIVAE_DNS_ZONE_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME"
@@ -439,7 +441,8 @@ import_app_config_private_dns_zone_virtual_network_link(){
 	APP_CONFIG_VNET_NAME="$2"
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
 	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $APP_CONFIG_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$APP_CONFIG_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$APP_CONFIG_RESOURCE_GROUP\"'))'| jq -r '.name'`
-	
+	COMMAND="terraform state rm azurerm_private_dns_zone_virtual_network_link.acs_private_link[0]"
+	$COMMAND
 	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
 		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
