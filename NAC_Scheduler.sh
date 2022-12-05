@@ -409,22 +409,6 @@ validate_secret_values() {
 	fi
 }
 
-### Import App Config Private Endpoint
-import_app_config_endpoint(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	ACS_RESOURCE_GROUP="$2"
-
-	ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME="${ACS_ADMIN_APP_CONFIG_NAME}_private_endpoint"
-	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --query value --output tsv 2> /dev/null`	
-    if [ "$PRIVAE_ENDPOINT_STATUS" != "" ]; then
-        echo "INFO ::: Private endpoint already exist. Importing the existing index-endpoint."
-        COMMAND="terraform import azurerm_private_endpoint.appconf_private_endpoint /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
-    fi
-}
-
 ### Import ACS App Config 
 import_acs_app_config(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
@@ -437,7 +421,7 @@ import_acs_app_config(){
 import_app_config_private_dns_zone(){
 	APP_CONFIG_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
-	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
 
 		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" != "" ]; then
 			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
@@ -452,14 +436,15 @@ import_app_config_private_dns_zone(){
 
 import_app_config_private_dns_zone_virtual_network_link(){
 	APP_CONFIG_RESOURCE_GROUP="$1"
+	APP_CONFIG_VNET_NAME="$2"
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
-	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${APP_CONFIG_RESOURCE_GROUP}_link"
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $APP_CONFIG_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$APP_CONFIG_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$APP_CONFIG_RESOURCE_GROUP\"'))'| jq -r '.name'`
 	
-	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query value --output tsv 2> /dev/null`	
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
 		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
 			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
-			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
 			
 			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
 			$COMMAND
@@ -470,94 +455,13 @@ import_app_config_private_dns_zone_virtual_network_link(){
 
 ###########################################START ACS Import #######################################
 
-import_app_config_endpoint(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	ACS_RESOURCE_GROUP="$2"
-
-	### SMG Read value of ACS Service from azure app config
-	ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME="${ACS_ADMIN_APP_CONFIG_NAME}_private_endpoint"
-	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --query value --output tsv 2> /dev/null`	
-    if [ "$PRIVAE_ENDPOINT_STATUS" != "" ]; then
-        echo "INFO ::: Private endpoint already exist. Importing the existing index-endpoint."
-        COMMAND="terraform import azurerm_private_endpoint.appconf_private_endpoint /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
-    fi
-}
-
-#####################################################################
-import_acs_app_config_keys(){
-    ### Import Configurations details if exist
-	ACS_ADMIN_APP_CONFIG_NAME=$1
-    DESTINATION_CONTAINER_NAME="destination-container-name"
-    DESTINATION_CONTAINER_NAME_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $DESTINATION_CONTAINER_NAME --label $DESTINATION_CONTAINER_NAME --query value --output tsv 2> /dev/null`
-    if [ "$DESTINATION_CONTAINER_NAME_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: destination-container-name already exist in the App Config. Importing the existing destination-container-name. "
-        COMMAND="terraform import azurerm_app_configuration_key.destination_container_name /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$DESTINATION_CONTAINER_NAME/Label/$DESTINATION_CONTAINER_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: $DESTINATION_CONTAINER_NAME does not exist. It will provision a new $DESTINATION_CONTAINER_NAME."
-    fi
-
-    DATASOURCE_CONNECTION_STRING="datasource-connection-string"
-    DATASOURCE_CONNECTION_STRING_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $DATASOURCE_CONNECTION_STRING --label $DATASOURCE_CONNECTION_STRING --query value --output tsv 2> /dev/null`
-    if [ "$DATASOURCE_CONNECTION_STRING_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: datasource-connection-string already exist in the App Config. Importing the existing datasource-connection-string. "
-        COMMAND="terraform import azurerm_app_configuration_key.datasource_connection_string /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$DATASOURCE_CONNECTION_STRING/Label/$DATASOURCE_CONNECTION_STRING"
-        $COMMAND
-    else
-        echo "INFO ::: $DATASOURCE_CONNECTION_STRING does not exist. It will provision a new $DATASOURCE_CONNECTION_STRING."
-    fi
-
-    ACS_APP_CONFIG_RESOURCE_GROUP="acs-resource-group"
-    ACS_APP_CONFIG_RESOURCE_GROUP_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_APP_CONFIG_RESOURCE_GROUP --label $ACS_APP_CONFIG_RESOURCE_GROUP --query value --output tsv 2> /dev/null`
-    if [ "$ACS_APP_CONFIG_RESOURCE_GROUP_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: acs-resource-group already exist in the App Config. Importing the acs-resource-group. "
-        COMMAND="terraform import azurerm_app_configuration_key.acs_resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_APP_CONFIG_RESOURCE_GROUP/Label/$ACS_APP_CONFIG_RESOURCE_GROUP"
-        $COMMAND
-    else
-        echo "INFO ::: $ACS_APP_CONFIG_RESOURCE_GROUP does not exist. It will provision a new $ACS_APP_CONFIG_RESOURCE_GROUP."
-    fi
-
-    ACS_SERVICE_NAME="acs-service-name"
-    ACS_SERVICE_NAME_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_SERVICE_NAME --label $ACS_SERVICE_NAME --query value --output tsv 2> /dev/null`
-    if [ "$ACS_SERVICE_NAME_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: acs-service-name already exist in the App Config. Importing the acs-service-name."
-        COMMAND="terraform import azurerm_app_configuration_key.acs_service_name /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_SERVICE_NAME/Label/$ACS_SERVICE_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: $ACS_SERVICE_NAME does not exist. It will provision a new $ACS_SERVICE_NAME."
-    fi
-	
-	ACS_API_KEY="acs-api-key"
-    ACS_API_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $ACS_SERVICE_NAME --label $ACS_API_KEY --query value --output tsv 2> /dev/null`
-    if [ "$ACS_API_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: acs-api-key already exist in the App Config. Importing the acs-api-key."
-        COMMAND="terraform import azurerm_app_configuration_key.acs_api_key /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$ACS_API_KEY/Label/$ACS_API_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $ACS_API_KEY does not exist. It will provision a new $ACS_API_KEY."
-    fi
-
-	NMC_API_ACS_URL="nmc-api-acs-url"
-    NMC_API_ACS_URL_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_API_ACS_URL --label $NMC_API_ACS_URL --query value --output tsv 2> /dev/null`
-    if [ "$NMC_API_ACS_URL_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: nmc-api-acs-url already exist in the App Config. Importing the nmc-api-acs-url."
-        COMMAND="terraform import azurerm_app_configuration_key.nmc_api_acs_url /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_API_ACS_URL/Label/$NMC_API_ACS_URL"
-        $COMMAND
-    else
-        echo "INFO ::: $NMC_API_ACS_URL does not exist. It will provision a new $NMC_API_ACS_URL."
-    fi	
-}
-
 import_acs_private_dns_zone(){
 	ACS_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
-	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query value --output tsv 2> /dev/null`	
+	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 
 		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" != "" ]; then
-			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
+			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist. Importing the existing private dns-zone-app-config."
 			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
 			
 			COMMAND="terraform import azurerm_private_dns_zone.appconf_dns_zone $PRIVAE_DNS_ZONE_ACS_CONFIG_ID"
@@ -569,14 +473,16 @@ import_acs_private_dns_zone(){
 
 import_acs_private_dns_zone_virtual_network_link(){
 	ACS_RESOURCE_GROUP="$1"
+	ACS_VNET_NAME="$2"
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
-	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME="${ACS_RESOURCE_GROUP}_link"
 	
-	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query value --output tsv 2> /dev/null`	
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $ACS_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_ACS_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$ACS_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$ACS_RESOURCE_GROUP\"'))'| jq -r '.name'`
+
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
 		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
-			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
-			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Cognitive Search is already exist. Importing the existing private nasuni-labs-acs-admin_link."
+			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
 			
 			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
 			$COMMAND
@@ -693,8 +599,10 @@ provision_Azure_Cognitive_Search(){
 		# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
-		import_acs_private_dns_zone $ACS_RESOURCE_GROUP
-		import_acs_private_dns_zone_virtual_network_link $ACS_RESOURCE_GROUP
+		import_acs_private_dns_zone $VNET_RESOURCE_GROUP
+		import_acs_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME 
+		import_app_config_private_dns_zone $VNET_RESOURCE_GROUP
+		import_app_config_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME
 		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
 		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 		USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
@@ -725,10 +633,6 @@ provision_Azure_Cognitive_Search(){
 		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
 			# Import if acs app config is already provisioned.
 			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
-			import_acs_app_config_keys $ACS_ADMIN_APP_CONFIG_NAME
-			import_app_config_private_dns_zone $ACS_RESOURCE_GROUP
-			import_app_config_private_dns_zone_virtual_network_link $ACS_RESOURCE_GROUP
-			import_app_config_endpoint 	$ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 		fi
 		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
 		
