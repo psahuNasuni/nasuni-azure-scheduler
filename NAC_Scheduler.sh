@@ -456,13 +456,13 @@ import_app_config_private_dns_zone_virtual_network_link(){
 ###########################################START ACS Import #######################################
 
 import_acs_private_dns_zone(){
-	ACS_RESOURCE_GROUP="$1"
+	ACS_DNS_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
-	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
+	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_DNS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 
 		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist. Importing the existing private dns-zone-app-config."
-			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
+			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_DNS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
 			
 			COMMAND="terraform import azurerm_private_dns_zone.acs_dns_zone $PRIVAE_DNS_ZONE_ACS_CONFIG_ID"
 			$COMMAND
@@ -472,17 +472,17 @@ import_acs_private_dns_zone(){
 }
 
 import_acs_private_dns_zone_virtual_network_link(){
-	ACS_RESOURCE_GROUP="$1"
+	ACS_DNS_RESOURCE_GROUP="$1"
 	ACS_VNET_NAME="$2"
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
 	
-	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $ACS_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_ACS_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$ACS_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$ACS_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $ACS_DNS_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_ACS_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$ACS_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$ACS_DNS_RESOURCE_GROUP\"'))'| jq -r '.name'`
 
-	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_DNS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
 		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Cognitive Search is already exist. Importing the existing private nasuni-labs-acs-admin_link."
-			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_DNS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
 			
 			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
 			$COMMAND
