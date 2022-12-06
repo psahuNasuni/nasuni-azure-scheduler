@@ -56,6 +56,8 @@ parse_file_NAC_txt() {
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
+            "user_subnet_name") USER_SUBNET_NAME="$value" ;;
+            "user_outbound_subnet_name") USER_OUTBOUND_SUBNET_NAME="$value" ;;
             esac
         done <"$file"
 }
@@ -143,6 +145,8 @@ parse_config_file_for_user_secret_keys_values() {
             "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
             "DestinationContainer") DESTINATION_CONTAINER_NAME="$value" ;;
             "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+            "vnetResourceGroup") USER_RESOURCE_GROUP_NAME="$value" ;;
+            "vnetName") USER_VNET_NAME="$value" ;;
         esac
     done <"$file"
 }
@@ -301,6 +305,77 @@ remove_shared_private_access(){
     DELETE_SHARED_LINK=`az search shared-private-link-resource delete --name $ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --service-name $ACS_NAME --yes -y`
     echo "INFO ::: Delete Shared Private Link Resource ::: FINISHED"
 }
+
+import_storage_account_private_dns_zone(){
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+		if [ "$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone for Storage Account is already exist. Importing the existing private dns-zone."
+			STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone.storage_account_dns_zone $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will provision a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
+		fi
+}
+
+import_azure_function_private_dns_zone(){
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+		if [ "$AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone for Azure Function is already exist. Importing the existing private dns-zone."
+			AZURE_FUNCTION_PRIVAE_DNS_ZONE_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone.discovery_function_app_dns_zone $AZURE_FUNCTION_PRIVAE_DNS_ZONE_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will provision a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
+		fi
+}
+
+import_storage_account_private_dns_zone_virtual_network_link(){
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
+	STORAGE_ACCOUNT_VNET_NAME="$2"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$STORAGE_ACCOUNT_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+			
+		if [ "$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone Virtual Network Link for Storage Account is already exist. Importing the existing private $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME/virtualNetworkLinks/$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.storage_account_private_link $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		fi
+}
+
+import_azure_function_private_dns_zone_virtual_network_link(){
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_VNET_NAME="$2"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$AZURE_FUNCTION_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+			
+		if [ "$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Function is already exist. Importing the existing private $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/$AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME/virtualNetworkLinks/$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
+			
+			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.discovery_function_app_private_link $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
+			$COMMAND
+		else
+			echo "INFO ::: $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		fi
+}
+
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
@@ -439,8 +514,26 @@ echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FI
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+	echo "user_resource_group_name="\"$USER_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "user_subnet_name="\"$USER_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
+    echo "user_outbound_subnet_name="\"$USER_OUTBOUND_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+fi
 
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
+
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+	### Import Configurations details of Storage Account DNS Zone
+    import_storage_account_private_dns_zone $USER_RESOURCE_GROUP_NAME
+    ### Import Configurations details of Storage Account Virtual Network Link
+    import_storage_account_private_dns_zone_virtual_network_link $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
+    ### Import Configurations details of Azure Discovery Function DNS Zone
+    import_azure_function_private_dns_zone $USER_RESOURCE_GROUP_NAME
+    ### Import Configurations details of Azure Discovery Function Virtual Network Link
+    import_azure_function_private_dns_zone_virtual_network_link $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
+fi
 
 ### Check if Resource Group is already provisioned
 AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
@@ -495,6 +588,7 @@ import_configuration(){
         echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
     fi
 }
+
 import_configuration
 
 echo $JSON_FILE_PATH
