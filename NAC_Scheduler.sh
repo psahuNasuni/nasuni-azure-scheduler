@@ -423,7 +423,7 @@ import_app_config_private_dns_zone(){
 	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
 	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
 
-		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" != "" ]; then
+		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
 			PRIVAE_DNS_ZONE_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME"
 			
@@ -442,7 +442,7 @@ import_app_config_private_dns_zone_virtual_network_link(){
 	
 	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
-		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
+		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
 			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
 			
@@ -460,7 +460,7 @@ import_acs_private_dns_zone(){
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
 	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 
-		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" != "" ]; then
+		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist. Importing the existing private dns-zone-app-config."
 			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
 			
@@ -480,7 +480,7 @@ import_acs_private_dns_zone_virtual_network_link(){
 
 	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
-		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" != "" ]; then
+		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Cognitive Search is already exist. Importing the existing private nasuni-labs-acs-admin_link."
 			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
 			
@@ -628,7 +628,7 @@ provision_Azure_Cognitive_Search(){
 				echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
 			fi
 		fi
-		
+
 		echo "" >>$ACS_TFVARS_FILE_NAME
 		### SMG ###
 		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
@@ -675,68 +675,6 @@ check_network_availability(){
 			echo "INFO ::: USER_VNET_NAME and USER_SUBNET_NAME Provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and Subnet $USER_SUBNET_NAME"
 			check_if_subnet_exists $USER_SUBNET_NAME $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
 		fi
-	fi
-}
-
-import_secretes(){
-	ACS_KEY_VAULT_NAME="$1"
-
-	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-url --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
-		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-		COMMAND="terraform import azurerm_key_vault_secret.acs-url $ACS_KEY_VAULT_SECRET_ID"
-		$COMMAND
-	fi
-
-	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-api-key --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
-		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-		COMMAND="terraform import azurerm_key_vault_secret.acs-api-key $ACS_KEY_VAULT_SECRET_ID"
-		$COMMAND
-	else
-		echo "INFO ::: Key Vault Secret acs-api-key does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-	fi
-
-	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-service-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
-		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-		COMMAND="terraform import azurerm_key_vault_secret.acs_service_name_per $ACS_KEY_VAULT_SECRET_ID"
-		$COMMAND
-	else
-		echo "INFO ::: Key Vault Secret nmc-volume-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-	fi
-
-	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name acs-resource-group --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
-		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-		COMMAND="terraform import azurerm_key_vault_secret.acs_resource_group_per $ACS_KEY_VAULT_SECRET_ID"
-		$COMMAND
-	else
-		echo "INFO ::: Key Vault Secret acs-resource-group does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-	fi
-
-	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name datasource-connection-string --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
-		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-		COMMAND="terraform import azurerm_key_vault_secret.datasource-connection-string $ACS_KEY_VAULT_SECRET_ID"
-		$COMMAND
-	else
-		echo "INFO ::: Key Vault Secret datasource-connection-string does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
-	fi
-
-	ACS_KEY_VAULT_SECRET_ID=`az keyvault secret show --name destination-container-name --vault-name $ACS_KEY_VAULT_NAME --query id --output tsv 2> /dev/null`
-	RESULT=$?
-	if [ $RESULT -eq 0 ]; then
-		echo "INFO ::: Key Vault Secret already available ::: Started Importing"
-		COMMAND="terraform import azurerm_key_vault_secret.destination-container-name $ACS_KEY_VAULT_SECRET_ID"
-		$COMMAND
-	else
-		echo "INFO ::: Key Vault Secret destination-container-name does not exist. It will provision a new Vault Secret in $ACS_KEY_VAULT_NAME."
 	fi
 }
 
