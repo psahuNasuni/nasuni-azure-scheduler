@@ -314,9 +314,9 @@ import_storage_account_private_dns_zone(){
 		if [ "$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
 			echo "INFO ::: Private DNS Zone for Storage Account is already exist. Importing the existing private dns-zone."
 			STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME"
-			
+		
 			COMMAND="terraform import azurerm_private_dns_zone.storage_account_dns_zone $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_ID"
-			$COMMAND
+            $COMMAND
 		else
 			echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will provision a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
 		fi
@@ -433,6 +433,10 @@ nmc_api_call "nmc_details.txt"
 echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
+ 
+USER_RESOURCE_GROUP_NAME=$(echo $USER_RESOURCE_GROUP_NAME | tr -d ' ')
+USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
+AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
 
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
@@ -447,7 +451,6 @@ fi
 ################################################################################################################
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
-
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
