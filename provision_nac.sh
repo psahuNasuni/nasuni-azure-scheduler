@@ -306,58 +306,7 @@ remove_shared_private_access(){
     echo "INFO ::: Delete Shared Private Link Resource ::: FINISHED"
 }
 
-import_storage_account_private_dns_zone(){
-	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
-	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
-	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
-
-		if [ "$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone for Storage Account is already exist. Importing the existing private dns-zone."
-			STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME"
-			
-			COMMAND="terraform import azurerm_private_dns_zone.storage_account_dns_zone $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_ID"
-			$COMMAND
-		else
-			echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will provision a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
-		fi
-}
-
-import_azure_function_private_dns_zone(){
-	AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
-	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
-	AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
-
-		if [ "$AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone for Azure Function is already exist. Importing the existing private dns-zone."
-			AZURE_FUNCTION_PRIVAE_DNS_ZONE_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME"
-			
-			COMMAND="terraform import azurerm_private_dns_zone.discovery_function_app_dns_zone $AZURE_FUNCTION_PRIVAE_DNS_ZONE_ID"
-			$COMMAND
-		else
-			echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will provision a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
-		fi
-}
-
-import_storage_account_private_dns_zone_virtual_network_link(){
-	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
-	STORAGE_ACCOUNT_VNET_NAME="$2"
-	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
-	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$STORAGE_ACCOUNT_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
-	
-	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
-			
-		if [ "$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone Virtual Network Link for Storage Account is already exist. Importing the existing private $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
-			STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME/virtualNetworkLinks/$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
-			
-			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.storage_account_private_link $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
-			$COMMAND
-		else
-			echo "INFO ::: $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
-		fi
-}
-
-import_azure_function_private_dns_zone_virtual_network_link(){
+create_azure_function_private_dns_zone_virtual_network_link(){
 	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
 	AZURE_FUNCTION_VNET_NAME="$2"
 	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
@@ -365,15 +314,118 @@ import_azure_function_private_dns_zone_virtual_network_link(){
 	
 	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
-		if [ "$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Function is already exist. Importing the existing private $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
-			AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP/Microsoft.Network/privateDnsZones/$AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME/virtualNetworkLinks/$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
-			
-			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.discovery_function_app_private_link $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
-			$COMMAND
+	if [ "$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Function is already exist."
+		
+	else
+		echo "INFO ::: $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will provision a new $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		
+		VIRTUAL_NETWORK_ID=`az network vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_VNET_NAME --query id --output tsv 2> /dev/null`
+		LINK_NAME="nacfunctionvnetlink"
+		
+		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		
+		COMMAND="az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
+		$COMMAND	
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
-			echo "INFO ::: $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+			exit 1
 		fi
+	fi
+}
+
+
+create_storage_account_private_dns_zone_virtual_network_link(){
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
+	STORAGE_ACCOUNT_VNET_NAME="$2"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
+		
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$STORAGE_ACCOUNT_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
+
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+			
+	if [ "$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone Virtual Network Link for Storage Account is already exist."
+		
+	else
+		echo "INFO ::: $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will create a new $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		
+		VIRTUAL_NETWORK_ID=`az network vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_VNET_NAME --query id --output tsv 2> /dev/null`
+		LINK_NAME="nacstoragevnetlink"
+		
+		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		
+		COMMAND="az network private-dns link vnet create -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
+		$COMMAND	
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+		else
+			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+			exit 1
+		fi
+	fi		
+}
+
+create_azure_function_private_dns_zone(){
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_VNET_NAME="$2"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+	if [ "$AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone for Azure Function is already exist."
+		
+	else
+		echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
+		
+		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		
+		COMMAND="az network private-dns zone create -g $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME"
+		$COMMAND
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
+		else
+			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+			exit 1
+		fi
+	fi
+}
+
+create_storage_account_private_dns_zone(){
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	STORAGE_ACCOUNT_VNET_NAME="$2"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+	if [ "$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone for Storage Account is already exist."
+		
+	else
+		echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
+		
+		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		
+		COMMAND="az network private-dns zone create -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME"
+		$COMMAND
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
+		else
+			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+			exit 1
+		fi
+	fi
 }
 
 ###### START - EXECUTION ######
@@ -524,17 +576,6 @@ fi
 
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
-if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-	### Import Configurations details of Storage Account DNS Zone
-    import_storage_account_private_dns_zone $USER_RESOURCE_GROUP_NAME
-    ### Import Configurations details of Storage Account Virtual Network Link
-    import_storage_account_private_dns_zone_virtual_network_link $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
-    ### Import Configurations details of Azure Discovery Function DNS Zone
-    import_azure_function_private_dns_zone $USER_RESOURCE_GROUP_NAME
-    ### Import Configurations details of Azure Discovery Function Virtual Network Link
-    import_azure_function_private_dns_zone_virtual_network_link $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
-fi
-
 ### Check if Resource Group is already provisioned
 AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
@@ -544,6 +585,14 @@ if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
     $COMMAND
 else
     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
+fi
+
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+    ### Create the Azure Discovery Function DNS Zone
+    create_azure_function_private_dns_zone $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
+
+    ### Create the Storage Account DNS Zone
+    create_storage_account_private_dns_zone $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
 fi
 
 import_configuration(){
