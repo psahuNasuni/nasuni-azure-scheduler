@@ -379,10 +379,10 @@ create_azure_function_private_dns_zone(){
 
 	if [ "$AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
 		
-		echo "INFO ::: Private DNS Zone for Azure Function is already exist."
+        echo "INFO ::: Private DNS Zone for Azure Function is already exist."
 
         create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
-		
+
 	else
 		echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
 		
@@ -409,10 +409,10 @@ create_storage_account_private_dns_zone(){
 
 	if [ "$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
 		
-		echo "INFO ::: Private DNS Zone for Storage Account is already exist."
+        echo "INFO ::: Private DNS Zone for Storage Account is already exist."
 
         create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
-		
+
 	else
 		echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
 		
