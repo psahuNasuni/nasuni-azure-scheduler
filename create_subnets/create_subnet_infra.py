@@ -5,12 +5,6 @@ from datetime import *
 import ipaddress 
 from ipaddress import IPv4Network
 
-# if len(sys.argv) < 4:
-#    print(
-#        'Usage -- python /create_subnets/create_subnet_infra.py <vnet_rg> <vnet_name> <subnet_name> <subnet_mask>'
-#        )
-#    exit()
-
 logging.getLogger().setLevel(logging.INFO)
 logging.info(f'date={date}')
 
@@ -23,7 +17,6 @@ def remove_new_line(f):
         result = result[0].replace("\n", "")
         return result
     return wrapper
-
 
 def available_ips_in_subnet(vnet_rg, vnet_name, subnet_name, subnet_mask):
     """
@@ -43,11 +36,10 @@ def available_ips_in_subnet(vnet_rg, vnet_name, subnet_name, subnet_mask):
     available_ip = max_ip - int(used_ip)
     return available_ip
 
-
 def create_subnet(vnet_rg, vnet_name, subnet_name, address_prefixes):
     """
     Provision subnet on Azure Vnet
-    : address_prefixes "10.23.$i.0/24"
+    : address_prefixes "10.23.0.0/24"
     """
     create_subnet = 'az network vnet subnet create -g ' + vnet_rg + ' --vnet-name ' + vnet_name + ' -n ' + subnet_name + ' --address-prefixes ' + address_prefixes + ' --delegations Microsoft.Web/serverFarms'
 
@@ -56,7 +48,6 @@ def create_subnet(vnet_rg, vnet_name, subnet_name, address_prefixes):
 
     return subnet_status
 
-# @remove_new_line
 def is_ip_available(vnet_rg, vnet_name, ip_address):
     """
     Check if IP is available or not
@@ -128,7 +119,6 @@ def get_next_subnet_address_in_vnet(last_address):
         
     return next_address
 
-
 def subnet_infrastructure(vnet_rg, vnet_name, subnet_name, subnet_mask, required_subnet_count):
     """
     Provision the Infrastructure
@@ -158,10 +148,6 @@ def subnet_infrastructure(vnet_rg, vnet_name, subnet_name, subnet_mask, required
     return available_private_subnets
 
 if __name__ == "__main__":
-    # vnet_rg="nac-nmc-22-2-1"
-    # vnet_name="nac-nmc-22-2-1-vnet"
-    # subnet_name="default"
-    # subnet_mask="28"
     vnet_rg=sys.argv[1]
     vnet_name=sys.argv[2]
     subnet_name=sys.argv[3]
