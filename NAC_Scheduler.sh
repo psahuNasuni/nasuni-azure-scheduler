@@ -727,6 +727,48 @@ check_if_resourcegroup_exist(){
 	fi
 }
 
+
+get_subnets(){
+    USER_VNET_RESOURCE_GROUP="$1"
+    USER_VNET_NAME="$2"
+    SUBNET_NAME="$3"
+    SUBNET_MASK="$4"
+	REQUIRED_SUBNET_COUNT="$5"
+
+	DIRECTORY=$(pwd)
+	echo "Directory: $DIRECTORY"
+	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
+	OUTPUT=$(python $FILENAME $USER_VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+	COUNTER=0
+	NAC_SUBNETS=()
+	SEARCH_OUTBOUND_SUBNET=()
+	DISCOVERY_OUTBOUND_SUBNET=()
+	SUBNET_LIST=(`cat available_subnets.txt`)
+	echo "Subnet list from file : $SUBNET_LIST"
+	# Use comma as separator and apply as pattern
+	for SUBNET in ${SUBNET_LIST//,/ }
+	do
+		if [ $COUNTER -lt 16 ]; then
+			if [ $COUNTER -eq 0 ]; then
+				NAC_SUBNETS+="$SUBNET"
+			else
+				NAC_SUBNETS+=", $SUBNET"	
+			fi
+		else
+			if [ $COUNTER -eq 16 ]; then
+				DISCOVERY_OUTBOUND_SUBNET="[$SUBNET]"
+			else
+				SEARCH_OUTBOUND_SUBNET="[$SUBNET"
+			fi
+		fi
+	let COUNTER=COUNTER+1
+	done
+	NAC_SUBNETS+="]"	
+	NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
+	SEARCH_OUTBOUND_SUBNET=$(echo "$SEARCH_OUTBOUND_SUBNET" | sed 's/ //g')
+	DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
+}
+
 ########################## Create CRON ############################################################
 Schedule_CRON_JOB() {
 	NAC_SCHEDULER_IP_ADDR=$1
@@ -818,7 +860,8 @@ Schedule_CRON_JOB() {
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 		echo "use_private_ip="$USE_PRIVATE_IP >>$NAC_TXT_FILE_NAME
 		echo "user_subnet_name="$SUBNET_IS >>$NAC_TXT_FILE_NAME
-		echo "user_outbound_subnet_name="$USER_OUTBOUND_SUBNET_NAME >>$NAC_TXT_FILE_NAME
+		echo "nac_subnets="$NAC_SUBNETS >>$NAC_TXT_FILE_NAME
+		echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TXT_FILE_NAME	
 	else
 		echo "use_private_ip="N >>$NAC_TXT_FILE_NAME
 	fi
@@ -886,6 +929,9 @@ elif [ $# -lt 4 ]; then
 	echo "ERROR ::: $# argument(s) supplied. This Script Takes 4 Mandatory Arguments 1) NMC Volume_Name, 2) Service, 3) Frequency and 4) User Secret(either Existing Secret Name Or Secret KVPs in a text file)"
 	exit 1
 fi
+
+get_subnets
+exit 8888
 #################### Validate Arguments Passed to NAC_Scheduler.sh ####################
 NMC_VOLUME_NAME="$1"   ### 1st argument  ::: NMC_VOLUME_NAME
 ANALYTICS_SERVICE="$2" ### 2nd argument  ::: ANALYTICS_SERVICE
@@ -948,6 +994,8 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" use-private-ip
 		### Check for private network variables
 		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+			# Call python create_subnet_infra network
+
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subscription-id
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-resource-group
 			#validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-name
