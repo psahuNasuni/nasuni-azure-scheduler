@@ -337,8 +337,8 @@ validate_secret_values() {
 				NMC_API_ENDPOINT=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "web-access-appliance-address" ]; then
 				WEB_ACCESS_APPLIANCE_ADDRESS=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet" ]; then
-				VNET_NAME=$SECRET_VALUE
+			# elif [ "$SECRET_NAME" == "vnet" ]; then
+			# 	VNET_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "use-private-ip" ]; then
 				USE_PRIVATE_IP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "pem-key-path" ]; then
@@ -469,7 +469,6 @@ import_app_config_endpoint(){
 }
 
 ###########################################START ACS Import #######################################
-
 import_acs_private_dns_zone(){
 	ACS_DNS_RESOURCE_GROUP="$1"
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
@@ -727,9 +726,8 @@ check_if_resourcegroup_exist(){
 	fi
 }
 
-
 get_subnets(){
-    USER_VNET_RESOURCE_GROUP="$1"
+    VNET_RESOURCE_GROUP="$1"
     USER_VNET_NAME="$2"
     SUBNET_NAME="$3"
     SUBNET_MASK="$4"
@@ -738,7 +736,7 @@ get_subnets(){
 	DIRECTORY=$(pwd)
 	echo "Directory: $DIRECTORY"
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
-	OUTPUT=$(python $FILENAME $USER_VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+	OUTPUT=$(python $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
 	NAC_SUBNETS=()
 	SEARCH_OUTBOUND_SUBNET=()
@@ -819,23 +817,16 @@ Schedule_CRON_JOB() {
 	echo "vnetSubscriptionId: "$VNET_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
 	echo "vnetResourceGroup: "$VNET_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
 	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-0: "$VNET_SUBNET_NAME_0 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-1: "$VNET_SUBNET_NAME_1 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-2: "$VNET_SUBNET_NAME_2 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-3: "$VNET_SUBNET_NAME_3 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-4: "$VNET_SUBNET_NAME_4 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-5: "$VNET_SUBNET_NAME_5 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-6: "$VNET_SUBNET_NAME_6 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-7: "$VNET_SUBNET_NAME_7 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-8: "$VNET_SUBNET_NAME_8 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-9: "$VNET_SUBNET_NAME_9 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-10: "$VNET_SUBNET_NAME_10 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-11: "$VNET_SUBNET_NAME_11 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-12: "$VNET_SUBNET_NAME_12 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-13: "$VNET_SUBNET_NAME_13 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-14: "$VNET_SUBNET_NAME_14 >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubnetName-15: "$VNET_SUBNET_NAME_15 >>$CONFIG_DAT_FILE_NAME
-
+	# Add the 16 vnet subnet names to the config.dat
+	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+		NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/\[//g' | sed 's/\]//g')
+		VNET_SUBNET_NAME_COUNTER=0
+		for SUBNET in ${NAC_SUBNETS//,/ }
+		do
+			echo "vnetSubnetName-$VNET_SUBNET_NAME_COUNTER: "$SUBNET >>$CONFIG_DAT_FILE_NAME
+			let VNET_SUBNET_NAME_COUNTER=VNET_SUBNET_NAME_COUNTER+1
+		done
+	fi
     chmod 777 $CONFIG_DAT_FILE_NAME
 
 	CRON_DIR_NAME="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
@@ -930,8 +921,6 @@ elif [ $# -lt 4 ]; then
 	exit 1
 fi
 
-get_subnets
-exit 8888
 #################### Validate Arguments Passed to NAC_Scheduler.sh ####################
 NMC_VOLUME_NAME="$1"   ### 1st argument  ::: NMC_VOLUME_NAME
 ANALYTICS_SERVICE="$2" ### 2nd argument  ::: ANALYTICS_SERVICE
@@ -1060,6 +1049,7 @@ get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
+get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"18"
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 
@@ -1161,6 +1151,7 @@ else
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
     echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$TFVARS_NAC_SCHEDULER
     echo "git_branch="\"$GIT_BRANCH_NAME\" >>$TFVARS_NAC_SCHEDULER
+	echo "search_outbound_subnet="\"$SEARCH_OUTBOUND_SUBNET\" >>$TFVARS_NAC_SCHEDULER
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"

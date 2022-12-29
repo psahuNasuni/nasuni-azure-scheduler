@@ -446,7 +446,7 @@ DESTINATION_STORAGE_ACCOUNT_NAME=""
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 PRIVATE_CONNECTION_NAME=""
 ENDPOINT_NAME="acs-private-connection"
-parse_file_NAC_txt "NAC.txt"
+parse_file_NAC_txt "NAC.txt" 
 USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
 ##################################### START TRACKER JSON Creation ###################################################################
 
