@@ -818,15 +818,15 @@ Schedule_CRON_JOB() {
 	echo "vnetResourceGroup: "$VNET_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
 	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
 	# Add the 16 vnet subnet names to the config.dat
-	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-		NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/\[//g' | sed 's/\]//g')
-		VNET_SUBNET_NAME_COUNTER=0
-		for SUBNET in ${NAC_SUBNETS//,/ }
-		do
-			echo "vnetSubnetName-$VNET_SUBNET_NAME_COUNTER: "$SUBNET >>$CONFIG_DAT_FILE_NAME
-			let VNET_SUBNET_NAME_COUNTER=VNET_SUBNET_NAME_COUNTER+1
-		done
-	fi
+	# if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+	# 	NAC_SUBNETS_NAMES=$(echo "$NAC_SUBNETS" | sed 's/\[//g' | sed 's/\]//g')
+	# 	VNET_SUBNET_NAME_COUNTER=0
+	# 	for SUBNET in ${NAC_SUBNETS_NAMES//,/ }
+	# 	do
+	# 		echo "vnetSubnetName-$VNET_SUBNET_NAME_COUNTER: "$SUBNET >>$CONFIG_DAT_FILE_NAME
+	# 		let VNET_SUBNET_NAME_COUNTER=VNET_SUBNET_NAME_COUNTER+1
+	# 	done
+	# fi
     chmod 777 $CONFIG_DAT_FILE_NAME
 
 	CRON_DIR_NAME="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
