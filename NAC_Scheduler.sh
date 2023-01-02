@@ -736,7 +736,7 @@ get_subnets(){
 	DIRECTORY=$(pwd)
 	echo "Directory: $DIRECTORY"
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
-	OUTPUT=$(python $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+	OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
 	NAC_SUBNETS=()
 	SEARCH_OUTBOUND_SUBNET=()
