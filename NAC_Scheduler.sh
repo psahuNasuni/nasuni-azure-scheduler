@@ -756,14 +756,14 @@ get_subnets(){
 			if [ $COUNTER -eq 16 ]; then
 				DISCOVERY_OUTBOUND_SUBNET="[$SUBNET]"
 			else
-				SEARCH_OUTBOUND_SUBNET="[$SUBNET"
+				SEARCH_OUTBOUND_SUBNET="$SUBNET"
 			fi
 		fi
 	let COUNTER=COUNTER+1
 	done
 	NAC_SUBNETS+="]"	
 	NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
-	SEARCH_OUTBOUND_SUBNET=$(echo "$SEARCH_OUTBOUND_SUBNET" | sed 's/ //g')
+	SEARCH_OUTBOUND_SUBNET=$(echo "$SEARCH_OUTBOUND_SUBNET" | sed 's/[][]//g')
 	DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
 }
 
