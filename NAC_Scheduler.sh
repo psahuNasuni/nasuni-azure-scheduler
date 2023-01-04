@@ -996,7 +996,7 @@ get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"1"
 SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
 
 echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
-exit 8888
+
 
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
@@ -1102,6 +1102,8 @@ else
 	fi
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
+
+	exit 8888
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
 	$COMMAND
 	if [ $? -eq 0 ]; then
