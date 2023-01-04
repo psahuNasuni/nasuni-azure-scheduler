@@ -5,6 +5,7 @@ import json
 from datetime import *
 import ipaddress 
 from ipaddress import IPv4Network
+from sortedcontainers import SortedDict
 
 logging.getLogger().setLevel(logging.INFO)
 logging.info(f'date={date}')
@@ -72,11 +73,19 @@ def get_used_subnets(vnet_rg, vnet_name):
     Create variable to track availabl IP count 
     """  
     used_subnets = 'az network vnet subnet list --resource-group ' + vnet_rg + ' --vnet-name ' + vnet_name + """ -o json | jq ".[].addressPrefix" | tr -d '"'"""
+    
     with os.popen(used_subnets) as f:
         used_subnets = f.readlines()
-        used_subnets = [subnet[:-4] for subnet in used_subnets]    
+        used_subnets = [subnet[:-4] for subnet in used_subnets]
+    
+    subnets_dict = {}
+    # Sort the used subnets 
+    for subnet in used_subnets:
+        subnets_dict[int(subnet.split(".")[2])] = subnet
 
-    return used_subnets
+    subnets_dict = SortedDict(subnets_dict) 
+
+    return subnets_dict[subnets_dict.iloc[-1]]
 
 @remove_new_line
 def get_default_vnet_ip(vnet_rg, vnet_name):
@@ -110,12 +119,14 @@ def get_next_subnet_address_in_vnet(last_address):
     Create next subnet address in_vnet
     """
     # 10.23.26.208
+    # 10.23.26.0
     split_last_add = last_address.split('.')
     third_octet = int(split_last_add[2]) + 1 # 26
     ### Need to handle the 255 condition
     split_last_add[2] = third_octet
     split_last_add[3] = 0
-    # Group split octets 
+    # Group split octets
+    # next_address = ".".join(split_last_add) 
     next_address = split_last_add[0]
     
     for octet in range(1, len(split_last_add)):
@@ -137,8 +148,8 @@ def subnet_infrastructure(vnet_rg, vnet_name, subnet_name, subnet_mask, required
     if  available_ips_in_vnet > 288:
         net = IPv4Network(get_default_vnet_ip_add)
         # Change subnet mask to 28 as one subnet need atleast 16 IP address
-        used_subnets = get_used_subnets(vnet_rg, vnet_name)
-        last_subnet = used_subnets[-1] # '10.23.25.0'
+        last_subnet = get_used_subnets(vnet_rg, vnet_name) # '10.23.25.0'
+        # last_subnet = used_subnets[-1] # '10.23.25.0'
         while subnet_count < required_subnet_count:
             next_available_address = get_next_subnet_address_in_vnet(last_subnet)
             subnet_ip_range = next_available_address + '/24'
