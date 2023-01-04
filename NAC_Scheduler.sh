@@ -8,30 +8,6 @@ DATE_WITH_TIME=$(date "+%Y%m%d-%H%M%S")
 START=$(date +%s)
 LOG_FILE=NAC_SCHEDULER_$DATE_WITH_TIME.log
 (
-check_if_subnet_exists(){
-	INPUT_SUBNET="$1"
-	INPUT_VNET="$2"
-  	INPUT_RG="$3"
-
-    VNET_CHECK=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
-    if [ "$VNET_CHECK" != "Succeeded" ]; then
-     	echo "ERROR ::: VNET $INPUT_VNET not available. Please provide a valid VNET NAME."
-    	exit 1
-    else
-     	echo "INFO ::: VNET $INPUT_VNET is Valid" 
-        # if vnet is valid then checking for subnet is valid or not
-        SUBNET_CHECK=`az network vnet subnet show --name $INPUT_SUBNET --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
-        if [ "$SUBNET_CHECK" != "Succeeded" ]; then
-            echo "ERROR ::: SUBNET $INPUT_SUBNET not available. Please provide a valid SUBNET NAME."
-            exit 1
-        else
-            echo "INFO ::: SUBNET $INPUT_SUBNET is Valid"
-        fi
-     fi
-  	VNET_IS="$INPUT_VNET"
-	SUBNET_IS="$INPUT_SUBNET"
-	echo "SUBNET_IS=$SUBNET_IS , VNET_IS=$VNET_IS"
-}
 
 get_destination_container_url(){
 	DESTINATION_CONTAINER_URL=$1
@@ -75,10 +51,22 @@ check_if_VNET_exists(){
 		exit 1
 	fi
 
-	VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
+	#VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
+	get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
+	exit 7777
+	VNET_0_SUBNET_CIDR=$(echo "$SEARCH_OUTBOUND_SUBNET" | sed 's/[][]//g')
+	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
+	VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --address-prefixes "$VNET_0_SUBNET_CIDR")
+	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
+	if [ "$SUBNET_CHECK" != "Succeeded" ]; then
+		echo "ERROR ::: SUBNET $SUBNET_0_NAME Creation Failed."
+		exit 1
+	else
+		echo "INFO ::: SUBNET $SUBNET_0_NAME is Created."
+	fi
 	VNET_IS="$INPUT_VNET"
-	SUBNET_IS="$VNET_0_SUBNET"
-	echo "SUBNET_IS=$VNET_0_SUBNET , VNET_IS=$INPUT_VNET"
+	SUBNET_IS="$SUBNET_0_NAME"
+	echo "SUBNET_IS=$SUBNET_0_NAME , VNET_IS=$INPUT_VNET"
 
 }
 
@@ -685,10 +673,9 @@ check_network_availability(){
 			### If USER_VNET_NAME provided and USER_SUBNET_NAME not Provided, It will take the provided VNET NAME and its default Subnet
 			echo "INFO ::: USER_SUBNET_NAME not provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and its default Subnet"
 			check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
-		else
-			### If USER_VNET_NAME provided and USER_SUBNET_NAME Provided, It will take the provided VNET NAME and provided Subnet
-			echo "INFO ::: USER_VNET_NAME and USER_SUBNET_NAME Provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and Subnet $USER_SUBNET_NAME"
-			check_if_subnet_exists $USER_SUBNET_NAME $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
+
+			echo "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+			exit 8888
 		fi
 	fi
 }
@@ -738,33 +725,10 @@ get_subnets(){
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
 	OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
-	NAC_SUBNETS=()
-	SEARCH_OUTBOUND_SUBNET=()
-	DISCOVERY_OUTBOUND_SUBNET=()
-	SUBNET_LIST=(`cat available_subnets.txt`)
-	echo "Subnet list from file : $SUBNET_LIST"
+	VNET_0_SUBNETS=(`cat available_subnets.txt`)
+	VNET_0_SUBNETS=$(echo "$VNET_0_SUBNETS" | sed 's/[][]//g')
+	echo "Subnet list from file : $VNET_0_SUBNETS"
 	# Use comma as separator and apply as pattern
-	for SUBNET in ${SUBNET_LIST//,/ }
-	do
-		if [ $COUNTER -lt 16 ]; then
-			if [ $COUNTER -eq 0 ]; then
-				NAC_SUBNETS+="$SUBNET"
-			else
-				NAC_SUBNETS+=", $SUBNET"	
-			fi
-		else
-			if [ $COUNTER -eq 16 ]; then
-				DISCOVERY_OUTBOUND_SUBNET="[$SUBNET]"
-			else
-				SEARCH_OUTBOUND_SUBNET="$SUBNET"
-			fi
-		fi
-	let COUNTER=COUNTER+1
-	done
-	NAC_SUBNETS+="]"	
-	NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
-	SEARCH_OUTBOUND_SUBNET=$(echo "$SEARCH_OUTBOUND_SUBNET" | sed 's/[][]//g')
-	DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
 }
 
 ########################## Create CRON ############################################################
@@ -1031,7 +995,7 @@ get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
-get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"18"
+#get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"18"
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 
