@@ -1039,7 +1039,10 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
-	check_network_availability
+	
+	if [[ "$USE_PRIVATE_IP" != "Y" ]]; then
+		check_network_availability
+	fi
 	### "NAC Scheduler is not present. Creating new Virtual machine."
 	echo "INFO ::: NAC Scheduler Instance is not present. Creating new Virtual Machine."
 	########## Download NAC Scheduler Instance Provisioning Code from GitHub ##########
