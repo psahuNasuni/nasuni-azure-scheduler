@@ -56,7 +56,7 @@ check_if_VNET_exists(){
 	VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
 	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
 	echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
-	VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --address-prefixes "$VNET_0_SUBNET_CIDR")
+	VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --service-endpoints "Microsoft.Web" --address-prefixes "$VNET_0_SUBNET_CIDR")
 	
 	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
 	if [ "$SUBNET_CHECK" != "Succeeded" ]; then
@@ -1108,7 +1108,6 @@ else
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 
-	exit 8888
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
 	$COMMAND
 	if [ $? -eq 0 ]; then
