@@ -68,8 +68,7 @@ check_if_VNET_exists(){
 	VNET_IS="$INPUT_VNET"
 	SUBNET_IS="$SUBNET_0_NAME"
 	echo "SUBNET_IS=$SUBNET_0_NAME , VNET_IS=$INPUT_VNET"
-	exit 8888
-
+	
 }
 
 check_if_pem_file_exists() {
