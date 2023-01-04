@@ -53,8 +53,7 @@ check_if_VNET_exists(){
 
 	#VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
 	get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
-	exit 7777
-	VNET_0_SUBNET_CIDR=$(echo "$SEARCH_OUTBOUND_SUBNET" | sed 's/[][]//g')
+	VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
 	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
 	VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --address-prefixes "$VNET_0_SUBNET_CIDR")
 	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
@@ -725,9 +724,9 @@ get_subnets(){
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
 	OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
-	VNET_0_SUBNETS=(`cat available_subnets.txt`)
-	VNET_0_SUBNETS=$(echo "$VNET_0_SUBNETS" | sed 's/[][]//g')
-	echo "Subnet list from file : $VNET_0_SUBNETS"
+	SUBNETS_CIDR=(`cat available_subnets.txt`)
+	SUBNETS_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
+	echo "Subnet list from file : $SUBNETS_CIDR"
 	# Use comma as separator and apply as pattern
 }
 

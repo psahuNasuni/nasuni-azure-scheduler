@@ -13,6 +13,7 @@ sudo apt install python3 -y
 sudo apt install python3-testresources -y
 sudo apt install python3-pip -y
 sudo pip3 install boto3
+sudo pip3 install sortedcontainers
 echo "******************  Installing AZURE CLI ******************"
 sudo apt-get update
 sudo apt-get install ca-certificates curl apt-transport-https lsb-release gnupg
