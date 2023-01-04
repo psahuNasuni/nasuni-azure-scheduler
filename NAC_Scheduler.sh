@@ -55,7 +55,9 @@ check_if_VNET_exists(){
 	get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
 	VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
 	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
+	echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
 	VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --address-prefixes "$VNET_0_SUBNET_CIDR")
+	
 	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
 	if [ "$SUBNET_CHECK" != "Succeeded" ]; then
 		echo "ERROR ::: SUBNET $SUBNET_0_NAME Creation Failed."
@@ -66,6 +68,7 @@ check_if_VNET_exists(){
 	VNET_IS="$INPUT_VNET"
 	SUBNET_IS="$SUBNET_0_NAME"
 	echo "SUBNET_IS=$SUBNET_0_NAME , VNET_IS=$INPUT_VNET"
+	exit 8888
 
 }
 
