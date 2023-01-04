@@ -673,8 +673,6 @@ check_network_availability(){
 			echo "INFO ::: USER_SUBNET_NAME not provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and its default Subnet"
 			check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
 
-			echo "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-			exit 8888
 		fi
 	fi
 }
@@ -994,7 +992,12 @@ get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
-#get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"18"
+get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"1"
+SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
+
+echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
+exit 8888
+
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
 
@@ -1094,7 +1097,9 @@ else
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
     echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$TFVARS_NAC_SCHEDULER
     echo "git_branch="\"$GIT_BRANCH_NAME\" >>$TFVARS_NAC_SCHEDULER
-	echo "search_outbound_subnet="$SEARCH_OUTBOUND_SUBNET >>$TFVARS_NAC_SCHEDULER
+	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+		echo "search_outbound_subnet="$SEARCH_OUTBOUND_SUBNET >>$TFVARS_NAC_SCHEDULER
+	fi
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
