@@ -57,7 +57,6 @@ parse_file_NAC_txt() {
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
             "user_subnet_name") USER_SUBNET_NAME="$value" ;;
-            "user_outbound_subnet_name") USER_OUTBOUND_SUBNET_NAME="$value" ;;
             esac
         done <"$file"
 }
@@ -431,6 +430,47 @@ create_storage_account_private_dns_zone(){
 	fi
 }
 
+
+get_subnets(){
+    VNET_RESOURCE_GROUP="$1"
+    USER_VNET_NAME="$2"
+    SUBNET_NAME="$3"
+    SUBNET_MASK="$4"
+    REQUIRED_SUBNET_COUNT="$5"
+
+    DIRECTORY=$(pwd)
+    echo "Directory: $DIRECTORY"
+    FILENAME="$DIRECTORY/create_subnet_infra.py"
+    OUTPUT=$(python $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+    COUNTER=0
+    NAC_SUBNETS=()
+    SEARCH_OUTBOUND_SUBNET=()
+    DISCOVERY_OUTBOUND_SUBNET=()
+    SUBNET_LIST=(`cat available_subnets.txt`)
+    echo "Subnet list from file : $SUBNET_LIST"
+    # Use comma as separator and apply as pattern
+    for SUBNET in ${SUBNET_LIST//,/ }
+    do
+        if [ $COUNTER -lt 16 ]; then
+            if [ $COUNTER -eq 0 ]; then
+                NAC_SUBNETS+="$SUBNET"
+            else
+                NAC_SUBNETS+=", $SUBNET"	
+            fi
+        else
+            if [ $COUNTER -eq 16 ]; then
+                DISCOVERY_OUTBOUND_SUBNET="[$SUBNET]"
+            else
+                SEARCH_OUTBOUND_SUBNET="$SUBNET"
+            fi
+        fi
+    let COUNTER=COUNTER+1
+    done
+    NAC_SUBNETS+="]"	
+    NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
+    DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
+}
+
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
@@ -503,6 +543,8 @@ AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
 fi
+
+get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
@@ -584,7 +626,8 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
     echo "user_subnet_name="\"$USER_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
     echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
-    echo "user_outbound_subnet_name="\"$USER_OUTBOUND_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
+    echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
 fi
 
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME

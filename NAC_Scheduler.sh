@@ -813,9 +813,7 @@ Schedule_CRON_JOB() {
 	echo "nac_scheduler_name="$NAC_SCHEDULER_NAME >>$NAC_TXT_FILE_NAME
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 		echo "use_private_ip="$USE_PRIVATE_IP >>$NAC_TXT_FILE_NAME
-		echo "user_subnet_name="$SUBNET_IS >>$NAC_TXT_FILE_NAME
-		echo "nac_subnets="$NAC_SUBNETS >>$NAC_TXT_FILE_NAME
-		echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TXT_FILE_NAME	
+		echo "user_subnet_name="$SUBNET_IS >>$NAC_TXT_FILE_NAME	
 	else
 		echo "use_private_ip="N >>$NAC_TXT_FILE_NAME
 	fi
@@ -840,7 +838,7 @@ Schedule_CRON_JOB() {
 	echo "$JSON_FILE_PATH Directory Created"
 
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py tracker_json.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py create_subnets/create_subnet_infra.py tracker_json.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 	RES="$?"
 	if [ $RES -ne 0 ]; then
 		echo "ERROR ::: Failed to Copy $TFVARS_FILE_NAME to NAC_Scheduer Instance."
