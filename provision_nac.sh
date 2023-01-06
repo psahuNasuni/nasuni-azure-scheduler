@@ -441,10 +441,10 @@ get_subnets(){
     DIRECTORY=$(pwd)
     echo "Directory: $DIRECTORY"
     FILENAME="$DIRECTORY/create_subnet_infra.py"
-    OUTPUT=$(python $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+    chmod 777 $FILENAME
+    OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
     COUNTER=0
     NAC_SUBNETS=()
-    SEARCH_OUTBOUND_SUBNET=()
     DISCOVERY_OUTBOUND_SUBNET=()
     SUBNET_LIST=(`cat available_subnets.txt`)
     echo "Subnet list from file : $SUBNET_LIST"
@@ -473,7 +473,7 @@ get_subnets(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME=""
+GIT_BRANCH_NAME="CTPROJECT-410"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -544,7 +544,10 @@ if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
 fi
 
+NAC_SUBNETS=()
+DISCOVERY_OUTBOUND_SUBNET=()
 get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
+
 
 ####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
