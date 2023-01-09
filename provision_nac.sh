@@ -459,7 +459,7 @@ get_subnets(){
             fi
         else
             if [ $COUNTER -eq 16 ]; then
-                DISCOVERY_OUTBOUND_SUBNET="[$SUBNET]"
+                DISCOVERY_OUTBOUND_SUBNET="[$SUBNET"
             else
                 SEARCH_OUTBOUND_SUBNET="$SUBNET"
             fi
@@ -632,7 +632,7 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
     echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
 fi
-
+echo "" >>$NAC_TFVARS_FILE_NAME
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
 ### Check if Resource Group is already provisioned
