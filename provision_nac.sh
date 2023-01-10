@@ -57,7 +57,6 @@ parse_file_NAC_txt() {
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
             "user_subnet_name") USER_SUBNET_NAME="$value" ;;
-            "user_outbound_subnet_name") USER_OUTBOUND_SUBNET_NAME="$value" ;;
             esac
         done <"$file"
 }
@@ -431,9 +430,50 @@ create_storage_account_private_dns_zone(){
 	fi
 }
 
+
+get_subnets(){
+    VNET_RESOURCE_GROUP="$1"
+    USER_VNET_NAME="$2"
+    SUBNET_NAME="$3"
+    SUBNET_MASK="$4"
+    REQUIRED_SUBNET_COUNT="$5"
+
+    DIRECTORY=$(pwd)
+    echo "Directory: $DIRECTORY"
+    FILENAME="$DIRECTORY/create_subnet_infra.py"
+    chmod 777 $FILENAME
+    OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+    COUNTER=0
+    NAC_SUBNETS=()
+    DISCOVERY_OUTBOUND_SUBNET=()
+    SUBNET_LIST=(`cat available_subnets.txt`)
+    echo "Subnet list from file : $SUBNET_LIST"
+    # Use comma as separator and apply as pattern
+    for SUBNET in ${SUBNET_LIST//,/ }
+    do
+        if [ $COUNTER -lt 16 ]; then
+            if [ $COUNTER -eq 0 ]; then
+                NAC_SUBNETS+="$SUBNET"
+            else
+                NAC_SUBNETS+=", $SUBNET"	
+            fi
+        else
+            if [ $COUNTER -eq 16 ]; then
+                DISCOVERY_OUTBOUND_SUBNET="[$SUBNET"
+            else
+                SEARCH_OUTBOUND_SUBNET="$SUBNET"
+            fi
+        fi
+    let COUNTER=COUNTER+1
+    done
+    NAC_SUBNETS+="]"	
+    NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
+    DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
+}
+
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME=""
+GIT_BRANCH_NAME="CTPROJECT-410"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -504,7 +544,11 @@ if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
 fi
 
-####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
+NAC_SUBNETS=()
+DISCOVERY_OUTBOUND_SUBNET=()
+get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
+
+###################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
@@ -584,9 +628,10 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
     echo "user_subnet_name="\"$USER_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
     echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
-    echo "user_outbound_subnet_name="\"$USER_OUTBOUND_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
+    echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
 fi
-
+echo "" >>$NAC_TFVARS_FILE_NAME
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
 ### Check if Resource Group is already provisioned
@@ -594,7 +639,7 @@ AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
 if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group. "
-    COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+    COMMAND="terraform import  -var-file=$NAC_TFVARS_FILE_NAME azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
     $COMMAND
 else
     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
@@ -614,7 +659,7 @@ import_configuration(){
     INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
     if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
-        COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
         $COMMAND
     else
         echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
@@ -624,7 +669,7 @@ import_configuration(){
     WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
     if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
-        COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
         $COMMAND
     else
         echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
@@ -634,7 +679,7 @@ import_configuration(){
     NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
     if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
-        COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
         $COMMAND
     else
         echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
@@ -644,7 +689,7 @@ import_configuration(){
     UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
     if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
-        COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
         $COMMAND
     else
         echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
@@ -677,7 +722,6 @@ FOLDER_PATH=`pwd`
 
 ##appending latest_toc_handle_processed to TFVARS_FILE
 echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$TFVARS_FILE
-
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
