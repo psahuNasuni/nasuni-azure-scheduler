@@ -653,7 +653,7 @@ AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
 if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group. "
-    COMMAND="terraform import  -var-file=$NAC_TFVARS_FILE_NAME azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+    COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
     $COMMAND
 else
     echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
