@@ -474,6 +474,7 @@ get_subnets(){
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME="CTPROJECT-410"
+GIT_BRANCH_NAME="CTPROJECT-410"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -543,6 +544,16 @@ AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
 fi
+
+NAC_SUBNETS=()
+DISCOVERY_OUTBOUND_SUBNET=()
+get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
+
+
+NAC_SUBNETS=()
+DISCOVERY_OUTBOUND_SUBNET=()
+get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
+
 
 NAC_SUBNETS=()
 DISCOVERY_OUTBOUND_SUBNET=()
@@ -630,7 +641,10 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
     echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
     echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
+    echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
+    echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
 fi
+echo "" >>$NAC_TFVARS_FILE_NAME
 echo "" >>$NAC_TFVARS_FILE_NAME
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
