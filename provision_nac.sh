@@ -641,8 +641,6 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
     echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
     echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
-    echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
-    echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
 fi
 echo "" >>$NAC_TFVARS_FILE_NAME
 echo "" >>$NAC_TFVARS_FILE_NAME
