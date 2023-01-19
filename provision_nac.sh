@@ -611,6 +611,8 @@ else
 fi
 pwd
 ls -l
+# move config. dat to nasuni-azure-analyticsconnector
+cp $CONFIG_DAT_FILE_NAME $GIT_REPO_NAME
 ########################### Completed - Git Clone  ###############################################################
 cd "${GIT_REPO_NAME}"
 pwd
