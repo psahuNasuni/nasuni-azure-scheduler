@@ -602,11 +602,6 @@ provision_Azure_Cognitive_Search(){
 		# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
-		import_acs_private_dns_zone $VNET_RESOURCE_GROUP
-		import_acs_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME 
-		import_app_config_private_dns_zone $VNET_RESOURCE_GROUP
-		import_app_config_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME
-		import_app_config_endpoint $ACS_ADMIN_APP_CONFIG_NAME $VNET_RESOURCE_GROUP
 		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
 		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 		USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
@@ -634,11 +629,15 @@ provision_Azure_Cognitive_Search(){
 		fi
 
 		echo "" >>$ACS_TFVARS_FILE_NAME
-		### SMG ###
 		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
 			# Import if acs app config is already provisioned.
 			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
 		fi
+		import_acs_private_dns_zone $VNET_RESOURCE_GROUP
+		import_acs_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME 
+		import_app_config_private_dns_zone $VNET_RESOURCE_GROUP
+		import_app_config_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME
+		import_app_config_endpoint $ACS_ADMIN_APP_CONFIG_NAME $VNET_RESOURCE_GROUP
 		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
 		
 		COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
