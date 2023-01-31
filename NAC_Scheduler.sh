@@ -464,10 +464,10 @@ import_acs_private_dns_zone(){
 	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_DNS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 
 		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist. Importing the existing private dns-zone-app-config."
-			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_DNS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
+			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist. Importing the existing acs_private_dns_zone."
+			PRIVAE_DNS_ZONE_ACS_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_DNS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
 			
-			COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_private_dns_zone.acs_dns_zone $PRIVAE_DNS_ZONE_ACS_CONFIG_ID"
+			COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_private_dns_zone.acs_dns_zone $PRIVAE_DNS_ZONE_ACS_ID"
 			$COMMAND
 		else
 			echo "INFO ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_ACS_NAME."
