@@ -51,7 +51,7 @@ parse_file_NAC_txt() {
             "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
-            "user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+            "sp_application_id") SP_APPLICATION_ID="$value" ;;
             "analytic_service") ANALYTICS_SERVICE="$value" ;;
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
@@ -474,7 +474,6 @@ get_subnets(){
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME="CTPROJECT-410"
-GIT_BRANCH_NAME="CTPROJECT-410"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -497,7 +496,7 @@ ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&sear
 DEFAULT_URL="/search/index.html"
 FREQUENCY=$(echo "$FREQUENCY" | tr -d '"')
 USER_SECRET=$KEY_VAULT_NAME
-CREATED_BY=$(echo "$USER_PRINCIPAL_NAME" | tr -d '"')
+CREATED_BY=$(echo "$SP_APPLICATION_ID" | tr -d '"')
 CREATED_ON=$(date "+%Y%m%d-%H%M%S")
 TRACKER_NMC_VOLUME_NAME=$NMC_VOLUME_NAME
 ANALYTICS_SERVICE=$(echo "$ANALYTICS_SERVICE" | tr -d '"')

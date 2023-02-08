@@ -326,14 +326,14 @@ validate_secret_values() {
 				NMC_API_ENDPOINT=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "web-access-appliance-address" ]; then
 				WEB_ACCESS_APPLIANCE_ADDRESS=$SECRET_VALUE
-			# elif [ "$SECRET_NAME" == "vnet" ]; then
-			# 	VNET_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "use-private-ip" ]; then
 				USE_PRIVATE_IP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "pem-key-path" ]; then
 				PEM_KEY_PATH=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "acs-resource-group" ]; then
-				ACS_RESOURCE_GROUP=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "cred-vault" ]; then
+				CRED_VAULT=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "sp-secret" ]; then
+				SP_SECRET=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "github-organization" ]; then
 				GITHUB_ORGANIZATION=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "destination-container-url" ]; then
@@ -346,48 +346,10 @@ validate_secret_values() {
 				NAC_SCHEDULER_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "user-vnet-name" ]; then
 				USER_VNET_NAME=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "azure-username" ]; then
-				AZURE_USERNAME=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "azure-password" ]; then
-				AZURE_PASSWORD=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "vnet-subscription-id" ]; then
 				VNET_SUBSCRIPTION_ID=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "vnet-resource-group" ]; then
 				VNET_RESOURCE_GROUP=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-name" ]; then
-				VNET_NAME=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-0" ]; then
-				VNET_SUBNET_NAME_0=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-1" ]; then
-				VNET_SUBNET_NAME_1=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-2" ]; then
-				VNET_SUBNET_NAME_2=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-3" ]; then
-				VNET_SUBNET_NAME_3=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-4" ]; then
-				VNET_SUBNET_NAME_4=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-5" ]; then
-				VNET_SUBNET_NAME_5=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-6" ]; then
-				VNET_SUBNET_NAME_6=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-7" ]; then
-				VNET_SUBNET_NAME_7=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-8" ]; then
-				VNET_SUBNET_NAME_8=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-9" ]; then
-				VNET_SUBNET_NAME_9=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-10" ]; then
-				VNET_SUBNET_NAME_10=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-11" ]; then
-				VNET_SUBNET_NAME_11=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-12" ]; then
-				VNET_SUBNET_NAME_12=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-13" ]; then
-				VNET_SUBNET_NAME_13=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-14" ]; then
-				VNET_SUBNET_NAME_14=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subnet-name-15" ]; then
-				VNET_SUBNET_NAME_15=$SECRET_VALUE
             fi
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME found in Key Vault $KEY_VAULT_NAME."
 		fi
@@ -403,42 +365,64 @@ import_acs_app_config(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
 	APP_CONFIG_RESOURCE_GROUP="$2"
 	ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
-	COMMAND="terraform import azurerm_app_configuration.appconf $ACS_APP_CONFIG_ID"
+	COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_app_configuration.appconf $ACS_APP_CONFIG_ID"
     $COMMAND
 }
-
-import_app_config_private_dns_zone(){
+create_app_config_private_dns_zone_virtual_network_link(){
 	APP_CONFIG_RESOURCE_GROUP="$1"
-	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
-	PRIVAE_DNS_ZONE_APP_CONFIG_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
-
-		if [ "$PRIVAE_DNS_ZONE_APP_CONFIG_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone for App Config is already exist. Importing the existing private dns-zone-app-config."
-			PRIVAE_DNS_ZONE_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME"
+	APP_CONFIG_VNET_NAME="$2"
+	APP_CONFIG_PRIVAE_DNS_ZONE_NAME="privatelink.azconfig.io"
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $APP_CONFIG_RESOURCE_GROUP -z $APP_CONFIG_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$APP_CONFIG_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$APP_CONFIG_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	
+	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $APP_CONFIG_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
-			COMMAND="terraform import azurerm_private_dns_zone.appconf_dns_zone $PRIVAE_DNS_ZONE_APP_CONFIG_ID"
-			$COMMAND
+		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist."
+			
 		else
-			echo "INFO ::: $PRIVAE_DNS_ZONE_APP_CONFIG_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_APP_CONFIG_NAME."
+			echo "INFO ::: $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will provision a new $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			
+			VIRTUAL_NETWORK_ID=`az network vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_VNET_NAME --query id --output tsv 2> /dev/null`
+			LINK_NAME="nacappconfigvnetlink"
+			
+			echo "STARTED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+			
+			COMMAND="az network private-dns link vnet create -g $APP_CONFIG_RESOURCE_GROUP -n $LINK_NAME -z $APP_CONFIG_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
+			$COMMAND	
+			RESULT=$?
+			if [ $RESULT -eq 0 ]; then
+				echo "COMPLETED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+			else
+				echo "ERROR ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+				exit 1
+			fi
 		fi
 }
 
-import_app_config_private_dns_zone_virtual_network_link(){
-	APP_CONFIG_RESOURCE_GROUP="$1"
+create_app_config_private_dns_zone(){
+	APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
 	APP_CONFIG_VNET_NAME="$2"
-	PRIVAE_DNS_ZONE_APP_CONFIG_NAME="privatelink.azconfig.io"
-	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $APP_CONFIG_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$APP_CONFIG_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$APP_CONFIG_RESOURCE_GROUP\"'))'| jq -r '.name'`
-	
-	APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $APP_CONFIG_RESOURCE_GROUP -n $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_APP_CONFIG_NAME --query provisioningState --output tsv 2> /dev/null`	
+	APP_CONFIG_PRIVAE_DNS_ZONE_NAME="privatelink.azconfig.io"
+	APP_CONFIG_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $APP_CONFIG_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+		if [ "$APP_CONFIG_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone for App Config is already exist."
 			
-		if [ "$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone Virtual Network Link for App Config is already exist. Importing the existing private nasuni-labs-acs-admin_link."
-			APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_APP_CONFIG_NAME/virtualNetworkLinks/$APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
-			
-			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.appconf_private_link $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
-			$COMMAND
 		else
-			echo "INFO ::: $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $APP_CONFIG_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			echo "INFO ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $APP_CONFIG_PRIVAE_DNS_ZONE_NAME."
+			
+			echo "STARTED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone creation"
+			
+			COMMAND="az network private-dns zone create -g $APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $APP_CONFIG_PRIVAE_DNS_ZONE_NAME"
+			$COMMAND
+			RESULT=$?
+			if [ $RESULT -eq 0 ]; then
+				echo "COMPLETED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+				create_app_config_private_dns_zone_virtual_network_link $APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP $APP_CONFIG_VNET_NAME
+			else
+				echo "ERROR ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+				exit 1
+			fi
 		fi
 }
 
@@ -450,7 +434,7 @@ import_app_config_endpoint(){
 	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $APP_CONFIG_ENDPOINT_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`	
     if [ "$ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS" == "Succeeded" ]; then
         echo "INFO ::: Private endpoint already exist. Importing the existing ACS APP CONFIG Endpoint."
-        COMMAND="terraform import azurerm_private_endpoint.appconf_private_endpoint /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_ENDPOINT_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
+        COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_private_endpoint.appconf_private_endpoint[0] /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_ENDPOINT_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
         $COMMAND
     else
         echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
@@ -458,39 +442,61 @@ import_app_config_endpoint(){
 }
 
 ###########################################START ACS Import #######################################
-import_acs_private_dns_zone(){
+create_acs_private_dns_zone_virtual_network_link(){
 	ACS_DNS_RESOURCE_GROUP="$1"
-	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
-	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_DNS_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
+	ACS_VNET_NAME="$2"
+	ACS_PRIVAE_DNS_ZONE_NAME="privatelink.search.windows.net"
+	
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $ACS_DNS_RESOURCE_GROUP -z $ACS_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$ACS_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$ACS_DNS_RESOURCE_GROUP\"'))'| jq -r '.name'`
 
-		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist. Importing the existing private dns-zone-app-config."
-			PRIVAE_DNS_ZONE_ACS_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_DNS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME"
+	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_DNS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $ACS_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
 			
-			COMMAND="terraform import azurerm_private_dns_zone.acs_dns_zone $PRIVAE_DNS_ZONE_ACS_CONFIG_ID"
-			$COMMAND
+		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Cognitive Search is already exist."
+			
 		else
-			echo "INFO ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone does not exist. It will provision a new $PRIVAE_DNS_ZONE_ACS_NAME."
+			echo "INFO ::: $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will provision a new $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			
+			VIRTUAL_NETWORK_ID=`az network vnet show -g $ACS_DNS_RESOURCE_GROUP -n $ACS_VNET_NAME --query id --output tsv 2> /dev/null`
+			LINK_NAME="nacacsvnetlink"
+			
+			echo "STARTED ::: $ACS_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+			
+			COMMAND="az network private-dns link vnet create -g $ACS_DNS_RESOURCE_GROUP -n $LINK_NAME -z $ACS_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
+			$COMMAND	
+			RESULT=$?
+			if [ $RESULT -eq 0 ]; then
+				echo "COMPLETED ::: $ACS_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+			else
+				echo "ERROR ::: $ACS_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+				exit 1
+			fi
 		fi
 }
 
-import_acs_private_dns_zone_virtual_network_link(){
-	ACS_DNS_RESOURCE_GROUP="$1"
+create_acs_private_dns_zone(){
+	ACS_DNS_ZONE_RESOURCE_GROUP="$1"
 	ACS_VNET_NAME="$2"
 	PRIVAE_DNS_ZONE_ACS_NAME="privatelink.search.windows.net"
-	
-	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $ACS_DNS_RESOURCE_GROUP -z $PRIVAE_DNS_ZONE_ACS_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$ACS_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$ACS_DNS_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	PRIVAE_DNS_ZONE_ACS_STATUS=`az network private-dns zone show --resource-group $ACS_DNS_ZONE_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
 
-	ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $ACS_DNS_RESOURCE_GROUP -n $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $PRIVAE_DNS_ZONE_ACS_NAME --query provisioningState --output tsv 2> /dev/null`	
-			
-		if [ "$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
-			echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Cognitive Search is already exist. Importing the existing private nasuni-labs-acs-admin_link."
-			ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_DNS_RESOURCE_GROUP/providers/Microsoft.Network/privateDnsZones/$PRIVAE_DNS_ZONE_ACS_NAME/virtualNetworkLinks/$ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME"
-			
-			COMMAND="terraform import azurerm_private_dns_zone_virtual_network_link.acs_private_link $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_ID"
-			$COMMAND
+		if [ "$PRIVAE_DNS_ZONE_ACS_STATUS" == "Succeeded" ]; then
+			echo "INFO ::: Private DNS Zone for Azure Cognitive Search is already exist."
 		else
-			echo "INFO ::: $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual line does not exist. It will provision a new $ACS_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+			echo "INFO ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone does not exist. It will create a new $PRIVAE_DNS_ZONE_ACS_NAME."
+			
+			echo "STARTED ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone creation"
+
+			COMMAND="az network private-dns zone create -g $ACS_DNS_ZONE_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME"
+			$COMMAND
+			RESULT=$?
+			if [ $RESULT -eq 0 ]; then
+				echo "COMPLETED ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone successfully created"
+				create_acs_private_dns_zone_virtual_network_link $ACS_DNS_ZONE_RESOURCE_GROUP $ACS_VNET_NAME
+			else
+				cho "ERROR ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone creation failed"
+				exit 1
+			fi
 		fi
 }
 
@@ -509,10 +515,112 @@ validate_AZURE_SUBSCRIPTION() {
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
+		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
+
 	fi
 	echo "INFO ::: AZURE_TENANT_ID=$AZURE_TENANT_ID"
 	echo "INFO ::: AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
+	echo "INFO ::: SP_APPLICATION_ID=$SP_APPLICATION_ID"
 	echo "INFO ::: AZURE Subscription Validation SUCCESS !!!"
+}
+
+provision_Azure_Cognitive_Search(){
+	######################## Check If Azure Cognitice Search Available ###############################################
+	#### ACS_SERVICE_NAME : Take it from KeyVault that is creted with ACS
+	IS_ACS="$1"
+	ACS_RESOURCE_GROUP="$2"
+	ACS_ADMIN_APP_CONFIG_NAME="$3"
+	IS_ADMIN_VAULT_YN="N"
+	IS_ACS_RG_YN="N"
+	if [ "$IS_ACS" == "N" ]; then
+		echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
+		echo "INFO ::: Begin Azure Cognitive Search Provisioning."
+		########## Download CognitiveSearch Provisioning Code from GitHub ##########
+		########## GITHUB_ORGANIZATION defaults to nasuni-labs     		  ##########
+		REPO_FOLDER="nasuni-azure-cognitive-search"
+		validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
+		########################### Git Clone  ###############################################################
+		echo "INFO ::: BEGIN - Git Clone !!!"
+		### Download Provisioning Code from GitHub
+		GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
+		echo "INFO ::: GIT_REPO $GIT_REPO"
+		echo "INFO ::: GIT_REPO_NAME $GIT_BRANCH_NAME ::: GIT_BRANCH_NAME $GIT_BRANCH_NAME"
+		rm -rf "${GIT_REPO_NAME}"
+		pwd
+		COMMAND="git clone -q -b $GIT_BRANCH_NAME $GIT_REPO"
+		$COMMAND
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
+		else
+			echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
+			exit 1
+		fi
+		cd "${GIT_REPO_NAME}"
+		### RUN terraform init
+		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
+		COMMAND="terraform init"
+		$COMMAND
+
+		chmod 755 $(pwd)/*
+		### Dont Change the sequence of function calls
+		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
+		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
+		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
+		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
+		ACS_TFVARS_FILE_NAME="ACS.tfvars"
+		rm -rf "$ACS_TFVARS_FILE_NAME"
+		echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+		echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$ACS_TFVARS_FILE_NAME
+		echo "acs_app_config_YN="\"$IS_ACS_ADMIN_APP_CONFIG\" >>$ACS_TFVARS_FILE_NAME
+		echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
+		echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
+		echo "sp_application_id="\"$SP_APPLICATION_ID\" >>$ACS_TFVARS_FILE_NAME
+		echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
+		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+			echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$ACS_TFVARS_FILE_NAME
+			echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+			if [[ "$VNET_IS" != "" ]]; then
+				echo "user_vnet_name="\"$VNET_IS\" >>$ACS_TFVARS_FILE_NAME
+			fi
+			if [[ "$SUBNET_IS" != "" ]]; then
+				echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
+			fi
+		fi
+
+		echo "" >>$ACS_TFVARS_FILE_NAME
+		### SMG ###
+		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
+			# Import if acs app config is already provisioned.
+			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+		fi
+
+		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+			create_acs_private_dns_zone $VNET_RESOURCE_GROUP $VNET_NAME
+			create_acs_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME 
+			create_app_config_private_dns_zone $VNET_RESOURCE_GROUP $VNET_NAME
+			create_app_config_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME
+			import_app_config_endpoint $ACS_ADMIN_APP_CONFIG_NAME $VNET_RESOURCE_GROUP
+		fi
+
+		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
+		
+		COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
+		$COMMAND
+		if [ $? -eq 0 ]; then
+			echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
+		else
+			echo "ERROR ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: FAILED "
+			exit 1
+		fi
+		cd ..
+	else
+		echo "INFO ::: Azure Cognitive Search is Active . . . . . . . . . ."
+		echo "INFO ::: BEGIN ::: NACScheduler Provisioning . . . . . . . . . . . ."
+	fi
+	##################################### END Azure CognitiveSearch ###################################################################
 }
 
 provision_ACS_if_Not_Available(){
@@ -557,104 +665,6 @@ provision_ACS_if_Not_Available(){
 		provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
 		############ END: Provision ACS if Not Available ################
 	fi	
-}
-
-provision_Azure_Cognitive_Search(){
-	######################## Check If Azure Cognitice Search Available ###############################################
-	#### ACS_SERVICE_NAME : Take it from KeyVault that is creted with ACS
-	IS_ACS="$1"
-	ACS_RESOURCE_GROUP="$2"
-	ACS_ADMIN_APP_CONFIG_NAME="$3"
-	IS_ADMIN_VAULT_YN="N"
-	IS_ACS_RG_YN="N"
-	if [ "$IS_ACS" == "N" ]; then
-		echo "INFO ::: Azure Cognitive Search is Not Configured. Need to Provision Azure Cognitive Search Before, NAC Provisioning."
-		echo "INFO ::: Begin Azure Cognitive Search Provisioning."
-		########## Download CognitiveSearch Provisioning Code from GitHub ##########
-		########## GITHUB_ORGANIZATION defaults to nasuni-labs     		  ##########
-		REPO_FOLDER="nasuni-azure-cognitive-search"
-		validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
-		########################### Git Clone  ###############################################################
-		echo "INFO ::: BEGIN - Git Clone !!!"
-		### Download Provisioning Code from GitHub
-		GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
-		echo "INFO ::: GIT_REPO $GIT_REPO"
-		echo "INFO ::: GIT_REPO_NAME $GIT_BRANCH_NAME ::: GIT_BRANCH_NAME $GIT_BRANCH_NAME"
-		rm -rf "${GIT_REPO_NAME}"
-		pwd
-		COMMAND="git clone -q -b $GIT_BRANCH_NAME $GIT_REPO"
-		$COMMAND
-		RESULT=$?
-		if [ $RESULT -eq 0 ]; then
-			echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
-		else
-			echo "INFO ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
-			exit 1
-		fi
-		cd "${GIT_REPO_NAME}"
-		### RUN terraform init
-		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform init . . . . . . . . "
-		COMMAND="terraform init"
-		$COMMAND
-
-		chmod 755 $(pwd)/*
-		### Dont Change the sequence of function calls
-		# echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
-		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
-		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
-		import_acs_private_dns_zone $VNET_RESOURCE_GROUP
-		import_acs_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME 
-		import_app_config_private_dns_zone $VNET_RESOURCE_GROUP
-		import_app_config_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME
-		import_app_config_endpoint $ACS_ADMIN_APP_CONFIG_NAME $VNET_RESOURCE_GROUP
-		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
-		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
-		USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
-		ACS_TFVARS_FILE_NAME="ACS.tfvars"
-		rm -rf "$ACS_TFVARS_FILE_NAME"
-		echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
-		echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-		echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
-		echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$ACS_TFVARS_FILE_NAME
-		echo "acs_app_config_YN="\"$IS_ACS_ADMIN_APP_CONFIG\" >>$ACS_TFVARS_FILE_NAME
-		echo "datasource_connection_string="\"$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING\" >>$ACS_TFVARS_FILE_NAME
-		echo "destination_container_name="\"$DESTINATION_CONTAINER_NAME\" >>$ACS_TFVARS_FILE_NAME
-		echo "user_principal_name="\"$USER_PRINCIPAL_NAME\" >>$ACS_TFVARS_FILE_NAME
-		echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$ACS_TFVARS_FILE_NAME
-		echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
-		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-			echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$ACS_TFVARS_FILE_NAME
-			echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-			if [[ "$VNET_IS" != "" ]]; then
-				echo "user_vnet_name="\"$VNET_IS\" >>$ACS_TFVARS_FILE_NAME
-			fi
-			if [[ "$SUBNET_IS" != "" ]]; then
-				echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
-			fi
-		fi
-
-		echo "" >>$ACS_TFVARS_FILE_NAME
-		### SMG ###
-		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
-			# Import if acs app config is already provisioned.
-			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
-		fi
-		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
-		
-		COMMAND="terraform apply -var-file=ACS.tfvars -auto-approve"
-		$COMMAND
-		if [ $? -eq 0 ]; then
-			echo "INFO ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: SUCCESS"
-		else
-			echo "ERROR ::: CognitiveSearch provisioning ::: FINISH ::: Executing ::: Terraform apply ::: FAILED "
-			exit 1
-		fi
-		cd ..
-	else
-		echo "INFO ::: Azure Cognitive Search is Active . . . . . . . . . ."
-		echo "INFO ::: BEGIN ::: NACScheduler Provisioning . . . . . . . . . . . ."
-	fi
-	##################################### END Azure CognitiveSearch ###################################################################
 }
 
 check_network_availability(){
@@ -704,7 +714,7 @@ check_if_resourcegroup_exist(){
 		pwd
 		IS_ACS_RG_YN="Y"
 		echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
-		COMMAND="terraform import azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
+		COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
 		$COMMAND
 	else
 		IS_ACS_RG_YN="N"
@@ -780,22 +790,11 @@ Schedule_CRON_JOB() {
 	echo "vnetSubscriptionId: "$VNET_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
 	echo "vnetResourceGroup: "$VNET_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
 	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
-	# Add the 16 vnet subnet names to the config.dat
-	# if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-	# 	NAC_SUBNETS_NAMES=$(echo "$NAC_SUBNETS" | sed 's/\[//g' | sed 's/\]//g')
-	# 	VNET_SUBNET_NAME_COUNTER=0
-	# 	for SUBNET in ${NAC_SUBNETS_NAMES//,/ }
-	# 	do
-	# 		echo "vnetSubnetName-$VNET_SUBNET_NAME_COUNTER: "$SUBNET >>$CONFIG_DAT_FILE_NAME
-	# 		let VNET_SUBNET_NAME_COUNTER=VNET_SUBNET_NAME_COUNTER+1
-	# 	done
-	# fi
+
     chmod 777 $CONFIG_DAT_FILE_NAME
 
 	CRON_DIR_NAME="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
 	
-	USER_PRINCIPAL_NAME=`az account show --query user.name | tr -d '"'`
-	echo $USER_PRINCIPAL_NAME
 	NAC_TXT_FILE_NAME="NAC.txt"
 	rm -rf "$NAC_TXT_FILE_NAME"
 	# ACS_RESOURCE_GROUP=$($ACS_RESOURCE_GROUP | tr -d '"')
@@ -807,7 +806,7 @@ Schedule_CRON_JOB() {
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	echo "user_secret="$KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
-	echo "user_principal_name="$USER_PRINCIPAL_NAME >>$NAC_TXT_FILE_NAME
+	echo "sp_application_id="$SP_APPLICATION_ID >>$NAC_TXT_FILE_NAME
 	echo "analytic_service="$ANALYTICS_SERVICE >>$NAC_TXT_FILE_NAME
 	echo "frequency="$FREQUENCY >>$NAC_TXT_FILE_NAME
 	echo "nac_scheduler_name="$NAC_SCHEDULER_NAME >>$NAC_TXT_FILE_NAME
@@ -889,7 +888,8 @@ FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
 SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-GIT_BRANCH_NAME="CTPROJECT-410"
+GIT_BRANCH_NAME="CTPROJECT-457"
+SP_APPLICATION_ID=""
 
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
 if [ "${#NMC_VOLUME_NAME}" -lt 3 ]; then
@@ -911,7 +911,6 @@ else
 	fi
 fi
 
-### Validate AZURE_SUBSCRIPTION 
 ########## Check If fourth argument is provided
 USER_SECRET_EXISTS="N"
 if [[ -n "$FOURTH_ARG" ]]; then
@@ -930,6 +929,8 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" product-key
 		validate_secret_values "$AZURE_KEYVAULT_NAME" web-access-appliance-address
 		validate_secret_values "$AZURE_KEYVAULT_NAME" pem-key-path
+		validate_secret_values "$AZURE_KEYVAULT_NAME" cred-vault
+		validate_secret_values "$AZURE_KEYVAULT_NAME" sp-secret
 		validate_secret_values "$AZURE_KEYVAULT_NAME" github-organization
 		validate_secret_values "$AZURE_KEYVAULT_NAME" destination-container-url
 		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url
@@ -939,8 +940,6 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-resource-group
 		validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
-		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-username
-		validate_secret_values "$AZURE_KEYVAULT_NAME" azure-password
 		validate_secret_values "$AZURE_KEYVAULT_NAME" use-private-ip
 		### Check for private network variables
 		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
@@ -991,12 +990,10 @@ get_destination_container_url $DESTINATION_CONTAINER_URL $USER_VNET_RESOURCE_GRO
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
-
 get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"1"
 SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
 
 echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
-
 
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
@@ -1033,7 +1030,6 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
-
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
 	
@@ -1077,8 +1073,8 @@ else
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
-	echo "azure_username="\"$AZURE_USERNAME\" >>$TFVARS_NAC_SCHEDULER
-	echo "azure_password="\"$AZURE_PASSWORD\" >>$TFVARS_NAC_SCHEDULER
+	echo "sp_application_id="\"$SP_APPLICATION_ID\" >>$TFVARS_NAC_SCHEDULER
+	echo "sp_secret="\"$SP_SECRET\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
 	echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
