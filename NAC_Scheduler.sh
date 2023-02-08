@@ -518,6 +518,13 @@ validate_AZURE_SUBSCRIPTION() {
 		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
 
 	fi
+	# Setting below values as ENV Variable
+
+	export ARM_CLIENT_ID="$SP_APPLICATION_ID"
+	export ARM_CLIENT_SECRET="$SP_SECRET"
+	export ARM_TENANT_ID="$AZURE_TENANT_ID"
+	export ARM_SUBSCRIPTION_ID="$AZURE_SUBSCRIPTION_ID"
+
 	echo "INFO ::: AZURE_TENANT_ID=$AZURE_TENANT_ID"
 	echo "INFO ::: AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
 	echo "INFO ::: SP_APPLICATION_ID=$SP_APPLICATION_ID"
