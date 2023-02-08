@@ -591,7 +591,6 @@ provision_Azure_Cognitive_Search(){
 		fi
 
 		echo "" >>$ACS_TFVARS_FILE_NAME
-		### SMG ###
 		if [[ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]]; then
 			# Import if acs app config is already provisioned.
 			import_acs_app_config $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
