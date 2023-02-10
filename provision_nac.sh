@@ -75,8 +75,8 @@ sp_login(){
 root_login(){
     CRED_VAULT_NAME=$1
     token=`az account get-access-token --resource "https://vault.azure.net" | jq -r .accessToken`
-    root_user=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-user?api-version=2016-10-01"`
-    root_password=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01"`	
+    root_user=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-user?api-version=2016-10-01" | jq -r .value`
+    root_password=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01" | jq -r .value`	
 
     az login -u $root_user -p $root_password
 }
