@@ -52,6 +52,9 @@ parse_file_NAC_txt() {
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
             "sp_application_id") SP_APPLICATION_ID="$value" ;;
+            "sp_secret") SP_SECRET="$value" ;;
+            "azure_tenant_id") AZURE_TENANT_ID="$value" ;;
+            "cred_vault") CRED_VAULT="$value" ;;
             "analytic_service") ANALYTICS_SERVICE="$value" ;;
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
@@ -61,6 +64,22 @@ parse_file_NAC_txt() {
         done <"$file"
 }
 
+sp_login(){
+    SP_USERNAME=$1
+    SP_PASSWORD=$2
+    TENANT_ID=$3
+
+    az login --service-principal --tenant $TENANT_ID --username $SP_USERNAME --password $SP_PASSWORD
+}
+
+root_login(){
+    CRED_VAULT_NAME=$1
+    token=`az account get-access-token --resource "https://vault.azure.net" | jq -r .accessToken`
+    root_user=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-user?api-version=2016-10-01"`
+    root_password=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01"`	
+
+    az login -u $root_user -p $root_password
+}
 generate_tracker_json(){
 	echo "INFO ::: Updating TRACKER JSON ... "
 	ACS_URL=$1
@@ -473,7 +492,7 @@ get_subnets(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="CTPROJECT-410"
+GIT_BRANCH_NAME="CTPROJECT-457"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -487,6 +506,8 @@ DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 PRIVATE_CONNECTION_NAME=""
 ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt" 
+sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
+root_login $CRED_VAULT
 USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
 ##################################### START TRACKER JSON Creation ###################################################################
 
@@ -630,7 +651,6 @@ echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
-echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
@@ -649,14 +669,6 @@ sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
 ### Check if Resource Group is already provisioned
 AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
-ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
-if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-    echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group. "
-    COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
-    $COMMAND
-else
-    echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
-fi
 
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     ### Create the Azure Discovery Function DNS Zone
@@ -686,26 +698,6 @@ import_configuration(){
         $COMMAND
     else
         echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
-    fi
-
-    NMC_VOLUME_NAME_KEY="nmc-volume-name"
-    NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
-    if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
-        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
-    fi
-
-    UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
-    UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
-    if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
-        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
     fi
 }
 

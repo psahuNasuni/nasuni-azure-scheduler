@@ -813,6 +813,9 @@ Schedule_CRON_JOB() {
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	echo "user_secret="$KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
 	echo "sp_application_id="$SP_APPLICATION_ID >>$NAC_TXT_FILE_NAME
+	echo "sp_secret="$SP_SECRET >>$NAC_TXT_FILE_NAME
+	echo "azure_tenant_id="$AZURE_TENANT_ID >>$NAC_TXT_FILE_NAME
+	echo "cred_vault="$CRED_VAULT >>$NAC_TXT_FILE_NAME
 	echo "analytic_service="$ANALYTICS_SERVICE >>$NAC_TXT_FILE_NAME
 	echo "frequency="$FREQUENCY >>$NAC_TXT_FILE_NAME
 	echo "nac_scheduler_name="$NAC_SCHEDULER_NAME >>$NAC_TXT_FILE_NAME
