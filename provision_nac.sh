@@ -569,16 +569,6 @@ NAC_SUBNETS=()
 DISCOVERY_OUTBOUND_SUBNET=()
 get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
 
-
-NAC_SUBNETS=()
-DISCOVERY_OUTBOUND_SUBNET=()
-get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
-
-
-NAC_SUBNETS=()
-DISCOVERY_OUTBOUND_SUBNET=()
-get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
-
 ###################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
