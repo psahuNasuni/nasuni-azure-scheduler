@@ -90,8 +90,9 @@ add_appconfig_role_assignment(){
         echo "INFO ::: App Configuration Data Owner role assignment already exist for USER !!!"
     else
         echo "INFO ::: App Configuration Data Owner role assignment does not exist for USER !!!"
-        echo "INFO ::: Creating new App Configuration Data Owner role assignment for new USER !!!"
+        echo "INFO ::: Creating new App Configuration Data Owner role assignment for new USER ::: STARTED "
         CREATE_ROLE=`az role assignment create --assignee $ROOT_USER --role "App Configuration Data Owner" --scope $APPCONFIG_ID`
+        echo "INFO ::: Creating new App Configuration Data Owner role assignment for new USER ::: COMPLETED "
     fi
 }
 generate_tracker_json(){
