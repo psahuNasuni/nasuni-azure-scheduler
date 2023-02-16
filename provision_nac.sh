@@ -74,11 +74,25 @@ sp_login(){
 
 root_login(){
     CRED_VAULT_NAME=$1
-    token=`az account get-access-token --resource "https://vault.azure.net" | jq -r .accessToken`
-    root_user=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-user?api-version=2016-10-01" | jq -r .value`
-    root_password=`curl -H "Authorization: Bearer $token" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01" | jq -r .value`	
+    TOKEN=`az account get-access-TOKEN --resource "https://vault.azure.net" | jq -r .accessToken`
+    ROOT_USER=`curl -H "Authorization: Bearer $TOKEN" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-user?api-version=2016-10-01" | jq -r .value`
+    ROOT_PASSWORD=`curl -H "Authorization: Bearer $TOKEN" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01" | jq -r .value`	
 
-    az login -u $root_user -p $root_password
+    az login -u $ROOT_USER -p $ROOT_PASSWORD
+}
+
+add_appconfig_role_assignment(){
+
+    APPCONFIG_ID=`az appconfig show -n $ACS_ADMIN_APP_CONFIG_NAME -g $ACS_RESOURCE_GROUP | jq -r .id`
+    USER_OBJECT_ID=`az ad user show --id $ROOT_USER | jq -r .id`
+    APP_ROLE_NAME=`az role assignment list --scope $APPCONFIG_ID  | jq '.[] | select((.principalId == '\"$USER_OBJECT_ID\"') and (.principalType == "User")) | {roleDefinitionName}'| jq -r '.[]'`
+    if [[ $APP_ROLE_NAME == "App Configuration Data Owner" ]];then
+        echo "INFO ::: App Configuration Data Owner role assignment already exist for USER !!!"
+    else
+        echo "INFO ::: App Configuration Data Owner role assignment does not exist for USER !!!"
+        echo "INFO ::: Creating new App Configuration Data Owner role assignment for new USER !!!"
+        CREATE_ROLE=`az role assignment create --assignee $ROOT_USER --role "App Configuration Data Owner" --scope $APPCONFIG_ID`
+    fi
 }
 generate_tracker_json(){
 	echo "INFO ::: Updating TRACKER JSON ... "
@@ -504,10 +518,14 @@ WEB_ACCESS_APPLIANCE_ADDRESS=""
 DESTINATION_STORAGE_ACCOUNT_NAME=""
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 PRIVATE_CONNECTION_NAME=""
+ROOT_USER=""
 ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt" 
 sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
 root_login $CRED_VAULT
+ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
+ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
+add_appconfig_role_assignment
 USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
 ##################################### START TRACKER JSON Creation ###################################################################
 
@@ -575,9 +593,6 @@ if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
    exit 1
 fi
-################################################################################################################
-ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
