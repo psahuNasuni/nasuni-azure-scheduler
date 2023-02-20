@@ -697,12 +697,7 @@ check_network_availability(){
 		exit 1
 	else
 	### If USER_VNET_NAME provided
-		if [ "$USER_SUBNET_NAME" == "" ] || [ "$USER_SUBNET_NAME" == "null" ]; then
-			### If USER_VNET_NAME provided and USER_SUBNET_NAME not Provided, It will take the provided VNET NAME and its default Subnet
-			echo "INFO ::: USER_SUBNET_NAME not provided in the user Secret, Provisioning will be done in the Provided VNET $USER_VNET_NAME and its default Subnet"
-			check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
-
-		fi
+		check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
 	fi
 }
 
