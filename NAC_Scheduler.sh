@@ -52,19 +52,30 @@ check_if_VNET_exists(){
 	fi
 
 	#VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
-	get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
-	VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
 	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
-	echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
-	VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --service-endpoints "Microsoft.Web" --address-prefixes "$VNET_0_SUBNET_CIDR")
-	
 	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
 	if [ "$SUBNET_CHECK" != "Succeeded" ]; then
-		echo "ERROR ::: SUBNET $SUBNET_0_NAME Creation Failed."
-		exit 1
+		echo "INFO ::: SUBNET $SUBNET_0_NAME is not EXIST should be created New..."
+		echo "INFO ::: Creating Subnet $SUBNET_0_NAME ::: STARTED"
+		
+		get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
+		VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
+		echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
+		VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --service-endpoints "Microsoft.Web" --address-prefixes "$VNET_0_SUBNET_CIDR")
+
+		SUBNET_STATUS_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
+		if [ "$SUBNET_STATUS_CHECK" != "Succeeded" ]; then
+			echo "ERROR ::: SUBNET $SUBNET_0_NAME Creation Failed."
+			exit 1
+		else
+			echo "INFO ::: SUBNET $SUBNET_0_NAME is Created."
+		fi
+		
+		echo "INFO ::: Creating Subnet $SUBNET_0_NAME ::: COMPLETED"
 	else
-		echo "INFO ::: SUBNET $SUBNET_0_NAME is Created."
+		echo "INFO ::: SUBNET $SUBNET_0_NAME is Already EXIST"
 	fi
+
 	VNET_IS="$INPUT_VNET"
 	SUBNET_IS="$SUBNET_0_NAME"
 	echo "SUBNET_IS=$SUBNET_0_NAME , VNET_IS=$INPUT_VNET"
