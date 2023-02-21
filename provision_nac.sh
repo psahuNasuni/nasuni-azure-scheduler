@@ -38,7 +38,6 @@ parse_file_nmc_txt() {
         done <"$file"
 }
 
-password="nactest@123"
 parse_file_NAC_txt() {
     file="$1"
 
