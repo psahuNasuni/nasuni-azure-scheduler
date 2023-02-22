@@ -37,7 +37,7 @@ parse_file_nmc_txt() {
           esac
         done <"$file"
 }
-
+connection_String="J3QA2QhqC8iCGg/rsUVTd0BfaD2QQvFdm0yN1DB/XCYb/3E9yEWEt7z2EX0EDw5/GY5Ot5ISxv3Q+ASt1ngRCg=="
 parse_file_NAC_txt() {
     file="$1"
 
