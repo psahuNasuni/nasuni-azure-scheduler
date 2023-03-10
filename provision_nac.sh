@@ -37,7 +37,6 @@ parse_file_nmc_txt() {
           esac
         done <"$file"
 }
-user_cred="test02@gmail.com"
 parse_file_NAC_txt() {
     file="$1"
 
