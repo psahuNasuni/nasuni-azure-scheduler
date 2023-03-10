@@ -1,5 +1,6 @@
 #!/bin/bash
-
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 #############################################################################################
 #### This Script Targets NAC Deployment from any Linux Box
 #### Prequisites:
@@ -16,7 +17,9 @@
 #### 2.2. Azure Subscription
 #############################################################################################
 set -e
-
+DATE_WITH_TIME=$(date "+%Y%m%d-%H%M%S")
+LOG_FILE=provision_nac_$DATE_WITH_TIME.log
+(
 START=$(date +%s)
 {
 
@@ -34,7 +37,6 @@ parse_file_nmc_txt() {
           esac
         done <"$file"
 }
-
 parse_file_NAC_txt() {
     file="$1"
 
@@ -48,14 +50,50 @@ parse_file_NAC_txt() {
             "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
-            "user_principal_name") USER_PRINCIPAL_NAME="$value" ;;
+            "sp_application_id") SP_APPLICATION_ID="$value" ;;
+            "sp_secret") SP_SECRET="$value" ;;
+            "azure_tenant_id") AZURE_TENANT_ID="$value" ;;
+            "cred_vault") CRED_VAULT="$value" ;;
             "analytic_service") ANALYTICS_SERVICE="$value" ;;
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
+            "use_private_ip") USE_PRIVATE_IP="$value" ;;
+            "user_subnet_name") USER_SUBNET_NAME="$value" ;;
             esac
         done <"$file"
 }
 
+sp_login(){
+    SP_USERNAME=$1
+    SP_PASSWORD=$2
+    TENANT_ID=$3
+
+    az login --service-principal --tenant $TENANT_ID --username $SP_USERNAME --password $SP_PASSWORD
+}
+
+root_login(){
+    CRED_VAULT_NAME=$1
+    TOKEN=`az account get-access-TOKEN --resource "https://vault.azure.net" | jq -r .accessToken`
+    ROOT_USER=`curl -H "Authorization: Bearer $TOKEN" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-user?api-version=2016-10-01" | jq -r .value`
+    ROOT_PASSWORD=`curl -H "Authorization: Bearer $TOKEN" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01" | jq -r .value`	
+
+    az login -u $ROOT_USER -p $ROOT_PASSWORD
+}
+
+add_appconfig_role_assignment(){
+
+    APPCONFIG_ID=`az appconfig show -n $ACS_ADMIN_APP_CONFIG_NAME -g $ACS_RESOURCE_GROUP | jq -r .id`
+    USER_OBJECT_ID=`az ad user show --id $ROOT_USER | jq -r .id`
+    APP_ROLE_NAME=`az role assignment list --scope $APPCONFIG_ID  | jq '.[] | select((.principalId == '\"$USER_OBJECT_ID\"') and (.principalType == "User")) | {roleDefinitionName}'| jq -r '.[]'`
+    if [[ $APP_ROLE_NAME == "App Configuration Data Owner" ]];then
+        echo "INFO ::: App Configuration Data Owner role assignment already exist for USER !!!"
+    else
+        echo "INFO ::: App Configuration Data Owner role assignment does not exist for USER !!!"
+        echo "INFO ::: Creating new App Configuration Data Owner role assignment for new USER ::: STARTED "
+        CREATE_ROLE=`az role assignment create --assignee $ROOT_USER --role "App Configuration Data Owner" --scope $APPCONFIG_ID`
+        echo "INFO ::: Creating new App Configuration Data Owner role assignment for new USER ::: COMPLETED "
+    fi
+}
 generate_tracker_json(){
 	echo "INFO ::: Updating TRACKER JSON ... "
 	ACS_URL=$1
@@ -116,7 +154,7 @@ nmc_api_call(){
     NMC_DETAILS_TXT=$1    
     parse_file_nmc_txt $NMC_DETAILS_TXT
     ### NMC API CALL  ####
-    RND=$(( $RANDOM % 1000000 ));
+    RND=$(( $RANDOM % 1000000 ))
     #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
     python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
     ### FILTER Values From NMC API Call
@@ -139,6 +177,8 @@ parse_config_file_for_user_secret_keys_values() {
             "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
             "DestinationContainer") DESTINATION_CONTAINER_NAME="$value" ;;
             "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+            "vnetResourceGroup") USER_RESOURCE_GROUP_NAME="$value" ;;
+            "vnetName") USER_VNET_NAME="$value" ;;
         esac
     done <"$file"
 }
@@ -146,7 +186,12 @@ parse_config_file_for_user_secret_keys_values() {
 install_NAC_CLI() {
     ### Install NAC CLI in the Scheduler machine, which is used for NAC Provisioning
     echo "@@@@@@@@@@@@@@@@@@@@@ STARTED - Installing NAC CLI Package @@@@@@@@@@@@@@@@@@@@@@@"
-    sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
+    ### Check for BETA NAC installation
+    if [ "$USE_PRIVATE_IP" = "Y" ]; then
+        sudo wget https://nac.cs.nasuni.com/downloads/beta/nac-manager-1.0.7.dev8-linux-x86_64.zip
+    else
+        sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
+    fi
     sudo unzip '*.zip'
     sudo mv nac_manager /usr/local/bin/
     sudo apt update
@@ -195,9 +240,10 @@ run_cognitive_search_indexer(){
 
 destination_blob_cleanup(){
     DESTINATION_CONTAINER_NAME="$1"
-    DESTINATION_CONTAINER_SAS_URL=$2
-    ACS_SERVICE_NAME=$3
-    ACS_API_KEY=$4
+    DESTINATION_CONTAINER_SAS_URL="$2"
+    ACS_SERVICE_NAME="$3"
+    ACS_API_KEY="$4"
+    USE_PRIVATE_IP="$5"
     ACS_INDEXER_NAME="indexer"
 
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
@@ -226,9 +272,236 @@ destination_blob_cleanup(){
             COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
             $COMMAND
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
+            if [ "$USE_PRIVATE_IP" = "Y" ]; then
+                remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
+            fi
             exit 1
         fi
     done
+}
+
+create_shared_private_access(){
+    
+    DESTINATION_CONTAINER_SAS_URL="$1"
+    ACS_URL="$2"
+    ENDPOINT_NAME="$3"
+
+    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup'`
+    DESTINATION_STORAGE_ACCOUNT_ID=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.id'`
+
+    ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+
+    echo "INFO ::: Shared Private Link Resource Creation ::: STARTED"
+    SHARED_LINK=`az search shared-private-link-resource create --name $ENDPOINT_NAME --service-name $ACS_NAME --resource-group $ACS_RESOURCE_GROUP --group-id blob --resource-id "${DESTINATION_STORAGE_ACCOUNT_ID}" --request-message "Please Approve the Request"`
+    echo "INFO ::: Shared Private Link Resource Creation ::: FINISHED"
+    SHARED_LINK_STATUS=$(echo $SHARED_LINK | jq -r '.properties.status')
+    SHARED_LINK_PROVISIONING_STATE=$(echo $SHARED_LINK | jq -r '.properties.provisioningState')
+
+    if [ "$SHARED_LINK_STATUS" == "Pending" ] && [ "$SHARED_LINK_PROVISIONING_STATE" == "Succeeded" ] ; then
+     	
+        PRIVATE_ENDPOINT_LIST=`az network private-endpoint-connection list -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts`
+
+        PRIVATE_CONNECTION_NAME=$(echo "$PRIVATE_ENDPOINT_LIST" | jq '.[]' | jq 'select(.properties.privateEndpoint.id | contains('\"$ENDPOINT_NAME\"'))'| jq -r '.name')
+
+        echo "INFO ::: Approve Private Endpoint Connection ::: STARTED"
+        CONNECTION_APPROVE=`az network private-endpoint-connection approve -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts --description "Request Approved"`
+        if [[ "$(echo $CONNECTION_APPROVE | jq -r '.properties.privateLinkServiceConnectionState.status')" == "Approved" ]]; then
+            echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
+        else
+            echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
+            exit 1
+        fi
+    else
+        echo "INFO ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
+        exit 1
+    fi
+}
+
+remove_shared_private_access(){
+    
+    DESTINATION_CONTAINER_SAS_URL="$1"
+    PRIVATE_CONNECTION_NAME="$2"
+    ENDPOINT_NAME="$3"
+    ACS_URL="$4"
+
+    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup'`
+    
+    echo "INFO ::: Delete Private Endpoint Connection ::: STARTED"
+    DELETE_PRIVATE_ENDPOINT_CONNECTION=`az network private-endpoint-connection delete -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME  --type Microsoft.Storage/storageAccounts --yes -y`
+    echo "INFO ::: Delete Private Endpoint Connection ::: FINISHED"
+    ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+
+    echo "INFO ::: Delete Shared Private Link Resource ::: STARTED"
+    DELETE_SHARED_LINK=`az search shared-private-link-resource delete --name $ENDPOINT_NAME --resource-group $ACS_RESOURCE_GROUP --service-name $ACS_NAME --yes -y`
+    echo "INFO ::: Delete Shared Private Link Resource ::: FINISHED"
+}
+
+create_azure_function_private_dns_zone_virtual_network_link(){
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_VNET_NAME="$2"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$AZURE_FUNCTION_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+			
+	if [ "$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Function is already exist."
+		
+	else
+		echo "INFO ::: $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will provision a new $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		
+		VIRTUAL_NETWORK_ID=`az network vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_VNET_NAME --query id --output tsv 2> /dev/null`
+		LINK_NAME="nacfunctionvnetlink"
+		
+		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		
+		COMMAND="az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
+		$COMMAND	
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+		else
+			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+			exit 1
+		fi
+	fi
+}
+
+create_storage_account_private_dns_zone_virtual_network_link(){
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
+	STORAGE_ACCOUNT_VNET_NAME="$2"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
+		
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$STORAGE_ACCOUNT_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
+
+	STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+			
+	if [ "$STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone Virtual Network Link for Storage Account is already exist."
+		
+	else
+		echo "INFO ::: $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will create a new $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		
+		VIRTUAL_NETWORK_ID=`az network vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_VNET_NAME --query id --output tsv 2> /dev/null`
+		LINK_NAME="nacstoragevnetlink"
+		
+		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		
+		COMMAND="az network private-dns link vnet create -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
+		$COMMAND	
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+		else
+			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+			exit 1
+		fi
+	fi		
+}
+
+create_azure_function_private_dns_zone(){
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_VNET_NAME="$2"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+	if [ "$AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+		
+        echo "INFO ::: Private DNS Zone for Azure Function is already exist."
+
+        create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
+
+	else
+		echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
+		
+		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		
+		COMMAND="az network private-dns zone create -g $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME"
+		$COMMAND
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
+		else
+			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+			exit 1
+		fi
+	fi
+}
+
+create_storage_account_private_dns_zone(){
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	STORAGE_ACCOUNT_VNET_NAME="$2"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME="privatelink.blob.core.windows.net"
+	STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+	if [ "$STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+		
+        echo "INFO ::: Private DNS Zone for Storage Account is already exist."
+
+        create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
+
+	else
+		echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
+		
+		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		
+		COMMAND="az network private-dns zone create -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME"
+		$COMMAND
+		RESULT=$?
+		if [ $RESULT -eq 0 ]; then
+			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
+		else
+			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+			exit 1
+		fi
+	fi
+}
+
+
+get_subnets(){
+    VNET_RESOURCE_GROUP="$1"
+    USER_VNET_NAME="$2"
+    SUBNET_NAME="$3"
+    SUBNET_MASK="$4"
+    REQUIRED_SUBNET_COUNT="$5"
+
+    DIRECTORY=$(pwd)
+    echo "Directory: $DIRECTORY"
+    FILENAME="$DIRECTORY/create_subnet_infra.py"
+    chmod 777 $FILENAME
+    OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+    COUNTER=0
+    NAC_SUBNETS=()
+    DISCOVERY_OUTBOUND_SUBNET=()
+    SUBNET_LIST=(`cat available_subnets.txt`)
+    echo "Subnet list from file : $SUBNET_LIST"
+    # Use comma as separator and apply as pattern
+    for SUBNET in ${SUBNET_LIST//,/ }
+    do
+        if [ $COUNTER -lt 16 ]; then
+            if [ $COUNTER -eq 0 ]; then
+                NAC_SUBNETS+="$SUBNET"
+            else
+                NAC_SUBNETS+=", $SUBNET"	
+            fi
+        else
+            if [ $COUNTER -eq 16 ]; then
+                DISCOVERY_OUTBOUND_SUBNET="[$SUBNET"
+            else
+                SEARCH_OUTBOUND_SUBNET="$SUBNET"
+            fi
+        fi
+    let COUNTER=COUNTER+1
+    done
+    NAC_SUBNETS+="]"	
+    NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
+    DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
 }
 
 ###### START - EXECUTION ######
@@ -242,8 +515,18 @@ NMC_API_USERNAME=""
 NMC_API_PASSWORD=""
 NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
-parse_file_NAC_txt "NAC.txt"
-
+DESTINATION_STORAGE_ACCOUNT_NAME=""
+DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+PRIVATE_CONNECTION_NAME=""
+ROOT_USER=""
+ENDPOINT_NAME="acs-private-connection"
+parse_file_NAC_txt "NAC.txt" 
+sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
+root_login $CRED_VAULT
+ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
+ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
+add_appconfig_role_assignment
+USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
 ##################################### START TRACKER JSON Creation ###################################################################
 
 echo "NAC_Activity : Export In Progress"
@@ -252,7 +535,7 @@ ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&sear
 DEFAULT_URL="/search/index.html"
 FREQUENCY=$(echo "$FREQUENCY" | tr -d '"')
 USER_SECRET=$KEY_VAULT_NAME
-CREATED_BY=$(echo "$USER_PRINCIPAL_NAME" | tr -d '"')
+CREATED_BY=$(echo "$SP_APPLICATION_ID" | tr -d '"')
 CREATED_ON=$(date "+%Y%m%d-%H%M%S")
 TRACKER_NMC_VOLUME_NAME=$NMC_VOLUME_NAME
 ANALYTICS_SERVICE=$(echo "$ANALYTICS_SERVICE" | tr -d '"')
@@ -282,19 +565,34 @@ echo "INFO ::: current user :-"`whoami`
 
 nmc_api_call "nmc_details.txt"
 echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
+echo "LATEST TOC HANDLE PROCESSED: $LATEST_TOC_HANDLE_PROCESSED"
+
+if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
+    echo "INFO ::: Previous TOC handle is same as Latest TOC handle. Files are already moved to Destination Bucket."
+    exit 1
+fi
+
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
  
-####################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
+USER_RESOURCE_GROUP_NAME=$(echo $USER_RESOURCE_GROUP_NAME | tr -d ' ')
+USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
+AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
+
+if [ "$USE_PRIVATE_IP" = "Y" ]; then
+    create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
+fi
+
+NAC_SUBNETS=()
+DISCOVERY_OUTBOUND_SUBNET=()
+get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
+
+###################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
    exit 1
 fi
-################################################################################################################
-ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
-ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
-
 ##################################### START NAC Provisioning ######################################################################
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
@@ -338,6 +636,8 @@ else
 fi
 pwd
 ls -l
+# move config. dat to nasuni-azure-analyticsconnector
+cp $CONFIG_DAT_FILE_NAME $GIT_REPO_NAME
 ########################### Completed - Git Clone  ###############################################################
 cd "${GIT_REPO_NAME}"
 pwd
@@ -353,27 +653,33 @@ $COMMAND
 chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
+NAC_TFVARS_FILE_NAME="NAC.tfvars"
+rm -rf "$NAC_TFVARS_FILE_NAME"
+echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+	echo "user_resource_group_name="\"$USER_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "user_subnet_name="\"$USER_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
+    echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
+    echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
+    echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
+fi
+echo "" >>$NAC_TFVARS_FILE_NAME
+echo "" >>$NAC_TFVARS_FILE_NAME
+sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
+
 ### Check if Resource Group is already provisioned
 AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 
-ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
-if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-    echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group. "
-    COMMAND="terraform import azurerm_resource_group.resource_group /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
-    $COMMAND
-else
-    echo "INFO ::: ACS Resource Group $ACS_RESOURCE_GROUP does not exist. It will provision a new Resource Group."
+if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+    ### Create the Azure Discovery Function DNS Zone
+    create_azure_function_private_dns_zone $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
+
+    ### Create the Storage Account DNS Zone
+    create_storage_account_private_dns_zone $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
 fi
-
-NAC_TFVARS_FILE_NAME="NAC.tfvars"
-rm -rf "$NAC_TFVARS_FILE_NAME"
-
-echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
-echo "azure_location="\"$AZURE_LOCATION\" >>$NAC_TFVARS_FILE_NAME
-echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
-echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
-echo "nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
-echo "unifs_toc_handle="\"$UNIFS_TOC_HANDLE\" >>$NAC_TFVARS_FILE_NAME
 
 import_configuration(){
     ### Import Configurations details if exist
@@ -381,7 +687,7 @@ import_configuration(){
     INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
     if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
-        COMMAND="terraform import azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
         $COMMAND
     else
         echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
@@ -391,32 +697,13 @@ import_configuration(){
     WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
     if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
         echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
-        COMMAND="terraform import azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
         $COMMAND
     else
         echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
     fi
-
-    NMC_VOLUME_NAME_KEY="nmc-volume-name"
-    NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $NMC_VOLUME_NAME_KEY --label $NMC_VOLUME_NAME_KEY --query value --output tsv 2> /dev/null`
-    if [ "$NMC_VOLUME_NAME_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: nmc-volume-name already exist in the App Config. Importing the nmc-volume-name. "
-        COMMAND="terraform import azurerm_app_configuration_key.$NMC_VOLUME_NAME_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$NMC_VOLUME_NAME_KEY/Label/$NMC_VOLUME_NAME_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $NMC_VOLUME_NAME_KEY does not exist. It will provision a new $NMC_VOLUME_NAME_KEY."
-    fi
-
-    UNIFS_TOC_HANDLE_KEY="unifs-toc-handle"
-    UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $UNIFS_TOC_HANDLE_KEY --label $UNIFS_TOC_HANDLE_KEY --query value --output tsv 2> /dev/null`
-    if [ "$UNIFS_TOC_HANDLE_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: unifs-toc-handle already exist in the App Config. Importing the unifs-toc-handle."
-        COMMAND="terraform import azurerm_app_configuration_key.$UNIFS_TOC_HANDLE_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$UNIFS_TOC_HANDLE_KEY/Label/$UNIFS_TOC_HANDLE_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $UNIFS_TOC_HANDLE_KEY does not exist. It will provision a new $UNIFS_TOC_HANDLE_KEY."
-    fi
 }
+
 import_configuration
 
 echo $JSON_FILE_PATH
@@ -443,7 +730,6 @@ FOLDER_PATH=`pwd`
 
 ##appending latest_toc_handle_processed to TFVARS_FILE
 echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$TFVARS_FILE
-
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
@@ -474,8 +760,7 @@ generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SE
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 #################### 2nd Run for Tracker_UI Complete##########################
 
-DESTINATION_STORAGE_ACCOUNT_NAME=""
-DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+
 if [ $? -eq 0 ]; then 
     add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
@@ -494,7 +779,7 @@ echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
 run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
-destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY
+destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP
 
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
@@ -512,3 +797,5 @@ echo "INFO ::: Total execution Time ::: $DIFF"
         exit 0
     echo "INFO ::: Failed NAC Povisioning"
 }
+)2>&1 | tee $LOG_FILE
+
