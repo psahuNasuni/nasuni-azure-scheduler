@@ -229,7 +229,7 @@ run_cognitive_search_indexer(){
     ACS_API_KEY=$2
     ACS_INDEXER_NAME="indexer"
 
-    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:applicauion/json" -H "api-key:${ACS_API_KEY}"`
+    INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
     if [ $? -eq 0 ]; then
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
     else
@@ -506,7 +506,7 @@ get_subnets(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="CTPROJECT-256"
+GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
