@@ -1,9 +1,9 @@
 name: gitleaks
 on:
   push:
-    branches: [CTPROJECT-490-GitLeaks]
+    branches: [main]
   pull_request:
-    branches: [CTPROJECT-490-GitLeaks]
+    branches: [main]
 jobs:
   scan:
     name: gitleaks
