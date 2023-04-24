@@ -516,22 +516,21 @@ create_acs_private_dns_zone(){
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
-	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
+	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC . . . . . . . . . !!!"
 	AZURE_SUBSCRIPTION_VALUE=`az account show --query "id" -o tsv`
+	AZURE_USER_TYPE=`az account show --query user | jq -r .type`
 
 	echo "$AZURE_SUBSCRIPTION_VALUE"
-	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ]; then
-		
+	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ] && ["$AZURE_USER_TYPE" == "servicePrincipal"]; then
+		echo "INFO ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does exists and Logged in USER TYPE is ServicePrincipal "
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
-
 	else
-
-		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
+		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. or Logged in USER TYPE is not ServicePrincipal . . . . . . . . . !!!"
+		echo "To Create AZURE Subscription, Run cli command - az login --service-principal --tenant $TENANT_ID --username $SP_USERNAME --password $SP_PASSWORD"
 		exit 1
-
 	fi
 	# Setting below values as ENV Variable
 
