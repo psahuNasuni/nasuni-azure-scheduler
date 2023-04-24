@@ -517,16 +517,19 @@ create_acs_private_dns_zone(){
 ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
-	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
-	echo "$AZURE_SUBSCRIPTION_STATUS"
-	if [ "$AZURE_SUBSCRIPTION_STATUS" == "" ]; then
-		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
-		exit 1
-	else
+	AZURE_SUBSCRIPTION_VALUE=`az account list --query "id" -o tsv`
+	echo "$AZURE_SUBSCRIPTION_VALUE"
+	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ]; then
+		
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
+
+	else
+
+		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
+		exit 1
 
 	fi
 	# Setting below values as ENV Variable
