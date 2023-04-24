@@ -518,7 +518,6 @@ ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
 	AZURE_SUBSCRIPTION_VALUE=`az account show --query "id" -o tsv`
-	echo "INFO  ${AZURE_SUBSCRIPTION_VALUE} for status value"
 
 	echo "$AZURE_SUBSCRIPTION_VALUE"
 	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ]; then
