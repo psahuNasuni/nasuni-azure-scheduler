@@ -217,9 +217,9 @@ check_if_key_vault_exists() {
 	AZURE_KEYVAULT_NAME="$1"
 	# Verify the Secret Exists in KeyVault
 	if [[ "$(az keyvault show --name ${AZURE_KEYVAULT_NAME} | jq -r .properties.provisioningState)" == Succeeded ]]; then
-		echo "Y"
+		echo "INFO ::: User secret Exists:: Y"
 	else
-		echo "N"
+		echo "INFO ::: User secret Exists:: N"
 		exit 1
 	fi
 }
@@ -938,8 +938,8 @@ if [[ -n "$FOURTH_ARG" ]]; then
 	AZURE_KEYVAULT_NAME="$FOURTH_ARG"
 
 	### Verify the KeyVault Exists
-	AZURE_KEYVAULT_EXISTS=$(check_if_key_vault_exists $AZURE_KEYVAULT_NAME)
-	echo "INFO ::: User secret Exists:: $AZURE_KEYVAULT_EXISTS"
+	check_if_key_vault_exists $AZURE_KEYVAULT_NAME
+
 	if [ "$AZURE_KEYVAULT_EXISTS" == "Y" ]; then
 		### Validate Keys in the Secret
 		echo "INFO ::: Check if all Keys are provided"
