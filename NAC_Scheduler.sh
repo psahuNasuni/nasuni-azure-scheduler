@@ -220,6 +220,7 @@ check_if_key_vault_exists() {
 		echo "Y"
 	else
 		echo "N"
+		exit 1
 	fi
 }
 
