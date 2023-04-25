@@ -519,9 +519,9 @@ validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC . . . . . . . . . !!!"
 	AZURE_SUBSCRIPTION_VALUE=`az account show --query "id" -o tsv`
 	AZURE_USER_TYPE=`az account show --query user | jq -r .type`
-
+	echo "$AZURE_USER_TYPE"
 	echo "$AZURE_SUBSCRIPTION_VALUE"
-	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ] && ["$AZURE_USER_TYPE" == "servicePrincipal"]; then
+	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ] && [ "$AZURE_USER_TYPE" == servicePrincipal ]; then
 		echo "INFO ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does exists and Logged in USER TYPE is ServicePrincipal "
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
