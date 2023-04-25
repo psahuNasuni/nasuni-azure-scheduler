@@ -216,10 +216,10 @@ append_nac_keys_values_to_tfvars() {
 check_if_key_vault_exists() {
 	AZURE_KEYVAULT_NAME="$1"
 	# Verify the Secret Exists in KeyVault
-	if [[ "$(az keyvault list -o tsv | cut -f 3 | grep -w ${AZURE_KEYVAULT_NAME})" == "" ]]; then
-		echo "N"
-	else
+	if [[ "$(az keyvault show --name ${AZURE_KEYVAULT_NAME} | jq -r .properties.provisioningState)" == Succeeded ]]; then
 		echo "Y"
+	else
+		echo "N"
 	fi
 }
 
