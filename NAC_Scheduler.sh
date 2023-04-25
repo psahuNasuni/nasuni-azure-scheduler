@@ -529,7 +529,7 @@ validate_AZURE_SUBSCRIPTION() {
 		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
 	else
 		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. or Logged in USER TYPE is not ServicePrincipal . . . . . . . . . !!!"
-		echo "To Create AZURE Subscription, Run cli command - az login --service-principal --tenant $TENANT_ID --username $SP_USERNAME --password $SP_PASSWORD"
+		echo "To Create AZURE Subscription, Run cli command - az login --service-principal --tenant {TENANT_ID} --username {SP_USERNAME} --password {SP_PASSWORD}"
 		exit 1
 	fi
 	# Setting below values as ENV Variable
