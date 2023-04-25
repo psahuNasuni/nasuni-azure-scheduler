@@ -216,7 +216,7 @@ append_nac_keys_values_to_tfvars() {
 check_if_key_vault_exists() {
 	AZURE_KEYVAULT_NAME="$1"
 	# Verify the Secret Exists in KeyVault
-	if [[ "$(az keyvault show --name ${AZURE_KEYVAULT_NAME} | jq -r .properties.provisioningState)" == Succeeded ]]; then
+	if [[ "$(az keyvault show --name ${AZURE_KEYVAULT_NAME} | jq -r .properties.provisioningState 2> /dev/null)" == Succeeded ]]; then
 		echo "Y"
 	else
 		echo "N"
@@ -966,10 +966,14 @@ if [[ -n "$FOURTH_ARG" ]]; then
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-resource-group
 		fi
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
+	else
+		echo "INFO ::: The Vault $AZURE_KEYVAULT_NAME not found within subscription !!!"
+		exit 1
 	fi
 else
 	echo "INFO ::: Fourth argument is NOT provided, So, It will consider prod/nac/admin as the default key vault."
 fi
+
 validate_AZURE_SUBSCRIPTION
 
 ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
