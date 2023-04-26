@@ -216,10 +216,10 @@ append_nac_keys_values_to_tfvars() {
 check_if_key_vault_exists() {
 	AZURE_KEYVAULT_NAME="$1"
 	# Verify the Secret Exists in KeyVault
-	if [[ "$(az keyvault list -o tsv | cut -f 3 | grep -w ${AZURE_KEYVAULT_NAME})" == "" ]]; then
-		echo "N"
-	else
+	if [[ "$(az keyvault show --name ${AZURE_KEYVAULT_NAME} | jq -r .properties.provisioningState 2> /dev/null)" == Succeeded ]]; then
 		echo "Y"
+	else
+		echo "N"
 	fi
 }
 
@@ -516,18 +516,21 @@ create_acs_private_dns_zone(){
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
 validate_AZURE_SUBSCRIPTION() {
-	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC  . . . . . . . . . . . . . . . . !!!"
-	AZURE_SUBSCRIPTION_STATUS=`az account list -o tsv | cut -f 6 | grep -w "${AZURE_SUBSCRIPTION}"`
-	echo "$AZURE_SUBSCRIPTION_STATUS"
-	if [ "$AZURE_SUBSCRIPTION_STATUS" == "" ]; then
-		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. To Create AZURE Subscription, Run cli command - az login"
-		exit 1
-	else
+	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC . . . . . . . . . !!!"
+	AZURE_SUBSCRIPTION_VALUE=`az account show --query "id" -o tsv`
+	AZURE_USER_TYPE=`az account show --query user | jq -r .type`
+	echo "$AZURE_USER_TYPE"
+	echo "$AZURE_SUBSCRIPTION_VALUE"
+	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ] && [ "$AZURE_USER_TYPE" == servicePrincipal ]; then
+		echo "INFO ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does exists and Logged in USER TYPE is ServicePrincipal "
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
-
+	else
+		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. or Logged in USER TYPE is not ServicePrincipal . . . . . . . . . !!!"
+		echo "To Create AZURE Subscription, Run cli command - az login --service-principal --tenant {TENANT_ID} --username {SP_USERNAME} --password {SP_PASSWORD}"
+		exit 1
 	fi
 	# Setting below values as ENV Variable
 
@@ -963,10 +966,14 @@ if [[ -n "$FOURTH_ARG" ]]; then
 			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-resource-group
 		fi
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
+	else
+		echo "INFO ::: The Vault $AZURE_KEYVAULT_NAME not found within subscription !!!"
+		exit 1
 	fi
 else
 	echo "INFO ::: Fourth argument is NOT provided, So, It will consider prod/nac/admin as the default key vault."
 fi
+
 validate_AZURE_SUBSCRIPTION
 
 ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
