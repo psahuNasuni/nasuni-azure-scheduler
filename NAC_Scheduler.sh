@@ -58,7 +58,7 @@ check_if_VNET_exists(){
 		echo "INFO ::: SUBNET $SUBNET_0_NAME is not EXIST should be created New..."
 		echo "INFO ::: Creating Subnet $SUBNET_0_NAME ::: STARTED"
 		
-		get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
+		get_subnets $INPUT_RG $INPUT_VNET "24" "1"
 		VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
 		echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
 		VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --service-endpoints "Microsoft.Web" --address-prefixes "$VNET_0_SUBNET_CIDR")
@@ -740,14 +740,13 @@ check_if_resourcegroup_exist(){
 get_subnets(){
     VNET_RESOURCE_GROUP="$1"
     USER_VNET_NAME="$2"
-    SUBNET_NAME="$3"
-    SUBNET_MASK="$4"
-	REQUIRED_SUBNET_COUNT="$5"
+    SUBNET_MASK="$3"
+	REQUIRED_SUBNET_COUNT="$4"
 
 	DIRECTORY=$(pwd)
 	echo "Directory: $DIRECTORY"
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
-	OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+	OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
 	SUBNETS_CIDR=(`cat available_subnets.txt`)
 	SUBNETS_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
@@ -1012,7 +1011,7 @@ get_destination_container_url $DESTINATION_CONTAINER_URL $USER_VNET_RESOURCE_GRO
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
-get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"1"
+get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "28"	"1"
 SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
 
 echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"

@@ -5,7 +5,6 @@ import json
 from datetime import *
 import ipaddress 
 from ipaddress import IPv4Network
-from sortedcontainers import SortedDict
 
 logging.getLogger().setLevel(logging.INFO)
 logging.info(f'date={date}')
@@ -20,25 +19,27 @@ def remove_new_line(f):
         return result
     return wrapper
 
-
-def available_ips_in_subnet(vnet_rg, vnet_name, subnet_name, subnet_mask):
+def available_ips_in_subnet(vnet_rg, vnet_name):
     """
     Returns the number of available ips
     """
-    if subnet_name == 'default':
-        subnet_mask = 16
-    #max_ip=$((2 ** (32-$netmask)-5))
-    max_ip = pow(2, (32-int(subnet_mask))) -5
+    checking_mask=16
+    max_ip = pow(2, (32-int(checking_mask))) -5
+
+    used_ip_state='az network vnet show -g ' + vnet_rg + ' -n ' +  vnet_name + '| jq -r ".subnets[].ipConfigurations"'
+
+    with os.popen(used_ip_state) as f:
+        used_ip_state = f.readlines()
+
+    search_term='"id":'
+    used_ip_count=0
+
+    for value in used_ip_state:
+        if search_term in value :
+            used_ip_count+=1
     
-    used_ip = 'az network vnet subnet show -g ' + vnet_rg + ' -n ' + subnet_name + ' --vnet-name ' + vnet_name + ' -o json | jq  ".ipConfigurations[].id" | wc -l'
-
-    with os.popen(used_ip) as f:
-        used_ip = f.readlines()
-        used_ip = used_ip[0].replace("\n", "")
-
-    available_ip = max_ip - int(used_ip)
+    available_ip = max_ip - int(used_ip_count)
     return available_ip
-
 
 def create_subnet(vnet_rg, vnet_name, subnet_name, address_prefixes):
     """
@@ -78,14 +79,9 @@ def get_used_subnets(vnet_rg, vnet_name):
         used_subnets = f.readlines()
         used_subnets = [subnet[:-4] for subnet in used_subnets]
     
-    subnets_dict = {}
-    # Sort the used subnets 
-    for subnet in used_subnets:
-        subnets_dict[int(subnet.split(".")[2])] = subnet
+    used_subnets.sort()
 
-    subnets_dict = SortedDict(subnets_dict) 
-
-    return subnets_dict[subnets_dict.iloc[-1]]
+    return used_subnets
 
 @remove_new_line
 def get_default_vnet_ip(vnet_rg, vnet_name):
@@ -106,27 +102,18 @@ def ip_generator(subnet_ip):
     """
     return [str(ip) for ip in ipaddress.IPv4Network(subnet_ip)]
 
-def get_subnet_name():
-    """
-    Return the next subnet available in the list
-    """
-    subnet_names = ['vnet-subnet-name-0', 'vnet-subnet-name-1', 'vnet-subnet-name-2', 'vnet-subnet-name-3', 'vnet-subnet-name-4', 'vnet-subnet-name-5', 'vnet-subnet-name-6', 'vnet-subnet-name-7', 'vnet-subnet-name-8', 'vnet-subnet-name-9', 'vnet-subnet-name-10', 'vnet-subnet-name-11', 'vnet-subnet-name-12', 'vnet-subnet-name-13', 'vnet-subnet-name-14', 'vnet-subnet-name-15']
-    for subnet_name in subnet_names:
-        yield subnet_name
 
 def get_next_subnet_address_in_vnet(last_address):
     """
     Create next subnet address in_vnet
     """
-    # 10.23.26.208
-    # 10.23.26.0
     split_last_add = last_address.split('.')
     third_octet = int(split_last_add[2]) + 1 # 26
     ### Need to handle the 255 condition
     split_last_add[2] = third_octet
     split_last_add[3] = 0
+    
     # Group split octets
-    # next_address = ".".join(split_last_add) 
     next_address = split_last_add[0]
     
     for octet in range(1, len(split_last_add)):
@@ -134,8 +121,19 @@ def get_next_subnet_address_in_vnet(last_address):
         
     return next_address
 
+def get_next_available_range(current_subnet_state):
+    current_subnet_state.sort()
+    next_available_address = current_subnet_state[0]
 
-def subnet_infrastructure(vnet_rg, vnet_name, subnet_name, subnet_mask, required_subnet_count):
+    for subnet in current_subnet_state:
+        if (next_available_address in current_subnet_state):
+            next_available_address = get_next_subnet_address_in_vnet(subnet)
+        else:
+            break
+    
+    return next_available_address
+
+def subnet_infrastructure(vnet_rg, vnet_name, subnet_mask, required_subnet_count):
     """
     Provision the Infrastructure
     """
@@ -144,34 +142,33 @@ def subnet_infrastructure(vnet_rg, vnet_name, subnet_name, subnet_mask, required
     # 10.23.0.0/16
     get_default_vnet_ip_add = get_default_vnet_ip(vnet_rg, vnet_name)
     # Get the count of available IPs in Vnet
-    available_ips_in_vnet = available_ips_in_subnet(vnet_rg, vnet_name, subnet_name, subnet_mask)
-    if  available_ips_in_vnet > 288:
+    available_ips_in_vnet = available_ips_in_subnet(vnet_rg, vnet_name)
+    if  available_ips_in_vnet > pow(2, (32-int(subnet_mask))): 
         net = IPv4Network(get_default_vnet_ip_add)
         # Change subnet mask to 28 as one subnet need atleast 16 IP address
-        last_subnet = get_used_subnets(vnet_rg, vnet_name) # '10.23.25.0'
+        
+        current_subnet_state = get_used_subnets(vnet_rg, vnet_name) # '10.23.25.0'
         # last_subnet = used_subnets[-1] # '10.23.25.0'
         while subnet_count < required_subnet_count:
-            next_available_address = get_next_subnet_address_in_vnet(last_subnet)
+            
+            next_available_address=get_next_available_range(current_subnet_state)
             subnet_ip_range = next_available_address + '/24'
+
             net = IPv4Network(subnet_ip_range)
             for subnet_ip in net.subnets(new_prefix=int(subnet_mask)):
                 available_private_subnets.append(str(subnet_ip))
+                current_subnet_state.append(str(subnet_ip).split('/')[0])
                 subnet_count += 1
                 if subnet_count > ( required_subnet_count - 1 ):
                     break
-            last_subnet = next_available_address
-
+            
     return available_private_subnets
 
 if __name__ == "__main__":
-    # vnet_rg="nac-nmc-22-2-1"
-    # vnet_name="nac-nmc-22-2-1-vnet"
-    # subnet_name="default"
-    # subnet_mask="28"
+    
     vnet_rg=sys.argv[1]
     vnet_name=sys.argv[2]
-    subnet_name=sys.argv[3]
-    subnet_mask=sys.argv[4]
-    required_subnet_count = int(sys.argv[5])
-    available_private_subnets = json.dumps(subnet_infrastructure(vnet_rg, vnet_name, subnet_name, subnet_mask, required_subnet_count)).replace(" ", "")
+    subnet_mask=sys.argv[3]
+    required_subnet_count = int(sys.argv[4])
+    available_private_subnets = json.dumps(subnet_infrastructure(vnet_rg, vnet_name, subnet_mask, required_subnet_count)).replace(" ", "")
     print(available_private_subnets)
