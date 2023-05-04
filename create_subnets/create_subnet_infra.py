@@ -1,4 +1,3 @@
-#https://github.com/psahuNasuni/nasuni-azure-scheduler/blob/main/create_subnets/create_subnet_infra.py
 # Create the infrastructure to provision NAC Scheduler
 import os
 import sys,logging
@@ -6,7 +5,6 @@ import json
 from datetime import *
 import ipaddress 
 from ipaddress import IPv4Network
-from sortedcontainers import SortedDict
 
 logging.getLogger().setLevel(logging.INFO)
 logging.info(f'date={date}')
@@ -56,7 +54,6 @@ def create_subnet(vnet_rg, vnet_name, subnet_name, address_prefixes):
 
     return subnet_status
 
-# @remove_new_line
 def is_ip_available(vnet_rg, vnet_name, ip_address):
     """
     Check if IP is available or not
@@ -100,13 +97,6 @@ def get_default_vnet_ip(vnet_rg, vnet_name):
 
     return default_ip
 
-def ip_generator(subnet_ip):
-    """
-    Generate list of possible IPs
-    :subnet_range '10.23.0.0/16'
-    """
-    return [str(ip) for ip in ipaddress.IPv4Network(subnet_ip)]
-
 
 def get_next_subnet_address_in_vnet(last_address):
     """
@@ -141,12 +131,7 @@ def check_for_overlap(subnet_ip_range,current_subnet_state,current_subnet_state_
         return True
     else:
         return False
-    # subnet_ip_range_without_mask=subnet_ip_range[:-3]
-
-    # if (subnet_ip_range_without_mask in current_subnet_state) or (subnet_ip_range in current_subnet_state_with_mask):
-    #     return True
-    # else:
-    #     return False
+    
     
 def check_for_availability(next_available_address,current_subnet_state):
     local_subnet_state=[]
@@ -163,7 +148,8 @@ def check_for_availability(next_available_address,current_subnet_state):
 
 def get_next_available_range(current_subnet_state):
     subnet_ranges=set(".".join(x.split('.')[0:3]) for x in current_subnet_state)
-    subnet_ranges=sorted(subnet_ranges)
+    subnet_ranges=sorted(subnet_ranges,key=lambda ip: tuple(map(int,ip.split('.'))))
+
     next_available_address = subnet_ranges[0]
     
     for subnet in subnet_ranges:
@@ -181,7 +167,7 @@ def subnet_infrastructure(vnet_rg, vnet_name, subnet_mask, required_subnet_count
     subnet_count = 0
     available_private_subnets = []
 
-    # 10.23.0.0/16
+    
     get_default_vnet_ip_add = get_default_vnet_ip(vnet_rg, vnet_name)
     # Get the count of available IPs in Vnet
     available_ips_in_vnet = available_ips_in_subnet(vnet_rg, vnet_name)
@@ -189,8 +175,8 @@ def subnet_infrastructure(vnet_rg, vnet_name, subnet_mask, required_subnet_count
         net = IPv4Network(get_default_vnet_ip_add)
         # Change subnet mask to 28 as one subnet need atleast 16 IP address
         
-        current_subnet_state ,current_subnet_state_with_mask= get_used_subnets(vnet_rg, vnet_name) # '10.23.25.0'
-        # last_subnet = used_subnets[-1] # '10.23.25.0'
+        current_subnet_state ,current_subnet_state_with_mask= get_used_subnets(vnet_rg, vnet_name) 
+        
         while subnet_count < required_subnet_count:
             
             overlapping_state=True
@@ -208,19 +194,21 @@ def subnet_infrastructure(vnet_rg, vnet_name, subnet_mask, required_subnet_count
                 subnet_count += 1
                 if subnet_count > ( required_subnet_count - 1 ):
                     break
-            #last_subnet = next_available_address
+            
 
     return available_private_subnets
 
 if __name__ == "__main__":
-    vnet_rg="nac-nmc-22-2-1"
-    vnet_name="nac-nmc-22-2-1-vnet"
-    subnet_mask="28"
-    required_subnet_count=105
-    # vnet_rg=sys.argv[1]
-    # vnet_name=sys.argv[2]
-    # subnet_name=sys.argv[3]
-    # subnet_mask=sys.argv[4]
-    # required_subnet_count = int(sys.argv[5])
+    #uncomment this for unit testing below 4 lines
+    # vnet_rg="nac-nmc-22-2-1"
+    # vnet_name="nac-nmc-22-2-1-vnet"
+    # subnet_mask="28"
+    # required_subnet_count=105
+
+    #comment this for unit testing below 4 lines
+    vnet_rg=sys.argv[1]
+    vnet_name=sys.argv[2]
+    subnet_mask=sys.argv[3]
+    required_subnet_count = int(sys.argv[4])
     available_private_subnets = json.dumps(subnet_infrastructure(vnet_rg, vnet_name, subnet_mask, required_subnet_count)).replace(" ", "")
     print(available_private_subnets)
