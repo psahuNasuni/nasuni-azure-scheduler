@@ -177,7 +177,7 @@ parse_config_file_for_user_secret_keys_values() {
             "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
             "DestinationContainer") DESTINATION_CONTAINER_NAME="$value" ;;
             "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
-            "vnetResourceGroup") USER_RESOURCE_GROUP_NAME="$value" ;;
+            "vnetResourceGroup") NETWORKING_RESOURCE_GROUP="$value" ;;
             "vnetName") USER_VNET_NAME="$value" ;;
         esac
     done <"$file"
@@ -351,17 +351,15 @@ create_azure_function_private_dns_zone_virtual_network_link(){
 		echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Function is already exist."
 		
 	else
-		echo "INFO ::: $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will provision a new $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		LINK_NAME="nacfunctionvnetlink"
+		echo "INFO ::: $LINK_NAME dns zone virtual link does not exist. It will provision a new $LINK_NAME."
 		
 		VIRTUAL_NETWORK_ID=`az network vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_VNET_NAME --query id --output tsv 2> /dev/null`
-		LINK_NAME="nacfunctionvnetlink"
 		
 		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
 		
-		COMMAND="az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
-		$COMMAND	
-		RESULT=$?
-		if [ $RESULT -eq 0 ]; then
+		FUNCTION_APP_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False | jq -r '.provisioningState'`
+		if [ "$FUNCTION_APP_DNS_PRIVATE_LINK" == "Succeeded" ]; then
 			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
@@ -384,17 +382,16 @@ create_storage_account_private_dns_zone_virtual_network_link(){
 		echo "INFO ::: Private DNS Zone Virtual Network Link for Storage Account is already exist."
 		
 	else
-		echo "INFO ::: $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME dns zone virtual link does not exist. It will create a new $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME."
+		LINK_NAME="nacstoragevnetlink"
+        echo "INFO ::: $LINK_NAME dns zone virtual link does not exist. It will create a new $LINK_NAME."
 		
 		VIRTUAL_NETWORK_ID=`az network vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_VNET_NAME --query id --output tsv 2> /dev/null`
-		LINK_NAME="nacstoragevnetlink"
 		
 		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
 		
-		COMMAND="az network private-dns link vnet create -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
-		$COMMAND	
-		RESULT=$?
-		if [ $RESULT -eq 0 ]; then
+		STORAGE_ACCOUNT_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False  | jq -r '.provisioningState'`
+
+		if [ "$STORAGE_ACCOUNT_DNS_PRIVATE_LINK" == "Succeeded" ]; then
 			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
@@ -420,10 +417,8 @@ create_azure_function_private_dns_zone(){
 		
 		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation"
 		
-		COMMAND="az network private-dns zone create -g $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME"
-		$COMMAND
-		RESULT=$?
-		if [ $RESULT -eq 0 ]; then
+		FUNCTION_APP_DNS_ZONE=`az network private-dns zone create -g $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState'`
+		if [ "$FUNCTION_APP_DNS_ZONE" == "Succeeded" ]; then
 			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
 			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
 		else
@@ -450,10 +445,8 @@ create_storage_account_private_dns_zone(){
 		
 		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation"
 		
-		COMMAND="az network private-dns zone create -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME"
-		$COMMAND
-		RESULT=$?
-		if [ $RESULT -eq 0 ]; then
+		STORAGE_ACCOUNT_APP_DNS_ZONE=`az network private-dns zone create -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState'`
+		if [ "$STORAGE_ACCOUNT_APP_DNS_ZONE" == "Succeeded" ]; then
 			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
 			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
 		else
@@ -463,19 +456,17 @@ create_storage_account_private_dns_zone(){
 	fi
 }
 
-
 get_subnets(){
-    VNET_RESOURCE_GROUP="$1"
+    NETWORKING_RESOURCE_GROUP="$1"
     USER_VNET_NAME="$2"
-    SUBNET_NAME="$3"
-    SUBNET_MASK="$4"
-    REQUIRED_SUBNET_COUNT="$5"
+    SUBNET_MASK="$3"
+    REQUIRED_SUBNET_COUNT="$4"
 
     DIRECTORY=$(pwd)
     echo "Directory: $DIRECTORY"
     FILENAME="$DIRECTORY/create_subnet_infra.py"
     chmod 777 $FILENAME
-    OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+    OUTPUT=$(python3 $FILENAME $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
     COUNTER=0
     NAC_SUBNETS=()
     DISCOVERY_OUTBOUND_SUBNET=()
@@ -575,17 +566,16 @@ fi
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
  
-USER_RESOURCE_GROUP_NAME=$(echo $USER_RESOURCE_GROUP_NAME | tr -d ' ')
+NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
 USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
 AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
 
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
+    NAC_SUBNETS=()
+    DISCOVERY_OUTBOUND_SUBNET=()
+    get_subnets $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME "28" "17"
 fi
-
-NAC_SUBNETS=()
-DISCOVERY_OUTBOUND_SUBNET=()
-get_subnets $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME "default" "28" "17"
 
 ###################### Check If NAC_RESOURCE_GROUP_NAME is Exist ##############################################
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
@@ -659,15 +649,13 @@ echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-	echo "user_resource_group_name="\"$USER_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
+	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
     echo "user_subnet_name="\"$USER_SUBNET_NAME\" >>$NAC_TFVARS_FILE_NAME
     echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$NAC_TFVARS_FILE_NAME
     echo "nac_subnet="$NAC_SUBNETS >>$NAC_TFVARS_FILE_NAME
     echo "discovery_outbound_subnet="$DISCOVERY_OUTBOUND_SUBNET >>$NAC_TFVARS_FILE_NAME
 fi
-echo "" >>$NAC_TFVARS_FILE_NAME
-echo "" >>$NAC_TFVARS_FILE_NAME
 sudo chmod -R 777 $NAC_TFVARS_FILE_NAME
 
 ### Check if Resource Group is already provisioned
@@ -675,10 +663,10 @@ AZURE_SUBSCRIPTION_ID=$(echo "$AZURE_SUBSCRIPTION_ID" | xargs)
 
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     ### Create the Azure Discovery Function DNS Zone
-    create_azure_function_private_dns_zone $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
+    create_azure_function_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 
     ### Create the Storage Account DNS Zone
-    create_storage_account_private_dns_zone $USER_RESOURCE_GROUP_NAME $USER_VNET_NAME
+    create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
 
 import_configuration(){
@@ -798,4 +786,3 @@ echo "INFO ::: Total execution Time ::: $DIFF"
     echo "INFO ::: Failed NAC Povisioning"
 }
 )2>&1 | tee $LOG_FILE
-
