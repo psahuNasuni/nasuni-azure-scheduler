@@ -11,7 +11,7 @@ LOG_FILE=NAC_SCHEDULER_$DATE_WITH_TIME.log
 
 get_destination_container_url(){
 	DESTINATION_CONTAINER_URL=$1
-	USER_VNET_RESOURCE_GROUP=$2
+	EDGEAPPLIANCE_RESOURCE_GROUP=$2
 	### DESTINATION_BUCKET_URL="https://destinationbktsa.blob.core.windows.net/destinationbkt" ## "From_Key_Vault"
 	DESTINATION_CONTAINER_NAME=$(echo ${DESTINATION_CONTAINER_URL} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 	### https://destinationbktsa.blob.core.windows.net/destinationbkt From this we can get DESTINATION_STORAGE_ACCOUNT_NAME=destinationbktsa and DESTINATION_BUCKET_NAME=destinationbkt  and DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=az storage account show-connection-string --name nmcfilersa
@@ -22,7 +22,7 @@ get_destination_container_url(){
 	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
 	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
 
-	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string -g $USER_VNET_RESOURCE_GROUP --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
+	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string -g $EDGEAPPLIANCE_RESOURCE_GROUP --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 	echo "INFO ::: SUCCESS :: Get destination container url."
 
 }
@@ -41,9 +41,9 @@ get_volume_key_blob_url(){
 
 check_if_VNET_exists(){
 	INPUT_VNET="$1"
-	INPUT_RG="$2"
+	NETWORKING_RESOURCE_GROUP="$2"
 
-	VNET_CHECK=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
+	VNET_CHECK=`az network vnet show --name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .provisioningState`
 	if [ "$VNET_CHECK" == "Succeeded" ]; then
 		echo "INFO ::: VNET $INPUT_VNET is Valid" 
 	else
@@ -51,19 +51,19 @@ check_if_VNET_exists(){
 		exit 1
 	fi
 
-	#VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $INPUT_RG | jq -r .subnets[0].name`
+	#VNET_0_SUBNET=`az network vnet show --name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .subnets[0].name`
 	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
-	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
+	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .provisioningState`
 	if [ "$SUBNET_CHECK" != "Succeeded" ]; then
 		echo "INFO ::: SUBNET $SUBNET_0_NAME is not EXIST should be created New..."
 		echo "INFO ::: Creating Subnet $SUBNET_0_NAME ::: STARTED"
 		
-		get_subnets $INPUT_RG $INPUT_VNET "default" "24" "1"
+		get_subnets $NETWORKING_RESOURCE_GROUP $INPUT_VNET "24" "1"
 		VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
 		echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
-		VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $INPUT_RG --service-endpoints "Microsoft.Web" --address-prefixes "$VNET_0_SUBNET_CIDR")
+		VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $NETWORKING_RESOURCE_GROUP --service-endpoints "Microsoft.Web" "Microsoft.Storage" --address-prefixes "$VNET_0_SUBNET_CIDR")
 
-		SUBNET_STATUS_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $INPUT_RG | jq -r .provisioningState`
+		SUBNET_STATUS_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .provisioningState`
 		if [ "$SUBNET_STATUS_CHECK" != "Succeeded" ]; then
 			echo "ERROR ::: SUBNET $SUBNET_0_NAME Creation Failed."
 			exit 1
@@ -76,9 +76,8 @@ check_if_VNET_exists(){
 		echo "INFO ::: SUBNET $SUBNET_0_NAME is Already EXIST"
 	fi
 
-	VNET_IS="$INPUT_VNET"
-	SUBNET_IS="$SUBNET_0_NAME"
-	echo "SUBNET_IS=$SUBNET_0_NAME , VNET_IS=$INPUT_VNET"
+	SUBNET_NAME="$SUBNET_0_NAME"
+	echo "SUBNET_NAME=$SUBNET_0_NAME , USER_VNET_NAME=$INPUT_VNET"
 	
 }
 
@@ -351,16 +350,14 @@ validate_secret_values() {
 				DESTINATION_CONTAINER_URL=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "volume-key-container-url" ]; then
 				VOLUME_KEY_BLOB_URL=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "nac-scheduler-resource-group" ]; then
-				NAC_SCHEDULER_RESOURCE_GROUP=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "edgeappliance-resource-group" ]; then
+				EDGEAPPLIANCE_RESOURCE_GROUP=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "nac-scheduler-name" ]; then
 				NAC_SCHEDULER_NAME=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "user-vnet-name" ]; then
 				USER_VNET_NAME=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-subscription-id" ]; then
-				VNET_SUBSCRIPTION_ID=$SECRET_VALUE
-			elif [ "$SECRET_NAME" == "vnet-resource-group" ]; then
-				VNET_RESOURCE_GROUP=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "networking-resource-group" ]; then
+				NETWORKING_RESOURCE_GROUP=$SECRET_VALUE
             fi
 			echo "INFO ::: Validation SUCCESS, as key $SECRET_NAME found in Key Vault $KEY_VAULT_NAME."
 		fi
@@ -372,13 +369,15 @@ validate_secret_values() {
 }
 
 ### Import ACS App Config 
+
 import_acs_app_config(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
-	ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
+	ACS_RESOURCE_GROUP="$2"
+	ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
 	COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_app_configuration.appconf $ACS_APP_CONFIG_ID"
     $COMMAND
 }
+
 create_app_config_private_dns_zone_virtual_network_link(){
 	APP_CONFIG_RESOURCE_GROUP="$1"
 	APP_CONFIG_VNET_NAME="$2"
@@ -398,10 +397,8 @@ create_app_config_private_dns_zone_virtual_network_link(){
 			
 			echo "STARTED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
 			
-			COMMAND="az network private-dns link vnet create -g $APP_CONFIG_RESOURCE_GROUP -n $LINK_NAME -z $APP_CONFIG_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
-			$COMMAND	
-			RESULT=$?
-			if [ $RESULT -eq 0 ]; then
+			APP_CONFIG_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $APP_CONFIG_RESOURCE_GROUP -n $LINK_NAME -z $APP_CONFIG_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False | jq -r '.provisioningState'`
+			if [ "$APP_CONFIG_DNS_PRIVATE_LINK" == "Succeeded" ]; then
 				echo "COMPLETED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 			else
 				echo "ERROR ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
@@ -424,10 +421,8 @@ create_app_config_private_dns_zone(){
 			
 			echo "STARTED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone creation"
 			
-			COMMAND="az network private-dns zone create -g $APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $APP_CONFIG_PRIVAE_DNS_ZONE_NAME"
-			$COMMAND
-			RESULT=$?
-			if [ $RESULT -eq 0 ]; then
+			APP_CONFIG_DNS_ZONE=`az network private-dns zone create -g $APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $APP_CONFIG_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState'`
+			if [ "$APP_CONFIG_DNS_ZONE" == "Succeeded"  ]; then
 				echo "COMPLETED ::: $APP_CONFIG_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
 				create_app_config_private_dns_zone_virtual_network_link $APP_CONFIG_PRIVAE_DNS_ZONE_RESOURCE_GROUP $APP_CONFIG_VNET_NAME
 			else
@@ -437,22 +432,64 @@ create_app_config_private_dns_zone(){
 		fi
 }
 
-import_app_config_endpoint(){
-	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_ENDPOINT_RESOURCE_GROUP="$2"
-
-	ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME="${ACS_ADMIN_APP_CONFIG_NAME}_private_endpoint"
-	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $APP_CONFIG_ENDPOINT_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`	
-    if [ "$ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS" == "Succeeded" ]; then
-        echo "INFO ::: Private endpoint already exist. Importing the existing ACS APP CONFIG Endpoint."
-        COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_private_endpoint.appconf_private_endpoint[0] /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_ENDPOINT_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
-        $COMMAND
-    else
-        echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
-    fi
+create_azure_function_private_dns_zone_virtual_network_link(){
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_VNET_NAME="$2"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME=`az network private-dns link vnet list -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME | jq '.[]' | jq 'select((.virtualNetwork.id | contains('\"$AZURE_FUNCTION_VNET_NAME\"')) and (.virtualNetwork.resourceGroup='\"$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP\"'))'| jq -r '.name'`
+	
+	AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS=`az network private-dns link vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+			
+	if [ "$AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_STATUS" == "Succeeded" ]; then
+		
+		echo "INFO ::: Private DNS Zone Virtual Network Link for Azure Function is already exist."
+		
+	else
+		LINK_NAME="nacfunctionvnetlink"
+		echo "INFO ::: $LINK_NAME dns zone virtual link does not exist. It will provision a new $LINK_NAME."
+		
+		VIRTUAL_NETWORK_ID=`az network vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_VNET_NAME --query id --output tsv 2> /dev/null`
+		
+		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		
+		FUNCTION_APP_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False | jq -r '.provisioningState'`
+		if [ "$FUNCTION_APP_DNS_PRIVATE_LINK" == "Succeeded" ]; then
+			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+		else
+			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+			exit 1
+		fi
+	fi
 }
 
-###########################################START ACS Import #######################################
+create_azure_function_private_dns_zone(){
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP="$1"
+	AZURE_FUNCTION_VNET_NAME="$2"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME="privatelink.azurewebsites.net"
+	AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS=`az network private-dns zone show --resource-group $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME --query provisioningState --output tsv 2> /dev/null`	
+
+	if [ "$AZURE_FUNCTION_PRIVAE_DNS_ZONE_STATUS" == "Succeeded" ]; then
+		
+        echo "INFO ::: Private DNS Zone for Azure Function is already exist."
+
+        create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
+
+	else
+		echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
+		
+		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		
+		FUNCTION_APP_DNS_ZONE=`az network private-dns zone create -g $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState'`
+		if [ "$FUNCTION_APP_DNS_ZONE" == "Succeeded" ]; then
+			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
+		else
+			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+			exit 1
+		fi
+	fi
+}
+
 create_acs_private_dns_zone_virtual_network_link(){
 	ACS_DNS_RESOURCE_GROUP="$1"
 	ACS_VNET_NAME="$2"
@@ -473,10 +510,8 @@ create_acs_private_dns_zone_virtual_network_link(){
 			
 			echo "STARTED ::: $ACS_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
 			
-			COMMAND="az network private-dns link vnet create -g $ACS_DNS_RESOURCE_GROUP -n $LINK_NAME -z $ACS_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False"
-			$COMMAND	
-			RESULT=$?
-			if [ $RESULT -eq 0 ]; then
+			ACS_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $ACS_DNS_RESOURCE_GROUP -n $LINK_NAME -z $ACS_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False | jq -r '.provisioningState'`
+			if [ "$ACS_DNS_PRIVATE_LINK" == "Succeeded" ]; then
 				echo "COMPLETED ::: $ACS_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 			else
 				echo "ERROR ::: $ACS_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
@@ -498,10 +533,8 @@ create_acs_private_dns_zone(){
 			
 			echo "STARTED ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone creation"
 
-			COMMAND="az network private-dns zone create -g $ACS_DNS_ZONE_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME"
-			$COMMAND
-			RESULT=$?
-			if [ $RESULT -eq 0 ]; then
+			ACS_DNS_ZONE=`az network private-dns zone create -g $ACS_DNS_ZONE_RESOURCE_GROUP -n $PRIVAE_DNS_ZONE_ACS_NAME  | jq -r '.provisioningState'`
+			if [ "$ACS_DNS_ZONE" == "Succeeded" ]; then
 				echo "COMPLETED ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone successfully created"
 				create_acs_private_dns_zone_virtual_network_link $ACS_DNS_ZONE_RESOURCE_GROUP $ACS_VNET_NAME
 			else
@@ -511,7 +544,21 @@ create_acs_private_dns_zone(){
 		fi
 }
 
-############################################### END ACS Import #######################################
+import_app_config_endpoint(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+	APP_CONFIG_ENDPOINT_RESOURCE_GROUP="$2"
+
+	ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME="${ACS_ADMIN_APP_CONFIG_NAME}_private_endpoint"
+	ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS=`az network private-endpoint show --name $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME --resource-group $APP_CONFIG_ENDPOINT_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`	
+    if [ "$ACS_ADMIN_APP_CONFIG_NAME_PRIVAE_ENDPOINT_STATUS" == "Succeeded" ]; then
+        echo "INFO ::: Private endpoint already exist. Importing the existing ACS APP CONFIG Endpoint."
+        COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_private_endpoint.appconf_private_endpoint[0] /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_ENDPOINT_RESOURCE_GROUP/providers/Microsoft.Network/privateEndpoints/$ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME"
+        $COMMAND
+    else
+        echo "INFO ::: $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME endpoint does not exist. It will provision a new $ACS_ADMIN_APP_CONFIG_PRIVAE_ENDPOINT_NAME."
+    fi
+}
+
 
 ######################## Validating AZURE Subscription for NAC ####################################
 ARG_COUNT="$#"
@@ -602,12 +649,12 @@ provision_Azure_Cognitive_Search(){
 		echo "cognitive_search_YN="\"$IS_ACS\" >>$ACS_TFVARS_FILE_NAME
 		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 			echo "use_private_acs="\"$USE_PRIVATE_IP\" >>$ACS_TFVARS_FILE_NAME
-			echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
-			if [[ "$VNET_IS" != "" ]]; then
-				echo "user_vnet_name="\"$VNET_IS\" >>$ACS_TFVARS_FILE_NAME
+			echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
+			if [[ "$USER_VNET_NAME" != "" ]]; then
+				echo "user_vnet_name="\"$USER_VNET_NAME\" >>$ACS_TFVARS_FILE_NAME
 			fi
-			if [[ "$SUBNET_IS" != "" ]]; then
-				echo "user_subnet_name="\"$SUBNET_IS\" >>$ACS_TFVARS_FILE_NAME
+			if [[ "$SUBNET_NAME" != "" ]]; then
+				echo "user_subnet_name="\"$SUBNET_NAME\" >>$ACS_TFVARS_FILE_NAME
 			fi
 		fi
 
@@ -618,11 +665,12 @@ provision_Azure_Cognitive_Search(){
 		fi
 
 		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-			create_acs_private_dns_zone $VNET_RESOURCE_GROUP $VNET_NAME
-			create_acs_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME 
-			create_app_config_private_dns_zone $VNET_RESOURCE_GROUP $VNET_NAME
-			create_app_config_private_dns_zone_virtual_network_link $VNET_RESOURCE_GROUP $VNET_NAME
-			import_app_config_endpoint $ACS_ADMIN_APP_CONFIG_NAME $VNET_RESOURCE_GROUP
+			create_acs_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
+			create_acs_private_dns_zone_virtual_network_link $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME 
+			create_app_config_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
+			create_app_config_private_dns_zone_virtual_network_link $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
+			create_azure_function_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
+			import_app_config_endpoint $ACS_ADMIN_APP_CONFIG_NAME $NETWORKING_RESOURCE_GROUP
 		fi
 
 		echo "INFO ::: CognitiveSearch provisioning ::: BEGIN ::: Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
@@ -678,7 +726,6 @@ provision_ACS_if_Not_Available(){
 			else
 				echo "INFO ::: ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
 			fi
-
 		fi 
 	else ## When Key Vault Not Available - 1st Run
 		############ START : Provision ACS if Not Available ################	
@@ -688,31 +735,31 @@ provision_ACS_if_Not_Available(){
 }
 
 check_network_availability(){
-	if [ "$USER_VNET_RESOURCE_GROUP" == "" ] || [ "$USER_VNET_RESOURCE_GROUP" == null ]; then
+	if [ "$NETWORKING_RESOURCE_GROUP" == "" ] || [ "$NETWORKING_RESOURCE_GROUP" == null ]; then
 		echo "INFO ::: Azure Virtual Network Resource Group is Not provided."
 		exit 1
 	else
 		### If resource group already available
-		echo "INFO ::: Azure Virtual Network Resource Group is provided as $USER_VNET_RESOURCE_GROUP"
+		echo "INFO ::: Azure Virtual Network Resource Group is provided as $NETWORKING_RESOURCE_GROUP"
 	fi
 	if [ "$USER_VNET_NAME" == "" ] || [ "$USER_VNET_NAME" == "null" ]; then
 		echo "INFO ::: USER_VNET_NAME not provided in the user Secret"  
 		exit 1
 	else
 	### If USER_VNET_NAME provided
-		check_if_VNET_exists $USER_VNET_NAME $USER_VNET_RESOURCE_GROUP
+		check_if_VNET_exists $USER_VNET_NAME $NETWORKING_RESOURCE_GROUP
 	fi
 }
 
 check_if_acs_app_config_exists(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
-	APP_CONFIG_RESOURCE_GROUP="$2"
+	ACS_RESOURCE_GROUP="$2"
 	echo "INFO ::: Checking for Azure App Configuration $ACS_ADMIN_APP_CONFIG_NAME . . ."
-	APP_CONFIG_STATUS=`az appconfig show --name $ACS_ADMIN_APP_CONFIG_NAME --resource-group $APP_CONFIG_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`
+	APP_CONFIG_STATUS=`az appconfig show --name $ACS_ADMIN_APP_CONFIG_NAME --resource-group $ACS_RESOURCE_GROUP --query provisioningState --output tsv 2> /dev/null`
 	if [ "$APP_CONFIG_STATUS" == "Succeeded" ]; then
 		echo "INFO ::: Azure App Configuration $ACS_ADMIN_APP_CONFIG_NAME is already exist. . "
 		IS_ACS_ADMIN_APP_CONFIG="Y"
-		ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$APP_CONFIG_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
+		ACS_APP_CONFIG_ID="/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME"
 	else
 		IS_ACS_ADMIN_APP_CONFIG="N"
 		echo "INFO ::: Azure App Configuration $ACS_ADMIN_APP_CONFIG_NAME does not exist. It will provision a new acs-admin-app-config Configuration with ACS Service."
@@ -738,16 +785,15 @@ check_if_resourcegroup_exist(){
 }
 
 get_subnets(){
-    VNET_RESOURCE_GROUP="$1"
+    NETWORKING_RESOURCE_GROUP="$1"
     USER_VNET_NAME="$2"
-    SUBNET_NAME="$3"
-    SUBNET_MASK="$4"
-	REQUIRED_SUBNET_COUNT="$5"
+    SUBNET_MASK="$3"
+	REQUIRED_SUBNET_COUNT="$4"
 
 	DIRECTORY=$(pwd)
 	echo "Directory: $DIRECTORY"
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
-	OUTPUT=$(python3 $FILENAME $VNET_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
+	OUTPUT=$(python3 $FILENAME $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
 	SUBNETS_CIDR=(`cat available_subnets.txt`)
 	SUBNETS_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
@@ -781,7 +827,7 @@ Schedule_CRON_JOB() {
 	### AzureSubscriptionID >>>>> Read from user_secret Key Vault
     echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
 	### AzureLocation >>>>> Read from user_secret Key Vault
-    echo "AzureLocation: "$AZURE_LOCATION>>$CONFIG_DAT_FILE_NAME
+    echo "AzureLocation: "$(echo "$AZURE_LOCATION" | tr '[:upper:]' '[:lower:]' | tr -d ' ' )>>$CONFIG_DAT_FILE_NAME
 	### ProductKey >>>>> Read from user_secret Key Vault
     echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE_NAME
 	### VolumeKeySASURL >>>>> Generate Dynamically by using az CLI commands
@@ -802,8 +848,8 @@ Schedule_CRON_JOB() {
 	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubscriptionId: "$VNET_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
-	echo "vnetResourceGroup: "$VNET_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
+	echo "vnetSubscriptionId: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
+	echo "vnetResourceGroup: "$NETWORKING_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
 	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
 
     chmod 777 $CONFIG_DAT_FILE_NAME
@@ -830,7 +876,7 @@ Schedule_CRON_JOB() {
 	echo "nac_scheduler_name="$NAC_SCHEDULER_NAME >>$NAC_TXT_FILE_NAME
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 		echo "use_private_ip="$USE_PRIVATE_IP >>$NAC_TXT_FILE_NAME
-		echo "user_subnet_name="$SUBNET_IS >>$NAC_TXT_FILE_NAME	
+		echo "user_subnet_name="$SUBNET_NAME >>$NAC_TXT_FILE_NAME	
 	else
 		echo "use_private_ip="N >>$NAC_TXT_FILE_NAME
 	fi
@@ -906,7 +952,7 @@ FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
 SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
-GIT_BRANCH_NAME="main"
+GIT_BRANCH_NAME=""
 SP_APPLICATION_ID=""
 
 echo "INFO ::: Validating Arguments Passed to NAC_Scheduler.sh"
@@ -956,15 +1002,10 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-username
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-password
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-name
-		validate_secret_values "$AZURE_KEYVAULT_NAME" nac-scheduler-resource-group
+		validate_secret_values "$AZURE_KEYVAULT_NAME" edgeappliance-resource-group
 		validate_secret_values "$AZURE_KEYVAULT_NAME" user-vnet-name
 		validate_secret_values "$AZURE_KEYVAULT_NAME" use-private-ip
-		### Check for private network variables
-		if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
-			# Call python create_subnet_infra network
-			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-subscription-id
-			validate_secret_values "$AZURE_KEYVAULT_NAME" vnet-resource-group
-		fi
+		validate_secret_values "$AZURE_KEYVAULT_NAME" networking-resource-group
 		echo "INFO ::: Validation SUCCESS for all mandatory Secret-Keys !!!" 
 	else
 		echo "INFO ::: The Vault $AZURE_KEYVAULT_NAME not found within subscription !!!"
@@ -1001,21 +1042,15 @@ fi
 
 ACS_SERVICE_NAME=""
 
-USER_VNET_RESOURCE_GROUP=$NAC_SCHEDULER_RESOURCE_GROUP
-
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	check_network_availability
 fi
 
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
-get_destination_container_url $DESTINATION_CONTAINER_URL $USER_VNET_RESOURCE_GROUP 
+get_destination_container_url $DESTINATION_CONTAINER_URL $EDGEAPPLIANCE_RESOURCE_GROUP 
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
-get_subnets $VNET_RESOURCE_GROUP $USER_VNET_NAME "default" "28"	"1"
-SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
-
-echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
 
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Get IP Address of NAC Scheduler Instance"
@@ -1026,15 +1061,15 @@ if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 	### User has provided the NACScheduler Name as Key-Value from 4th Argument
 	if [[ "$USE_PRIVATE_IP" != "Y" ]]; then
 		### Getting Public_IP of NAC Scheduler
-		NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
+		NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $EDGEAPPLIANCE_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 		echo "INFO ::: Public_IP of NAC Scheduler is: $NAC_SCHEDULER_IP_ADDR"
 	else
 		### Getting Private_IP of NAC Scheduler
 		echo "INFO ::: Private_IP of NAC Scheduler is: $NAC_SCHEDULER_IP_ADDR"
-		NAC_SCHEDULER_IP_ADDR=`az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.privateIpAddresses[0]" | cut -d":" -f 2 | tr -d '"' | tr -d ' '`
+		NAC_SCHEDULER_IP_ADDR=`az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $EDGEAPPLIANCE_RESOURCE_GROUP --query "[0].virtualMachine.network.privateIpAddresses[0]" | cut -d":" -f 2 | tr -d '"' | tr -d ' '`
 	fi
 else
-	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $NAC_SCHEDULER_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
+	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $EDGEAPPLIANCE_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 fi
 echo $PEM_KEY_PATH
 AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
@@ -1055,7 +1090,11 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
 	
-	if [[ "$USE_PRIVATE_IP" != "Y" ]]; then
+	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+		get_subnets $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME "28" "1"
+		SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
+		echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
+	else
 		check_network_availability
 	fi
 	### "NAC Scheduler is not present. Creating new Virtual machine."
@@ -1098,7 +1137,8 @@ else
 	echo "sp_application_id="\"$SP_APPLICATION_ID\" >>$TFVARS_NAC_SCHEDULER
 	echo "sp_secret="\"$SP_SECRET\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
-	echo "user_resource_group_name="\"$NAC_SCHEDULER_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+	echo "edgeappliance_resource_group="\"$EDGEAPPLIANCE_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
+	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$NAC_SCHEDULER_NAME" != "" ]]; then
 		echo "nac_scheduler_name="\"$NAC_SCHEDULER_NAME\" >>$TFVARS_NAC_SCHEDULER
@@ -1106,11 +1146,11 @@ else
 	fi
 	echo "pem_key_path="\"$PEM\" >>$TFVARS_NAC_SCHEDULER
 	echo "github_organization="\"$GITHUB_ORGANIZATION\" >>$TFVARS_NAC_SCHEDULER
-	if [[ "$VNET_IS" != "" ]]; then
-		echo "user_vnet_name="\"$VNET_IS\" >>$TFVARS_NAC_SCHEDULER
+	if [[ "$USER_VNET_NAME" != "" ]]; then
+		echo "user_vnet_name="\"$USER_VNET_NAME\" >>$TFVARS_NAC_SCHEDULER
 	fi
-	if [[ "$SUBNET_IS" != "" ]]; then
-		echo "user_subnet_name="\"$SUBNET_IS\" >>$TFVARS_NAC_SCHEDULER
+	if [[ "$SUBNET_NAME" != "" ]]; then
+		echo "user_subnet_name="\"$SUBNET_NAME\" >>$TFVARS_NAC_SCHEDULER
 	fi
 	if [[ "$USE_PRIVATE_IP" != "" ]]; then
 		echo "use_private_ip="\"$USE_PRIVATE_IP\" >>$TFVARS_NAC_SCHEDULER
