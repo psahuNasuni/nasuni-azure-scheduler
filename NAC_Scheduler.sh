@@ -1179,7 +1179,7 @@ else
 	cd ../
 	pwd
 	echo "Pem key path: $PEM_KEY_PATH"
-	sudo chmod 400 $PEM
+	sudo chmod 400 $PEM_KEY_PATH
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 fi
 
