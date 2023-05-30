@@ -210,15 +210,13 @@ add_metadat_to_destination_blob(){
     
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
     FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query [].name`
-
     for FILE in $FILES
     do
         if [ "$FILE" == "]" ] || [ "$FILE" == "[" ];then
             continue
         else
             FILE_NAME=$(echo "$FILE" | tr -d '"' | sed 's/\,//g')
-            COMMAND="az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name $FILE_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE"
-            $COMMAND
+            ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$FILE_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
         fi
     done  
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
