@@ -161,7 +161,7 @@ nmc_api_call(){
     SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-    SAS_EXPIRY=`date -u -d "300 minutes" '+%Y-%m-%dT%H:%MZ'`
+    SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     rm -rf nmc_api_*.txt
     SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
     SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
@@ -209,16 +209,12 @@ add_metadat_to_destination_blob(){
     DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
     
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query [].name`
-    for FILE in $FILES
-    do
-        if [ "$FILE" == "]" ] || [ "$FILE" == "[" ];then
-            continue
-        else
-            FILE_NAME=$(echo "$FILE" | tr -d '"' | sed 's/\,//g')
-            ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$FILE_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-        fi
-    done  
+    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
+    for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
+            BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
+            echo "Assigning Metadata to ::: $BLOB_NAME"
+            ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
+    done
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
