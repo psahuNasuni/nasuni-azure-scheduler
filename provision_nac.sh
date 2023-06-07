@@ -217,6 +217,7 @@ add_metadat_to_destination_blob(){
                 BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
                 if [ "$BLOB_NAME" != "null" ]; then
                     echo "BLOB_NAME=$BLOB_NAME"
+                    ((BLOB_FILE_COUNT++))
                     ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
                 fi
         done
@@ -226,6 +227,7 @@ add_metadat_to_destination_blob(){
                 BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
                 if [ "$BLOB_NAME" != "null" ]; then
                     echo "BLOB_NAME=$BLOB_NAME"
+                    ((BLOB_FILE_COUNT++))
                     ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
                 fi
         done
@@ -235,6 +237,7 @@ add_metadat_to_destination_blob(){
                     BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
                     if [ "$BLOB_NAME" != "null" ]; then
                         echo "BLOB_NAME=$BLOB_NAME"
+                        ((BLOB_FILE_COUNT++))
                         ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
                     fi
                 done
@@ -269,7 +272,6 @@ destination_blob_cleanup(){
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
     DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 
-    BLOB_FILE_COUNT=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --query "length(@)" --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING -o tsv`
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
     while :
     do
@@ -530,6 +532,7 @@ DESTINATION_STORAGE_ACCOUNT_NAME=""
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 PRIVATE_CONNECTION_NAME=""
 ROOT_USER=""
+BLOB_FILE_COUNT=0
 ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt" 
 sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
