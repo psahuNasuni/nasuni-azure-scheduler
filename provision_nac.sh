@@ -204,17 +204,43 @@ add_metadat_to_destination_blob(){
     DESTINATION_CONTAINER_SAS_URL="$2"
     NMC_VOLUME_NAME="$3"
     UNIFS_TOC_HANDLE="$4"
-
+    NEXTMARKER=""
     DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
     DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
     
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
-    for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-            BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-            echo "Assigning Metadata to ::: $BLOB_NAME"
-            ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-    done
+    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --show-next-marker --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
+    NEXTMARKER=$(echo $FILES | jq -r '.[-1].nextMarker')
+    if [ "$NEXTMARKER" == "null" ]; then
+        echo "INFO ::: Marker Does Not Present..."
+        for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
+                BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
+                if [ "$BLOB_NAME" != "null" ]; then
+                    echo "BLOB_NAME=$BLOB_NAME"
+                    ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
+                fi
+        done
+    else
+        echo "INFO ::: Marker is Present..."
+        for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
+                BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
+                if [ "$BLOB_NAME" != "null" ]; then
+                    echo "BLOB_NAME=$BLOB_NAME"
+                    ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
+                fi
+        done
+        while [ "$NEXTMARKER" != "null" ];do
+                FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --marker $NEXTMARKER --show-next-marker --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
+                for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
+                    BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
+                    if [ "$BLOB_NAME" != "null" ]; then
+                        echo "BLOB_NAME=$BLOB_NAME"
+                        ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
+                    fi
+                done
+                NEXTMARKER=$(echo $FILES | jq -r '.[-1].nextMarker')
+        done
+    fi
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
