@@ -218,6 +218,30 @@ add_metadat_to_destination_blob(){
                 if [ "$BLOB_NAME" != "null" ]; then
                     echo "BLOB_NAME=$BLOB_NAME"
                     ((BLOB_FILE_COUNT++))
+                    
+                    ############################
+                    keys=$(cat key_data.txt)
+                    values=$(cat value_data.txt)
+
+                    IFS=',' read -ra keys_list <<< "$keys"
+                    IFS=',' read -ra values_list <<< "$values"
+
+                    share_data=""
+                    IFS='/' read -ra blob_segments <<< "$BLOB_NAME"
+
+                    for segment in "${blob_segments[@]}"; do
+                    if [[ " ${values_list[*]} " == *" $segment "* ]]; then
+                        index=$(echo "${values_list[*]}" | grep -o -w -n "$segment" | cut -d':' -f1)
+                        key="${keys_list[$index-1]}"
+
+                        [[ -z "$share_data" ]] && share_data="/$key/$segment" || share_data="/$key"
+                    elif [[ -n "$result" ]]; then
+                        share_data+="/$segment"
+                    fi
+                    done
+
+                    echo "Result: $share_data"
+                    #######################
                     ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
                 fi
         done
