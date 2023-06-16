@@ -1,0 +1,51 @@
+repos:
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.16.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # - id: fix-encoding-pragma
+      - id: check-ast
+      - id: debug-statements
+      - id: check-builtin-literals
+      - id: detect-private-key
+    
+  # - repo: https://github.com/antonbabenko/pre-commit-terraform
+  #   rev: v1.77.1
+  #   hooks:
+  #     - id: terraform_validate
+  #     - id: terragrunt_fmt
+  #     - id: infracost_breakdown
+  #     - id: terraform_docs
+  #     - id: terraform_providers_lock
+  #     - id: terraform_tfsec
+  #     - id: terraform_checkov    
+
+  # - repo: https://github.com/pre-commit/mirrors-clang-format
+  #   rev: v15.0.7
+  #   hooks:
+  #     - id: clang-format
+
+  # - repo: https://github.com/pre-commit/mirrors-eslint
+  #   rev: 'v8.36.0'  
+  #   hooks:
+  #     - id: eslint
+
+  # - repo: https://github.com/pre-commit/mirrors-jshint
+  #   rev: 'v2.13.6'  
+  #   hooks:
+  #     - id: jshint
+    
+  - repo: https://github.com/klieret/jekyll-relative-url-check
+    rev: v2.0.1
+    hooks:
+      - id: jekyll-relative-url-check-html
+      - id: jekyll-relative-url-check-markdown
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+     - id : check-yaml
