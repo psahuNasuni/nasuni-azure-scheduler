@@ -884,14 +884,19 @@ Schedule_CRON_JOB() {
 	chmod 777 $NAC_TXT_FILE_NAME
 
 	### Create File to transfer data related to NMC 
-	NMC_DETAILS_TXT="nmc_details.txt"
-	echo "nmc_api_endpoint="$NMC_API_ENDPOINT >>$NMC_DETAILS_TXT
-	echo "nmc_api_username="$NMC_API_USERNAME >>$NMC_DETAILS_TXT
-	echo "nmc_api_password="$NMC_API_PASSWORD >>$NMC_DETAILS_TXT
-	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NMC_DETAILS_TXT
-	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NMC_DETAILS_TXT
-	echo "" >>$NMC_DETAILS_TXT
-	chmod 777 $NMC_DETAILS_TXT
+	NMC_DETAILS_JSON="nmc_details.json"
+
+	if [ -f $NMC_DETAILS_JSON ] && [ -s $NMC_DETAILS_JSON ]; then
+	> $NMC_DETAILS_JSON
+	fi
+
+	echo '{"nmc_api_endpoint":"'$NMC_API_ENDPOINT'",' >>$NMC_DETAILS_JSON
+	echo '"nmc_api_username":"'$NMC_API_USERNAME'",' >>$NMC_DETAILS_JSON
+	echo '"nmc_api_password":"'$NMC_API_PASSWORD'",' >>$NMC_DETAILS_JSON
+	echo '"nmc_volume_name":"'$NMC_VOLUME_NAME'",' >>$NMC_DETAILS_JSON
+	echo '"web_access_appliance_address":"'$WEB_ACCESS_APPLIANCE_ADDRESS'"}' >>$NMC_DETAILS_JSON
+	echo "" >>$NMC_DETAILS_JSON
+	chmod 777 $NMC_DETAILS_JSON
 
 	JSON_FILE_PATH="/var/www/Tracker_UI/docs/"
 	### Create Directory for each Volume
@@ -901,7 +906,7 @@ Schedule_CRON_JOB() {
 	echo "$JSON_FILE_PATH Directory Created"
 
 	### Copy TFVARS and provision_nac.sh to NACScheduler
-	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py create_subnets/create_subnet_infra.py tracker_json.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py create_subnets/create_subnet_infra.py tracker_json.py "$NMC_DETAILS_JSON" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
 	RES="$?"
 	if [ $RES -ne 0 ]; then
 		echo "ERROR ::: Failed to Copy $TFVARS_FILE_NAME to NAC_Scheduer Instance."
