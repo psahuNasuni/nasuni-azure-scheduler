@@ -91,23 +91,23 @@ try:
 
 
     if len(name_list)==0 or len(path_list) == 0:
-        logging.info('dict is empty')
-
-        with open('nmc_api_v_share_name_data' + '.txt', 'w') as file:
-            file.write("-")
-
-        with open('nmc_api_v_share_path_data' + '.txt', 'w') as file:
-            file.write("-")
-
+        logging.info('dict is empty'.format(share_data))
+        data={
+            "-":"-"
+        }
+        share_data = open('nmc_api_data_v_share_data_' + rid + '.txt', 'w')
+        share_data.write(str(data))
+        share_data.close()
     else:
-        logging.info('dict has data'.format(name_list))
-        logging.info('dict has data'.format(path_list))
+        logging.info('dict has data'.format(share_data))
+        data={}
 
-        with open('nmc_api_v_share_name_data' + '.txt', 'w') as file:
-            file.write(",".join(name_list))
+        for name,value in zip(name_list,path_list):
+            data[name]=value
 
-        with open('nmc_api_v_share_path_data' + '.txt', 'w') as file:
-            file.write(",".join(path_list))
+        share_data = open('nmc_api_data_v_share_data_' + rid + '.txt', 'w')
+        share_data.write(str(data))
+        share_data.close()
 
 except Exception as e:
     print('Runtime Errors', e)
