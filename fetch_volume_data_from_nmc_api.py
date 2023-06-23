@@ -4,6 +4,7 @@ import urllib.request as urlrq
 import ssl, os
 import sys,logging
 import requests
+import re
 from datetime import *
 
 if len(sys.argv) < 7:
@@ -87,7 +88,9 @@ try:
     for i in r.json()['items']:
         if i['volume_guid'] == vv_guid and i['path']!='\\' and i['browser_access']==True:
             name_list.append(r""+i['name'].replace('\\','/'))
-            path_list.append(r""+i['path'].replace('\\',''))
+            path=r""+i['path']
+            path=re.sub(r'\\+','/',path).strip('/')
+            path_list.append(path)
 
 
     if len(name_list)==0 or len(path_list) == 0:
@@ -100,13 +103,15 @@ try:
         share_data.close()
     else:
         logging.info('dict has data'.format(share_data))
-        data={}
+        data={"shares":[]}
 
         for name,value in zip(name_list,path_list):
-            data[name]=value
+            data["shares"].append({name:value})
+        
+        data_json=json.dumps(data, indent=1)
 
-        share_data = open('nmc_api_data_v_share_data_' + rid + '.txt', 'w')
-        share_data.write(str(data))
+        share_data = open('nmc_api_data_v_share_data_' + rid + '.json', 'w')
+        share_data.write(data_json)
         share_data.close()
 
 except Exception as e:
