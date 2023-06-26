@@ -7,9 +7,9 @@ import requests
 import re
 from datetime import *
 
-if len(sys.argv) < 7:
+if len(sys.argv) < 6:
     print(
-        'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
+        'Usage -- python3 fetch_volume_data_from_nmc_api.py <ip_address> <username> <password> <volume_name> <web_access_appliance_address>')
     exit()
 
 logging.getLogger().setLevel(logging.INFO)
@@ -18,7 +18,7 @@ logging.info(f'date={date}')
 if not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
     ssl._create_default_https_context = ssl._create_unverified_context
 
-file_name, endpoint, username, password, volume_name, rid, web_access_appliance_address = sys.argv
+file_name, endpoint, username, password, volume_name, web_access_appliance_address = sys.argv
 
 try:
     logging.info(sys.argv)
@@ -49,7 +49,7 @@ try:
             src_bucket.write(i['bucket'])
             storage_account = open('nmc_api_data_source_storage_account_name.txt', 'w')
             storage_account.write(i['account_name'])
-            v_guid = open('nmc_api_data_v_guid_' + rid + '.txt', 'w')
+            v_guid = open('nmc_api_data_v_guid' + '.txt', 'w')
             v_guid.write(i['guid'])
             vv_guid = i['guid']
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
@@ -61,7 +61,7 @@ try:
     json_data = json.loads(stdout.decode('utf-8'))
     logging.info(json_data)    
     # My Accelerate Test
-    share_url = open('nmc_api_data_external_share_url_' + rid + '.txt', 'w')
+    share_url = open('nmc_api_data_external_share_url'+ '.txt', 'w')
     share_url.write(web_access_appliance_address)
 
 
@@ -98,7 +98,7 @@ try:
         data={
             "-":"-"
         }
-        share_data = open('nmc_api_data_v_share_data_' + rid + '.txt', 'w')
+        share_data = open('share_data' + '.json', 'w')
         share_data.write(str(data))
         share_data.close()
     else:
@@ -110,7 +110,7 @@ try:
         
         data_json=json.dumps(data, indent=1)
 
-        share_data = open('nmc_api_data_v_share_data_' + rid + '.json', 'w')
+        share_data = open('share_data'  + '.json', 'w')
         share_data.write(data_json)
         share_data.close()
 

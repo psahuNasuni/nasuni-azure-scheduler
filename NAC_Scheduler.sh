@@ -891,8 +891,6 @@ Schedule_CRON_JOB() {
 	fi
 
 	echo '{"nmc_api_endpoint":"'$NMC_API_ENDPOINT'",' >>$NMC_DETAILS_JSON
-	echo '"nmc_api_username":"'$NMC_API_USERNAME'",' >>$NMC_DETAILS_JSON
-	echo '"nmc_api_password":"'$NMC_API_PASSWORD'",' >>$NMC_DETAILS_JSON
 	echo '"nmc_volume_name":"'$NMC_VOLUME_NAME'",' >>$NMC_DETAILS_JSON
 	echo '"web_access_appliance_address":"'$WEB_ACCESS_APPLIANCE_ADDRESS'"}' >>$NMC_DETAILS_JSON
 	echo "" >>$NMC_DETAILS_JSON
@@ -904,6 +902,10 @@ Schedule_CRON_JOB() {
 	echo "Creating $JSON_FILE_PATH Directory"
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p $JSON_FILE_PATH"
 	echo "$JSON_FILE_PATH Directory Created"
+
+	###Moving nmc_detail file to /var/www/
+	ssh -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo chmod 775 /var/www/SearchUI_Web "
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "$NMC_DETAILS_JSON"  ubuntu@$NAC_SCHEDULER_IP_ADDR:/var/www/SearchUI_Web"
 
 	### Copy TFVARS and provision_nac.sh to NACScheduler
 	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py create_subnets/create_subnet_infra.py tracker_json.py "$NMC_DETAILS_JSON" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
