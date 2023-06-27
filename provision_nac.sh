@@ -580,7 +580,7 @@ pwd
 echo "INFO ::: current user :-"`whoami`
 ################################################
 
-nmc_api_call "nmc_details.json"
+nmc_api_call "nmc_details.txt"
 echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
 echo "LATEST TOC HANDLE PROCESSED: $LATEST_TOC_HANDLE_PROCESSED"
 
