@@ -214,7 +214,7 @@ CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_
 CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
 
 echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-azcopy set-properties "$DESTINATION_CONTAINER_SAS_URL" --metadata=$NMC_VOLUME_NAME=$UNIFS_TOC_HANDLE --recursive=true
+azcopy set-properties "$CONTAINER_SAS_URL" --metadata=$NMC_VOLUME_NAME=$UNIFS_TOC_HANDLE --recursive=true
 echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
