@@ -199,52 +199,23 @@ install_NAC_CLI() {
 }
 
 add_metadat_to_destination_blob(){
-    ### Add the metadata to the all files in container of destination blob store 
-    DESTINATION_CONTAINER_NAME="$1"
-    DESTINATION_CONTAINER_SAS_URL="$2"
-    NMC_VOLUME_NAME="$3"
-    UNIFS_TOC_HANDLE="$4"
-    NEXTMARKER=""
-    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
-    DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
-    
-    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --show-next-marker --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
-    NEXTMARKER=$(echo $FILES | jq -r '.[-1].nextMarker')
-    if [ "$NEXTMARKER" == "null" ]; then
-        echo "INFO ::: Marker Does Not Present..."
-        for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-                BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-                if [ "$BLOB_NAME" != "null" ]; then
-                    echo "BLOB_NAME=$BLOB_NAME"
-                    ((BLOB_FILE_COUNT++))
-                    ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-                fi
-        done
-    else
-        echo "INFO ::: Marker is Present..."
-        for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-                BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-                if [ "$BLOB_NAME" != "null" ]; then
-                    echo "BLOB_NAME=$BLOB_NAME"
-                    ((BLOB_FILE_COUNT++))
-                    ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-                fi
-        done
-        while [ "$NEXTMARKER" != "null" ];do
-                FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --marker $NEXTMARKER --show-next-marker --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
-                for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-                    BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-                    if [ "$BLOB_NAME" != "null" ]; then
-                        echo "BLOB_NAME=$BLOB_NAME"
-                        ((BLOB_FILE_COUNT++))
-                        ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-                    fi
-                done
-                NEXTMARKER=$(echo $FILES | jq -r '.[-1].nextMarker')
-        done
-    fi
-    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
+# Azure Storage Account and Container information
+STORAGE_ACCOUNT_NAME="$1"
+CONTAINER_NAME="$2"
+STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+
+# Metadata key-value
+NMC_VOLUME_NAME="$3"
+UNIFS_TOC_HANDLE="$4"
+
+# Generate SAS token
+CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
+# Generate URL with SAS token
+CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
+
+echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
+azcopy set-properties "$DESTINATION_CONTAINER_SAS_URL" --metadata=$NMC_VOLUME_NAME=$UNIFS_TOC_HANDLE --recursive=true
+echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
 run_cognitive_search_indexer(){
