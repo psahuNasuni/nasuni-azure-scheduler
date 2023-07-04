@@ -210,6 +210,8 @@ UNIFS_TOC_HANDLE="$4"
 
 # Generate SAS token
 CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
+CONTAINER_SAS_TOKEN=$(echo "$CONTAINER_SAS_TOKEN" | tr -d \")
+
 # Generate URL with SAS token
 CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
 
