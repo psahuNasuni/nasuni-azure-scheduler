@@ -494,7 +494,7 @@ get_subnets(){
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
-    GIT_BRANCH_NAME="main"
+    GIT_BRANCH_NAME="CTPROJECT-618"
 fi
 NMC_API_ENDPOINT=""
 NMC_API_USERNAME=""

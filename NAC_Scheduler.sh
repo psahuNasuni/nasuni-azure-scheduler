@@ -954,7 +954,7 @@ NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing a
 SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
-    GIT_BRANCH_NAME="main"
+    GIT_BRANCH_NAME="CTPROJECT-618"
 fi
 SP_APPLICATION_ID=""
 
@@ -1020,8 +1020,8 @@ fi
 
 validate_AZURE_SUBSCRIPTION
 
-ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin-6"
+ACS_RESOURCE_GROUP="nasuni-labs-acs-rg-6"
 IS_ACS_ADMIN_APP_CONFIG="N"
 
 ######################  Check : If appconfig is permanently deleted ##############################
