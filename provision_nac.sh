@@ -200,13 +200,13 @@ install_NAC_CLI() {
 
 add_metadat_to_destination_blob(){
 # Azure Storage Account and Container information
-STORAGE_ACCOUNT_NAME="$1"
-CONTAINER_NAME="$2"
+CONTAINER_NAME="$1"
+DESTINATION_CONTAINER_SAS_URL="$2"
+STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1)
 STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 
 # Metadata key-value
 NMC_VOLUME_NAME="$3"
-UNIFS_TOC_HANDLE="$4"
 
 # Generate SAS token
 CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
@@ -216,7 +216,7 @@ CONTAINER_SAS_TOKEN=$(echo "$CONTAINER_SAS_TOKEN" | tr -d \")
 CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
 
 echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-azcopy set-properties "$CONTAINER_SAS_URL" --metadata=$NMC_VOLUME_NAME=$UNIFS_TOC_HANDLE --recursive=true
+azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true
 echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
@@ -746,7 +746,7 @@ append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CON
 
 
 if [ $? -eq 0 ]; then 
-    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
+    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 else
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
