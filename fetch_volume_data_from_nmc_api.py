@@ -95,11 +95,13 @@ try:
 
     if len(name_list)==0 or len(path_list) == 0:
         logging.info('dict is empty'.format(share_data))
-        data={
-            "-":"-"
-        }
+       
+        data={"shares":[{"test-key-for-sharedata":"test-value-for-sharedata"}]}
+        
+        data_json=json.dumps(data, indent=1)
+
         share_data = open('share_data' + '.json', 'w')
-        share_data.write(str(data))
+        share_data.write(data_json)
         share_data.close()
     else:
         logging.info('dict has data'.format(share_data))
