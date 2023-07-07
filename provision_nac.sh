@@ -199,31 +199,30 @@ install_NAC_CLI() {
 }
 
 add_metadat_to_destination_blob(){
-# Azure Storage Account and Container information
-echo "INFO ::: Inside add_metadat_to_destination_blob()"
-CONTAINER_NAME="$1"
-DESTINATION_CONTAINER_SAS_URL="$2"
-STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1)
-STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-echo "INFO ::: CONTAINER NAME $CONTAINER_NAME"
-echo "INFO ::: NMC_VOLUME_NAME $NMC_VOLUME_NAME"
-echo "INFO ::: DESTINATION_CONTAINER_SAS_URL $DESTINATION_CONTAINER_SAS_URL"
-SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
+    # Azure Storage Account and Container information
+    CONTAINER_NAME="$1"
+    DESTINATION_CONTAINER_SAS_URL="$2"
+    NMC_VOLUME_NAME="$3"
 
-# Metadata key-value
-NMC_VOLUME_NAME="$3"
+    SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 
-# Generate SAS token
-CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
-CONTAINER_SAS_TOKEN=$(echo "$CONTAINER_SAS_TOKEN" | tr -d \")
+    STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1)
+    STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 
-# Generate URL with SAS token
-CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
-echo "CONTAINER_SAS_URL  $CONTAINER_SAS_URL"
+    echo "INFO ::: CONTAINER NAME $CONTAINER_NAME"
+    echo "INFO ::: NMC VOLUME NAME $NMC_VOLUME_NAME"
+    echo "INFO ::: DESTINATION STORAGE ACCOUNT NAME $STORAGE_ACCOUNT_NAME"
 
-echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true
-echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
+    # Generate SAS token
+    CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
+    CONTAINER_SAS_TOKEN=$(echo "$CONTAINER_SAS_TOKEN" | tr -d \")
+
+    # Generate URL with SAS token
+    CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
+
+    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
+    BLOB_FILE_COUNT=`azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true --output-type json --output-level essential | jq '. | select(.MessageType == "EndOfJob")' | jq -r '.MessageContent | fromjson | .TransfersCompleted'`
+    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
 run_cognitive_search_indexer(){
