@@ -59,6 +59,7 @@ parse_file_NAC_txt() {
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
             "user_subnet_name") USER_SUBNET_NAME="$value" ;;
+            "volume_key_blob_url") VOLUME_KEY_BLOB_URL="$value" ;;
             esac
         done <"$file"
 }
@@ -78,6 +79,18 @@ root_login(){
     ROOT_PASSWORD=`curl -H "Authorization: Bearer $TOKEN" -X GET "https://$CRED_VAULT_NAME.vault.azure.net/secrets/root-password?api-version=2016-10-01" | jq -r .value`	
 
     az login -u $ROOT_USER -p $ROOT_PASSWORD
+}
+
+get_volume_key_blob_url(){
+	VOLUME_KEY_BLOB_URL=$1
+    
+	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
+	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
+	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
+	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
+	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
+	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
 }
 
 add_appconfig_role_assignment(){
@@ -145,6 +158,8 @@ append_nmc_details_to_config_dat(){
     sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
     sed -i "s|SourceContainerSASURL.*||g" config.dat
     echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> config.dat
+    sed -i "s|VolumeKeySASURL.*||g" config.dat
+    echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL >> config.dat
     sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" config.dat
     echo "PrevUniFSTOCHandle: "$PREV_UNIFS_TOC_HANDLE >> config.dat
     sed -i '/^$/d' config.dat
@@ -154,13 +169,16 @@ nmc_api_call(){
     NMC_DETAILS_TXT=$1    
     parse_file_nmc_txt $NMC_DETAILS_TXT
     ### NMC API CALL  ####
-    RND=$(( $RANDOM % 1000000 ))
+    #RND=$(( $RANDOM % 1000000 ))
     #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-    python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $RND $WEB_ACCESS_APPLIANCE_ADDRESS
+    python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $WEB_ACCESS_APPLIANCE_ADDRESS
     ### FILTER Values From NMC API Call
     SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
+    #move share_data file to var/www
+    chmod 775 /var/www/SearchUI_Web/
+    sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     rm -rf nmc_api_*.txt
     SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
@@ -208,51 +226,29 @@ install_NAC_CLI() {
 }
 
 add_metadat_to_destination_blob(){
-    ### Add the metadata to the all files in container of destination blob store 
-    DESTINATION_CONTAINER_NAME="$1"
+    # Azure Storage Account and Container information
+    CONTAINER_NAME="$1"
     DESTINATION_CONTAINER_SAS_URL="$2"
     NMC_VOLUME_NAME="$3"
-    UNIFS_TOC_HANDLE="$4"
-    NEXTMARKER=""
-    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
-    DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
-    
+
+    SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
+
+    STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1)
+    STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+
+    echo "INFO ::: CONTAINER NAME $CONTAINER_NAME"
+    echo "INFO ::: NMC VOLUME NAME $NMC_VOLUME_NAME"
+    echo "INFO ::: DESTINATION STORAGE ACCOUNT NAME $STORAGE_ACCOUNT_NAME"
+
+    # Generate SAS token
+    CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
+    CONTAINER_SAS_TOKEN=$(echo "$CONTAINER_SAS_TOKEN" | tr -d \")
+
+    # Generate URL with SAS token
+    CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
+
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
-    FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --show-next-marker --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
-    NEXTMARKER=$(echo $FILES | jq -r '.[-1].nextMarker')
-    if [ "$NEXTMARKER" == "null" ]; then
-        echo "INFO ::: Marker Does Not Present..."
-        for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-                BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-                if [ "$BLOB_NAME" != "null" ]; then
-                    echo "BLOB_NAME=$BLOB_NAME"
-                    ((BLOB_FILE_COUNT++))
-                    ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-                fi
-        done
-    else
-        echo "INFO ::: Marker is Present..."
-        for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-                BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-                if [ "$BLOB_NAME" != "null" ]; then
-                    echo "BLOB_NAME=$BLOB_NAME"
-                    ((BLOB_FILE_COUNT++))
-                    ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-                fi
-        done
-        while [ "$NEXTMARKER" != "null" ];do
-                FILES=`az storage blob list -c $DESTINATION_CONTAINER_NAME --marker $NEXTMARKER --show-next-marker --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --output json`
-                for row in $(echo "$FILES" | jq -r '.[] | @base64'); do
-                    BLOB_NAME=$(echo "$row" | base64 --decode | jq -r '.name')
-                    if [ "$BLOB_NAME" != "null" ]; then
-                        echo "BLOB_NAME=$BLOB_NAME"
-                        ((BLOB_FILE_COUNT++))
-                        ASSIGN_METADATA=`az storage blob metadata update --container-name $DESTINATION_CONTAINER_NAME --name "$BLOB_NAME" --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --metadata volume_name=$NMC_VOLUME_NAME toc_handle=$UNIFS_TOC_HANDLE`
-                    fi
-                done
-                NEXTMARKER=$(echo $FILES | jq -r '.[-1].nextMarker')
-        done
-    fi
+    BLOB_FILE_COUNT=`azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true --output-type json --output-level essential | jq '. | select(.MessageType == "EndOfJob")' | jq -r '.MessageContent | fromjson | .TransfersCompleted'`
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
 }
 
@@ -528,7 +524,7 @@ get_subnets(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="nac_v1.0.7.dev6"
+GIT_BRANCH_NAME=""
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -542,8 +538,10 @@ DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 PRIVATE_CONNECTION_NAME=""
 ROOT_USER=""
 BLOB_FILE_COUNT=0
+SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 ENDPOINT_NAME="acs-private-connection"
-parse_file_NAC_txt "NAC.txt" 
+parse_file_NAC_txt "NAC.txt"
+get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
 root_login $CRED_VAULT
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
@@ -778,7 +776,7 @@ append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CON
 
 
 if [ $? -eq 0 ]; then 
-    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
+    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 else
     echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"

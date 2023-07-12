@@ -27,18 +27,6 @@ get_destination_container_url(){
 
 }
 
-get_volume_key_blob_url(){
-	VOLUME_KEY_BLOB_URL=$1
-
-	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
-	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
-	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
-	VOLUME_KEY_BLOB_TOCKEN=$(echo "$VOLUME_KEY_BLOB_TOCKEN" | tr -d \")
-	BLOB=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f5)
-	VOLUME_KEY_BLOB_SAS_URL="https://$VOLUME_KEY_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$VOLUME_KEY_BLOB_NAME/$BLOB?$VOLUME_KEY_BLOB_TOCKEN"
-}
-
 check_if_VNET_exists(){
 	INPUT_VNET="$1"
 	NETWORKING_RESOURCE_GROUP="$2"
@@ -286,14 +274,10 @@ get_acs_config_values(){
 				ACS_SERVICE_NAME=$APP_CONFIG_VALUE
 			elif [ "$APP_CONFIG_KEY" == "index-endpoint" ]; then
 				INDEX_ENDPOINT=$APP_CONFIG_VALUE
-			elif [ "$APP_CONFIG_KEY" == "nmc-volume-name" ]; then
-				NMC_VOLUME_NAME=$APP_CONFIG_VALUE
 			elif [ "$APP_CONFIG_KEY" == "nmc-api-acs-url" ]; then
 				NMC_API_ACS_URL=$APP_CONFIG_VALUE
 			elif [ "$APP_CONFIG_KEY" == "web-access-appliance-address" ]; then
 				WEB_ACCESS_APPLIANCE_ADDRESS=$APP_CONFIG_VALUE
-			elif [ "$APP_CONFIG_KEY" == "unifs-toc-handle" ]; then
-				UNIFS_TOC_HANDLE=$APP_CONFIG_VALUE
 			elif [ "$APP_CONFIG_KEY" == "destination-container-name" ]; then
 				DESTINATION_CONTAINER_NAME=$APP_CONFIG_VALUE
 			elif [ "$APP_CONFIG_KEY" == "datasource-connection-string" ]; then
@@ -821,6 +805,7 @@ Schedule_CRON_JOB() {
 	UNIFS_TOC_HANDLE=""
 	SOURCE_CONTAINER=""
 	SOURCE_CONTAINER_SAS_URL=""
+	VOLUME_KEY_BLOB_SAS_URL=""
     ### Generating NAC Resource group name dynamically
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
@@ -830,8 +815,6 @@ Schedule_CRON_JOB() {
     echo "AzureLocation: "$(echo "$AZURE_LOCATION" | tr '[:upper:]' '[:lower:]' | tr -d ' ' )>>$CONFIG_DAT_FILE_NAME
 	### ProductKey >>>>> Read from user_secret Key Vault
     echo "ProductKey: "$PRODUCT_KEY>>$CONFIG_DAT_FILE_NAME
-	### VolumeKeySASURL >>>>> Generate Dynamically by using az CLI commands
-    echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
 	### VolumeKeyPassphrase >>>>> Recommended as 'null' for AZURE NAC
     echo "VolumeKeyPassphrase: "\'null\' >>$CONFIG_DAT_FILE_NAME
 	### PrevUniFSTOCHandle >>>>> will be taken from TrackerJSON. Currently taking as 'null' for AZURE NAC
@@ -848,6 +831,7 @@ Schedule_CRON_JOB() {
 	echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
+	echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
 	echo "vnetSubscriptionId: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
 	echo "vnetResourceGroup: "$NETWORKING_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
 	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
@@ -870,6 +854,7 @@ Schedule_CRON_JOB() {
 	echo "sp_application_id="$SP_APPLICATION_ID >>$NAC_TXT_FILE_NAME
 	echo "sp_secret="$SP_SECRET >>$NAC_TXT_FILE_NAME
 	echo "azure_tenant_id="$AZURE_TENANT_ID >>$NAC_TXT_FILE_NAME
+	echo "volume_key_blob_url="$VOLUME_KEY_BLOB_URL >>$NAC_TXT_FILE_NAME
 	echo "cred_vault="$CRED_VAULT >>$NAC_TXT_FILE_NAME
 	echo "analytic_service="$ANALYTICS_SERVICE >>$NAC_TXT_FILE_NAME
 	echo "frequency="$FREQUENCY >>$NAC_TXT_FILE_NAME
@@ -885,6 +870,9 @@ Schedule_CRON_JOB() {
 
 	### Create File to transfer data related to NMC 
 	NMC_DETAILS_TXT="nmc_details.txt"
+	if [ -f $NMC_DETAILS_TXT ] && [ -s $NMC_DETAILS_TXT ]; then
+	> $NMC_DETAILS_TXT
+	fi
 	echo "nmc_api_endpoint="$NMC_API_ENDPOINT >>$NMC_DETAILS_TXT
 	echo "nmc_api_username="$NMC_API_USERNAME >>$NMC_DETAILS_TXT
 	echo "nmc_api_password="$NMC_API_PASSWORD >>$NMC_DETAILS_TXT
@@ -893,12 +881,30 @@ Schedule_CRON_JOB() {
 	echo "" >>$NMC_DETAILS_TXT
 	chmod 777 $NMC_DETAILS_TXT
 
+	
+	NMC_DETAILS_JSON="nmc_details.json"
+
+	if [ -f $NMC_DETAILS_JSON ] && [ -s $NMC_DETAILS_JSON ]; then
+	> $NMC_DETAILS_JSON
+	fi
+
+	echo '{"nmc_api_endpoint":"'$NMC_API_ENDPOINT'",' >>$NMC_DETAILS_JSON
+	echo '"nmc_volume_name":"'$NMC_VOLUME_NAME'",' >>$NMC_DETAILS_JSON
+	echo '"web_access_appliance_address":"'$WEB_ACCESS_APPLIANCE_ADDRESS'"}' >>$NMC_DETAILS_JSON
+	echo "" >>$NMC_DETAILS_JSON
+	chmod 777 $NMC_DETAILS_JSON
+
 	JSON_FILE_PATH="/var/www/Tracker_UI/docs/"
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
 	echo "Creating $JSON_FILE_PATH Directory"
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p $JSON_FILE_PATH"
 	echo "$JSON_FILE_PATH Directory Created"
+
+	###Moving nmc_detail file to /var/www/
+	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p /var/www/SearchUI_Web"
+	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo chmod 777 /var/www/SearchUI_Web"
+	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "$NMC_DETAILS_JSON"  ubuntu@$NAC_SCHEDULER_IP_ADDR:/var/www/SearchUI_Web
 
 	### Copy TFVARS and provision_nac.sh to NACScheduler
 	scp -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null provision_nac.sh fetch_volume_data_from_nmc_api.py create_subnets/create_subnet_infra.py tracker_json.py "$NMC_DETAILS_TXT" "$NAC_TXT_FILE_NAME" "$CONFIG_DAT_FILE_NAME" ubuntu@$NAC_SCHEDULER_IP_ADDR:~/$CRON_DIR_NAME
@@ -1051,7 +1057,6 @@ fi
 
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
 get_destination_container_url $DESTINATION_CONTAINER_URL $EDGEAPPLIANCE_RESOURCE_GROUP 
-get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 
 provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
 
