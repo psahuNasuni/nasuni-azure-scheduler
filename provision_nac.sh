@@ -179,7 +179,7 @@ nmc_api_call(){
     chmod 775 /var/www/SearchUI_Web/
     sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
-    rm -rf nmc_api_*.txt
+    sudo rm -rf nmc_api_*.txt
     SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
     SOURCE_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions r --resource-types co --services b --account-key ${SOURCE_STORAGE_ACCOUNT_KEY} --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} --https-only`
     SOURCE_CONTAINER_TOCKEN=$(echo "$SOURCE_CONTAINER_TOCKEN" | tr -d \")
@@ -640,7 +640,7 @@ echo "INFO ::: GIT_REPO : $GIT_REPO"
 echo "INFO ::: GIT_REPO_NAME : $GIT_REPO_NAME"
 ls
 echo "INFO ::: Deleting the Directory: $GIT_REPO_NAME"
-rm -rf "${GIT_REPO_NAME}"
+sudo rm -rf "${GIT_REPO_NAME}"
 pwd
 COMMAND="git clone -b $GIT_BRANCH_NAME $GIT_REPO"
 $COMMAND
@@ -677,7 +677,7 @@ chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
-rm -rf "$NAC_TFVARS_FILE_NAME"
+sudo rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME

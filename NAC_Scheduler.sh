@@ -597,7 +597,7 @@ provision_Azure_Cognitive_Search(){
 		GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/nasuni-\1/' | cut -d "/" -f 2)
 		echo "INFO ::: GIT_REPO $GIT_REPO"
 		echo "INFO ::: GIT_REPO_NAME $GIT_BRANCH_NAME ::: GIT_BRANCH_NAME $GIT_BRANCH_NAME"
-		rm -rf "${GIT_REPO_NAME}"
+		sudo rm -rf "${GIT_REPO_NAME}"
 		pwd
 		COMMAND="git clone -q -b $GIT_BRANCH_NAME $GIT_REPO"
 		$COMMAND
@@ -621,7 +621,7 @@ provision_Azure_Cognitive_Search(){
 		echo "INFO ::: CognitiveSearch provisioning ::: FINISH - Executing ::: Terraform init."
 		echo "INFO ::: Create TFVARS file for provisioning Cognitive Search"
 		ACS_TFVARS_FILE_NAME="ACS.tfvars"
-		rm -rf "$ACS_TFVARS_FILE_NAME"
+		sudo rm -rf "$ACS_TFVARS_FILE_NAME"
 		echo "acs_rg_YN="\"$IS_ACS_RG_YN\" >>$ACS_TFVARS_FILE_NAME
 		echo "acs_rg_name="\"$ACS_RESOURCE_GROUP\" >>$ACS_TFVARS_FILE_NAME
 		echo "azure_location="\"$AZURE_LOCATION\" >>$ACS_TFVARS_FILE_NAME
@@ -797,7 +797,7 @@ Schedule_CRON_JOB() {
 	echo "ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
 	### Create TFVARS File for PROVISION_NAC.SH which is Used by CRON JOB - to Provision NAC Stack
 	CONFIG_DAT_FILE_NAME="config.dat"
-	rm -rf "$CONFIG_DAT_FILE_NAME"
+	sudo rm -rf "$CONFIG_DAT_FILE_NAME"
 	AZURE_CURRENT_USER=$(az ad signed-in-user show --query userPrincipalName)
 	NEW_NAC_IP=$(echo $NAC_SCHEDULER_IP_ADDR | tr '.' '-')
 	RND=$(( $RANDOM % 1000000 )); 
@@ -843,9 +843,7 @@ Schedule_CRON_JOB() {
 	CRON_DIR_NAME="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
 	
 	NAC_TXT_FILE_NAME="NAC.txt"
-	rm -rf "$NAC_TXT_FILE_NAME"
-	# ACS_RESOURCE_GROUP=$($ACS_RESOURCE_GROUP | tr -d '"')
-	# ACS_ADMIN_APP_CONFIG_NAME=$($ACS_ADMIN_APP_CONFIG_NAME | tr -d '"')
+	sudo rm -rf "$NAC_TXT_FILE_NAME"
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
     echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
@@ -916,7 +914,7 @@ Schedule_CRON_JOB() {
 	elif [ $RES -eq 0 ]; then
 		echo "INFO ::: $TFVARS_FILE_NAME Uploaded Successfully to NAC_Scheduer Instance."
 	fi
-	rm -rf $TFVARS_FILE_NAME
+	sudo rm -rf $TFVARS_FILE_NAME
 	echo "Copying file tracker_json.py $JSON_FILE_PATH Creating Direcotory "
 	#dos2unix command execute
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "dos2unix ~/$CRON_DIR_NAME/provision_nac.sh"
@@ -1117,7 +1115,7 @@ else
 	echo "INFO ::: $GIT_REPO"
 	echo "INFO ::: GIT_REPO_NAME - $GIT_REPO_NAME"
 	pwd
-	rm -rf "${GIT_REPO_NAME}"
+	sudo rm -rf "${GIT_REPO_NAME}"
 	COMMAND="git clone -b ${GIT_BRANCH_NAME} ${GIT_REPO}"
 	$COMMAND
 	RESULT=$?
@@ -1139,7 +1137,7 @@ else
 	### Create .tfvars file to be used by the NACScheduler Instance Provisioning
 	pwd
 	TFVARS_NAC_SCHEDULER="NACScheduler.tfvars"
-	rm -rf "$TFVARS_NAC_SCHEDULER" 
+	sudo rm -rf "$TFVARS_NAC_SCHEDULER" 
 	chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
 	chmod 400 $PEM
