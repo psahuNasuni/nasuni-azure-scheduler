@@ -47,7 +47,6 @@ parse_file_NAC_txt() {
             "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
-            "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
             "sp_application_id") SP_APPLICATION_ID="$value" ;;
@@ -195,6 +194,7 @@ parse_config_file_for_user_secret_keys_values() {
             "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
             "DestinationContainer") DESTINATION_CONTAINER_NAME="$value" ;;
             "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
+            "AzureLocation") NAC_AZURE_LOCATION="$value" ;;
             "vnetResourceGroup") NETWORKING_RESOURCE_GROUP="$value" ;;
             "vnetName") USER_VNET_NAME="$value" ;;
         esac
@@ -207,7 +207,7 @@ install_NAC_CLI() {
     ### Check for BETA NAC installation
     if [ "$USE_PRIVATE_IP" = "Y" ]; then
         sudo wget https://nac.cs.nasuni.com/downloads/beta/nac-manager-1.0.7.dev8-linux-x86_64.zip
-    elif [ "$AZURE_LOCATION" == "canadacentral" ]; then
+    elif [ "$NAC_AZURE_LOCATION" == "canadacentral" ]; then
         sudo unzip '*.zip'
         cd nac-manager-1.0.7.dev6-linux-x86_64
         sudo chmod 755 nac_manager
@@ -217,7 +217,7 @@ install_NAC_CLI() {
         sudo wget https://nac.cs.nasuni.com/downloads/nac-manager-1.0.6-linux-x86_64.zip
     fi
     
-    if [ "$AZURE_LOCATION" != "canadacentral" ]; then
+    if [ "$NAC_AZURE_LOCATION" != "canadacentral" ]; then
         sudo unzip '*.zip'
         sudo mv nac_manager /usr/local/bin/
     fi
@@ -605,6 +605,7 @@ parse_config_file_for_user_secret_keys_values config.dat
 NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
 USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
 AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
+NAC_AZURE_LOCATION=$(echo $NAC_AZURE_LOCATION | tr -d ' ')
 
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME

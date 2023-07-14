@@ -832,9 +832,11 @@ Schedule_CRON_JOB() {
 	echo "SourceContainer: "$SOURCE_CONTAINER >>$CONFIG_DAT_FILE_NAME
 	echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >>$CONFIG_DAT_FILE_NAME
 	echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL>>$CONFIG_DAT_FILE_NAME
-	echo "vnetSubscriptionId: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
-	echo "vnetResourceGroup: "$NETWORKING_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
-	echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
+	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
+		echo "vnetSubscriptionId: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
+		echo "vnetResourceGroup: "$NETWORKING_RESOURCE_GROUP >>$CONFIG_DAT_FILE_NAME
+		echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
+	fi
 
     chmod 777 $CONFIG_DAT_FILE_NAME
 
@@ -845,7 +847,6 @@ Schedule_CRON_JOB() {
 	# ACS_RESOURCE_GROUP=$($ACS_RESOURCE_GROUP | tr -d '"')
 	# ACS_ADMIN_APP_CONFIG_NAME=$($ACS_ADMIN_APP_CONFIG_NAME | tr -d '"')
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
-	echo "azure_location="$AZURE_LOCATION >>$NAC_TXT_FILE_NAME
     echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
