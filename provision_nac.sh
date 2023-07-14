@@ -294,6 +294,12 @@ destination_blob_cleanup(){
 
         if [[ $BLOB_FILE_COUNT -eq $TOTAL_INDEX_FILE_COUNT ]];then
             echo "All files are indexed, Start cleanup"
+            echo "NAC_Activity : Indexing Completed"
+            MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
+            CURRENT_STATE="Indexing-Completed"
+
+            generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+            append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
             ### Post Indexing Cleanup from Destination Buckets
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
             COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
@@ -524,7 +530,7 @@ get_subnets(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME=""
+GIT_BRANCH_NAME="nac_v1.0.7.dev6"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -582,7 +588,7 @@ fi
 generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
 pwd
 echo "INFO ::: current user :-"`whoami`
-################################################
+#############################################################################################################
 
 nmc_api_call "nmc_details.txt"
 echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
@@ -613,7 +619,7 @@ if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
    exit 1
 fi
-##################################### START NAC Provisioning ######################################################################
+##################################### START NAC Provisioning ###################################################
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
 sudo chmod 777 $CONFIG_DAT_FILE_PATH
@@ -626,7 +632,7 @@ echo "INFO ::: current user :-"`whoami`
 ### GITHUB_ORGANIZATION defaults to nasuni-labs
 REPO_FOLDER="nasuni-azure-analyticsconnector"
 validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
-########################### Git Clone : NAC Provisioning Repo ###############################################################
+########################### Git Clone : NAC Provisioning Repo ####################################################
 echo "INFO ::: BEGIN - Git Clone !!!"
 GIT_REPO_NAME=$(echo ${GIT_REPO} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 echo "INFO ::: GIT_REPO : $GIT_REPO"
@@ -748,43 +754,31 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
-####################### 2nd Run for Tracker_UI #########################
-if [ $? -eq 0 ]; then
+##################################### 2nd Run for Tracker_UI ########################################################
+DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
+STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+DATA_IS_PRESENT=`az storage blob list --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --container-name $DESTINATION_CONTAINER_NAME --account-key $STORAGE_ACCOUNT_KEY`
+if [ "$DATA_IS_PRESENT" != "[]" ]; then
 	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 	echo "NAC_Activity : Export Completed. Indexing in Progress"
 	CURRENT_STATE="Export-completed-And-Indexing-In-progress"
-	# LATEST_TOC_HANDLE_PROCESSED=$(terraform output -raw latest_toc_handle_processed)
     LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
 	echo "INFO ::: LATEST_TOC_HANDLE_PROCESSED for NAC Discovery is : $LATEST_TOC_HANDLE_PROCESSED"
 	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
     append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
+    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
 else
 	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
 	echo "NAC_Activity : Export Failed/Indexing Failed"
  	CURRENT_STATE="Export-Failed-And-Indexing-Failed"
 	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-	##exit 1
+	exit 1
 fi
 
-echo "NAC_Activity : Indexing Completed"
-MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
-CURRENT_STATE="Indexing-Completed"
-
-generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
-#################### 2nd Run for Tracker_UI Complete##########################
-
-
-if [ $? -eq 0 ]; then 
-    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME
-    echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
-else
-    echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
-    exit 1
-fi
+##################################### 2nd Run for Tracker_UI Complete ########################################################
 
 ##################################### END NAC Provisioning ###################################################################
-##################################### Blob Store Cleanup START #####################################################################
+##################################### Blob Store Cleanup START ###############################################################
 ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
 echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
 
