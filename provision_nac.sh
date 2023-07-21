@@ -530,7 +530,7 @@ get_subnets(){
 
 ###### START - EXECUTION ######
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="nac_v1.0.7.dev6"
+GIT_BRANCH_NAME="feature/avoid-deadlock-on-multiple-config-dat"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -624,9 +624,9 @@ fi
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
 sudo chmod 777 $CONFIG_DAT_FILE_PATH
-CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
+CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$NMC_VOLUME_NAME.dat
 sudo rm -rf "$CONFIG_DAT_FILE"
-cp $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH
+cp $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH/$NMC_VOLUME_NAME.dat
 
 echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
@@ -653,7 +653,7 @@ else
     exit 1
 fi
 # move config. dat to nasuni-azure-analyticsconnector
-cp $CONFIG_DAT_FILE_NAME $GIT_REPO_NAME
+cp $CONFIG_DAT_FILE_NAME $GIT_REPO_NAME/$NMC_VOLUME_NAME.dat
 ########################### Completed - Git Clone  ###############################################################
 cd "${GIT_REPO_NAME}"
 NAC_MANAGER_EXIST='N'
