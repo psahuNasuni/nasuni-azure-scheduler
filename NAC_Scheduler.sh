@@ -957,7 +957,7 @@ FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
 SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
-GIT_BRANCH_NAME="nac_v1.0.7.dev6"
+GIT_BRANCH_NAME="feature/avoid-deadlock-on-multiple-config-dat"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
