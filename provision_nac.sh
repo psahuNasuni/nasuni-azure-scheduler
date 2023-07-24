@@ -246,22 +246,69 @@ add_metadat_to_destination_blob(){
 
     # Generate URL with SAS token
     CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
-
+    METADATA_ASSIGNMENT_STATUS="FAILED"
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
     BLOB_FILE_COUNT=`azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true --output-type json --output-level essential | jq '. | select(.MessageType == "EndOfJob")' | jq -r '.MessageContent | fromjson | .TransfersCompleted'`
-    echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: COMPLETED"
+    if [ $? -eq 0 ]; then
+        echo "INFO ::: Metadata assignment ::: SUCCESS"
+        METADATA_ASSIGNMENT_STATUS="SUCCESS"
+    else
+        echo "INFO ::: Metadata assignment ::: FAILED"
+        METADATA_ASSIGNMENT_STATUS="FAILED"
+    fi
+
+    LATEST_TOC_HANDLE_FROM_TRACKER_JSON=""
+    if [ $METADATA_ASSIGNMENT_STATUS == "FAILED" ];then
+        #########################################################################
+        ### Data already Exported to Destination Storage Account.
+        ### To rerun, we need to Start with metadata Assignment.
+        ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
+        #########################################################################
+        CURRENT_STATE="Export-completed-And-MetadataAssignment-Failed"
+        LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
+        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+        echo "ERROR ::: Metadata Assignment Failed in destination container."
+        exit 1
+    else
+        #########################################################################
+        ### Data already Exported to Destination Storage Account and Metadata Assignment is finished.
+        ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
+        #########################################################################
+        CURRENT_STATE="Export-Completed-And-MetadataAssignment-Completed"
+        LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
+        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+        echo "INFO ::: Metadata Assignment COMPLETED for all blobs in destination container."
+    fi
 }
 
 run_cognitive_search_indexer(){
     ACS_SERVICE_NAME=$1
     ACS_API_KEY=$2
     ACS_INDEXER_NAME="indexer"
-
+    CURRENT_STATE="MetadataAssignment-Completed-Indexing-InProgress"
+    LATEST_TOC_HANDLE_FROM_TRACKER_JSON=""
     INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
     if [ $? -eq 0 ]; then
+        #########################################################################
+        ### Metadata Assignment already done to all blobs in Destination Storage Account.
+        ### Indexing is Successfully Done.
+        ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
+        #########################################################################
+        CURRENT_STATE="Indexing-Completed"
+        LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
+        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
     else
-        echo "INFO ::: Cognitive Search Indexer Run ::: FAILED"
+        #########################################################################
+        ### Metadata Assignment already done to all blobs in Destination Storage Account.
+        ### Indexing is Failed. To rerun we need to start from indexing stage.
+        ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
+        #########################################################################
+        CURRENT_STATE="MetadataAssignment-Completed-Indexing-Failed"
+        
+        LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
+        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+        echo "ERROR ::: Cognitive Search Indexer Run ::: FAILED"
         exit 1
     fi
 }
@@ -297,17 +344,18 @@ destination_blob_cleanup(){
             echo "NAC_Activity : Indexing Completed"
             MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
             CURRENT_STATE="Indexing-Completed"
-
+            LATEST_TOC_HANDLE_PROCESSED="$UNIFS_TOC_HANDLE"
             generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
             append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
             ### Post Indexing Cleanup from Destination Buckets
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
             COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
             $COMMAND
-            echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: FINISHED"
+            echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: COMPLETED"
             if [ "$USE_PRIVATE_IP" = "Y" ]; then
                 remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
+            echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
             exit 1
         fi
     done
@@ -342,11 +390,11 @@ create_shared_private_access(){
         if [[ "$(echo $CONNECTION_APPROVE | jq -r '.properties.privateLinkServiceConnectionState.status')" == "Approved" ]]; then
             echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
         else
-            echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
+            echo "ERROR ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
             exit 1
         fi
     else
-        echo "INFO ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
+        echo "ERROR ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
         exit 1
     fi
 }
@@ -389,11 +437,11 @@ create_azure_function_private_dns_zone_virtual_network_link(){
 		
 		VIRTUAL_NETWORK_ID=`az network vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_VNET_NAME --query id --output tsv 2> /dev/null`
 		
-		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		echo "INFO ::: START $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
 		
 		FUNCTION_APP_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False | jq -r '.provisioningState'`
 		if [ "$FUNCTION_APP_DNS_PRIVATE_LINK" == "Succeeded" ]; then
-			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+			echo "INFO ::: COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
 			exit 1
@@ -420,12 +468,12 @@ create_storage_account_private_dns_zone_virtual_network_link(){
 		
 		VIRTUAL_NETWORK_ID=`az network vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_VNET_NAME --query id --output tsv 2> /dev/null`
 		
-		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
+		echo "INFO ::: STARTED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
 		
 		STORAGE_ACCOUNT_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False  | jq -r '.provisioningState'`
 
 		if [ "$STORAGE_ACCOUNT_DNS_PRIVATE_LINK" == "Succeeded" ]; then
-			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
+			echo "INFO ::: COMPLETED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
 			exit 1
@@ -448,11 +496,11 @@ create_azure_function_private_dns_zone(){
 	else
 		echo "INFO ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME."
 		
-		echo "STARTED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		echo "INFO ::: STARTED : $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation"
 		
 		FUNCTION_APP_DNS_ZONE=`az network private-dns zone create -g $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState'`
 		if [ "$FUNCTION_APP_DNS_ZONE" == "Succeeded" ]; then
-			echo "COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			echo "INFO ::: COMPLETED : $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
 			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
@@ -476,11 +524,11 @@ create_storage_account_private_dns_zone(){
 	else
 		echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
 		
-		echo "STARTED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation"
+		echo "INFO ::: STARTED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation"
 		
 		STORAGE_ACCOUNT_APP_DNS_ZONE=`az network private-dns zone create -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState'`
 		if [ "$STORAGE_ACCOUNT_APP_DNS_ZONE" == "Succeeded" ]; then
-			echo "COMPLETED ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
+			echo "INFO ::: COMPLETED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
 			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
@@ -496,7 +544,7 @@ get_subnets(){
     REQUIRED_SUBNET_COUNT="$4"
 
     DIRECTORY=$(pwd)
-    echo "Directory: $DIRECTORY"
+    # echo "INFO ::: Directory: $DIRECTORY"
     FILENAME="$DIRECTORY/create_subnet_infra.py"
     chmod 777 $FILENAME
     OUTPUT=$(python3 $FILENAME $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
@@ -504,7 +552,7 @@ get_subnets(){
     NAC_SUBNETS=()
     DISCOVERY_OUTBOUND_SUBNET=()
     SUBNET_LIST=(`cat available_subnets.txt`)
-    echo "Subnet list from file : $SUBNET_LIST"
+    echo "INFO ::: Get Subnet CIDR Range list from file : $SUBNET_LIST"
     # Use comma as separator and apply as pattern
     for SUBNET in ${SUBNET_LIST//,/ }
     do
@@ -528,7 +576,44 @@ get_subnets(){
     DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
 }
 
-###### START - EXECUTION ######
+import_configuration(){
+    ### Import Configurations details if exist
+    INDEX_ENDPOINT_KEY="index-endpoint"
+    INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
+    if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
+    fi
+
+    WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
+    WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
+    if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
+        echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
+        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
+        $COMMAND
+    else
+        echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
+    fi
+}
+
+read_latest_toc_handle_from_tracker_json(){
+	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
+	echo "INFO ::: Tracepath of TrackerJson: $TRACEPATH"
+	TRACKER_JSON=$(cat $JSON_FILE_PATH)
+	# echo "INFO ::: Content of Tracker json" $TRACKER_JSON
+	LATEST_TOC_HANDLE_FROM_TRACKER_JSON=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
+	if [ "$LATEST_TOC_HANDLE_FROM_TRACKER_JSON" =  "null" ] ; then
+		LATEST_TOC_HANDLE_FROM_TRACKER_JSON="null"
+	fi
+	echo "INFO ::: Latest_toc_handle from TRACKER_JSON: $LATEST_TOC_HANDLE_FROM_TRACKER_JSON"
+
+}
+
+###################################################################################
+############################# START - EXECUTION ###################################
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
 GIT_BRANCH_NAME="nac_v1.0.7.dev6"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
@@ -554,9 +639,8 @@ ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
 add_appconfig_role_assignment
 USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
-##################################### START TRACKER JSON Creation ###################################################################
 
-echo "NAC_Activity : Export In Progress"
+echo "INFO ::: NAC_Activity : Export In Progress"
 ACS_URL=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key nmc-api-acs-url --label nmc-api-acs-url --query value --output tsv 2> /dev/null`
 ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&search=*"
 DEFAULT_URL="/search/index.html"
@@ -576,13 +660,14 @@ echo "INFO ::: JSON_FILE_PATH:" $JSON_FILE_PATH
 if [ -f "$JSON_FILE_PATH" ] ; then
 	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
 	TRACKER_JSON=$(cat $JSON_FILE_PATH)
-	echo "Tracker json" $TRACKER_JSON
-	LATEST_TOC_HANDLE_PROCESSED=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
-	#if [ -z "$LATEST_TOC_HANDLE_PROCESSED" -a "$LATEST_TOC_HANDLE_PROCESSED" == " " ]; then	
+	# echo "Tracker json" $TRACKER_JSON
+	LATEST_TOC_HANDLE_PROCESSED=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)	
 	if [ -z "$LATEST_TOC_HANDLE_PROCESSED" ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == " " ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == "null" ]; then	
  		LATEST_TOC_HANDLE_PROCESSED="null"
+    else
+        LATEST_TOC_HANDLE_PROCESSED="$LATEST_TOC_HANDLE_PROCESSED"
 	fi
-	echo "INFO LATEST_TOC_HANDLE PROCESSED"  $LATEST_TOC_HANDLE_PROCESSED
+	echo "INFO ::: Latest processed SnapshotID from NAC Integration Tracker: "  $LATEST_TOC_HANDLE_PROCESSED
 fi
 
 generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
@@ -591,11 +676,11 @@ echo "INFO ::: current user :-"`whoami`
 #############################################################################################################
 
 nmc_api_call "nmc_details.txt"
-echo "UNIFS TOC HANDLE: $UNIFS_TOC_HANDLE"
-echo "LATEST TOC HANDLE PROCESSED: $LATEST_TOC_HANDLE_PROCESSED"
+echo "INFO ::: Snapshot ID (UniFS toc handle) retrieved by NMC Api call: $UNIFS_TOC_HANDLE"
+echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
 
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
-    echo "INFO ::: Previous TOC handle is same as Latest TOC handle. Files are already moved to Destination Bucket."
+    echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     exit 1
 fi
 
@@ -702,46 +787,25 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
 
-import_configuration(){
-    ### Import Configurations details if exist
-    INDEX_ENDPOINT_KEY="index-endpoint"
-    INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
-    if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
-        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
-    fi
 
-    WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
-    WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
-    if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
-        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
-    fi
-}
 
 import_configuration
 
-echo $JSON_FILE_PATH
+echo "INFO ::: Scheduler Tracker json file path: $JSON_FILE_PATH"
 LATEST_TOC_HANDLE=""
 if [ -f "$JSON_FILE_PATH" ] ; then
 	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
 	echo $TRACEPATH
 	TRACKER_JSON=$(cat $JSON_FILE_PATH)
-	echo "Tracker json" $TRACKER_JSON
+	# echo "Tracker json" $TRACKER_JSON
 	LATEST_TOC_HANDLE=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
 	if [ "$LATEST_TOC_HANDLE" =  "null" ] ; then
 		LATEST_TOC_HANDLE="null"
 	fi
-	echo "LATEST_TOC_HANDLE: $LATEST_TOC_HANDLE"
+	echo "INFO ::: LATEST_TOC_HANDLE: $LATEST_TOC_HANDLE"
 else
 	LATEST_TOC_HANDLE=""
-	echo "ERROR:::Tracker JSON folder Not present"
+	echo "ERROR ::: Tracker JSON folder Not present"
 fi
 
 echo "INFO ::: LATEST_TOC_HANDLE" $LATEST_TOC_HANDLE
@@ -749,37 +813,47 @@ LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE
 
 FOLDER_PATH=`pwd`
 
-##appending latest_toc_handle_processed to TFVARS_FILE
+## appending latest_toc_handle_processed to TFVARS_FILE
 echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$TFVARS_FILE
+
+################################ NAC Provisioning and Data Export #############################################################
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
-##################################### 2nd Run for Tracker_UI ########################################################
 DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
 STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 DATA_IS_PRESENT=`az storage blob list --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --container-name $DESTINATION_CONTAINER_NAME --account-key $STORAGE_ACCOUNT_KEY`
 if [ "$DATA_IS_PRESENT" != "[]" ]; then
 	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
-	echo "NAC_Activity : Export Completed. Indexing in Progress"
-	CURRENT_STATE="Export-completed-And-Indexing-In-progress"
+	CURRENT_STATE="Export-completed-And-MetadataAssignment-In-progress"
     LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
 	echo "INFO ::: LATEST_TOC_HANDLE_PROCESSED for NAC Discovery is : $LATEST_TOC_HANDLE_PROCESSED"
-	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
     append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
+	echo "INFO ::: NAC_Activity : Export Completed. Metadata Assignment in Progress"
+    
+    ################### Add Metadata to blobs and Update Tracker Json ###################
     add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
+    
 else
+    #########################################################################
+    ### Data Export to Destination Storage Account : FAILED
+    ### To rerun, we need to Start from NAC Deployment.
+    ### So, Setting the LATEST_TOC_HANDLE_PROCESSED as the latest_toc_handle_processed from Tracker JSON 
+    #########################################################################
+
 	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
-	echo "NAC_Activity : Export Failed/Indexing Failed"
- 	CURRENT_STATE="Export-Failed-And-Indexing-Failed"
-	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+ 	CURRENT_STATE="Export-Failed"
+    LATEST_TOC_HANDLE_FROM_TRACKER_JSON=""
+    read_latest_toc_handle_from_tracker_json
+    LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
+   	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+	echo "INFO ::: NAC_Activity : Export Failed."
 	exit 1
 fi
 
-##################################### 2nd Run for Tracker_UI Complete ########################################################
-
-##################################### END NAC Provisioning ###################################################################
-##################################### Blob Store Cleanup START ###############################################################
+##################################### END NAC Provisioning and Data Export ###################################################################
+##################################### Indexing START ###############################################################
 ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
 echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
 
@@ -787,6 +861,9 @@ ACS_API_KEY=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-ap
 echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
 run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
+##################################### Indexing COMPLETE ###############################################################
+
+##################################### Blob Store Cleanup START ###############################################################
 
 destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP
 

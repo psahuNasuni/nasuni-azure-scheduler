@@ -10,10 +10,10 @@ def is_file_exist(tracker_dir, filename):
     Check if file exist or not
     """
     if os.path.isfile(tracker_dir + filename):
-        print ("Tracker JSON exist: " + tracker_dir + filename)
+        print ("INFO ::: Tracker JSON exist: " + tracker_dir + filename)
         return True
     else:
-        print ("Tracker JSON Dose exist: " + tracker_dir + filename)
+        print("INFO ::: Tracker JSON Doesn't exist: " + tracker_dir + filename)
         return False
    
 def add_source(acs_url, acs_request_url, default_url, frequency, user_secret, created_by, created_on, volume, service):
@@ -112,7 +112,7 @@ def combined_tracker_UI(acs_url, acs_request_url, default_url, frequency, user_s
         tracker_json["SERVICES"] = service_tracker(volume, service, tracker_json["SERVICES"])
 
     tracker_json = json.dumps(tracker_json)
-    print("Tracker Json: " + tracker_json)
+    # print("Tracker Json: " + tracker_json)
     with open(tracker_dir + tracker_json_filename, "w") as file:
         file.write(tracker_json)
         file.close()

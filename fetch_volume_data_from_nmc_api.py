@@ -21,16 +21,16 @@ if not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverif
 file_name, endpoint, username, password, volume_name, web_access_appliance_address = sys.argv
 
 try:
-    logging.info(sys.argv)
+    # logging.info(sys.argv)
     url = 'https://' + endpoint + '/api/v1.1/auth/login/'
     logging.info(url)
     values = {'username': username, 'password': password}
     data = urllib.parse.urlencode(values).encode("utf-8")
-    logging.info(data)
+    # logging.info(data)
     response = urllib.request.urlopen(url, data, timeout=5)
-    logging.info(response)
+    # logging.info(response)
     result = json.loads(response.read().decode('utf-8'))
-    logging.info(result)
+    # logging.info(result)
 
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
         'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/\"'
