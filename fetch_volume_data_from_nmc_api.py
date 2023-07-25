@@ -21,25 +21,25 @@ if not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverif
 file_name, endpoint, username, password, volume_name, web_access_appliance_address = sys.argv
 
 try:
-    logging.info(sys.argv)
+    #logging.info(sys.argv)
     url = 'https://' + endpoint + '/api/v1.1/auth/login/'
-    logging.info(url)
+    #logging.info(url)
     values = {'username': username, 'password': password}
     data = urllib.parse.urlencode(values).encode("utf-8")
-    logging.info(data)
+    #logging.info(data)
     response = urllib.request.urlopen(url, data, timeout=5)
-    logging.info(response)
+    #logging.info(response)
     result = json.loads(response.read().decode('utf-8'))
-    logging.info(result)
+    #logging.info(result)
 
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
         'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/\"'
-    logging.info(cmd)
+    #logging.info(cmd)
     args = shlex.split(cmd)
     process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
-    logging.info(json_data)
+    #logging.info(json_data)
     vv_guid = ''
     for i in json_data['items']:
         if i['name'] == volume_name:
@@ -54,16 +54,17 @@ try:
             vv_guid = i['guid']
     cmd = 'curl -k -X GET -H \"Accept: application/json\" -H \"Authorization: Token ' + result[
         'token'] + '\" \"https://' + endpoint + '/api/v1.1/volumes/filers/shares/\"'
-    logging.info(cmd)
+    #logging.info(cmd)
     args = shlex.split(cmd)
     process = subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
-    logging.info(json_data)    
+    #logging.info(json_data)    
     # My Accelerate Test
     share_url = open('nmc_api_data_external_share_url'+ '.txt', 'w')
     share_url.write(web_access_appliance_address)
 
+    requests.packages.urllib3.disable_warnings()
 
     headers = {
         'Accept': 'application/json',
@@ -94,7 +95,7 @@ try:
 
 
     if len(name_list)==0 or len(path_list) == 0:
-        logging.info('dict is empty'.format(share_data))
+        #logging.info('dict is empty'.format(share_data))
        
         data={"shares":[{"test-key-for-sharedata":"test-value-for-sharedata"}]}
         
@@ -104,7 +105,7 @@ try:
         share_data.write(data_json)
         share_data.close()
     else:
-        logging.info('dict has data'.format(share_data))
+        #logging.info('dict has data'.format(share_data))
         data={"shares":[]}
 
         for name,value in zip(name_list,path_list):
