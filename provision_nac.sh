@@ -249,11 +249,19 @@ add_metadat_to_destination_blob(){
     METADATA_ASSIGNMENT_STATUS="FAILED"
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
     BLOB_FILE_COUNT=`azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true --output-type json --output-level essential | jq '. | select(.MessageType == "EndOfJob")' | jq -r '.MessageContent | fromjson | .TransfersCompleted'`
-    if [ $? -eq 0 ]; then
-        echo "INFO ::: Metadata assignment ::: SUCCESS"
-        METADATA_ASSIGNMENT_STATUS="SUCCESS"
-    else
-        echo "INFO ::: Metadata assignment ::: FAILED"
+    
+    BLOB_FILE_COUNT=`echo $BLOB_FILE_COUNT | tr -d " "`
+    echo "INFO ::: Total count of blobs assigned with metadata= $BLOB_FILE_COUNT"
+    if [ "$BLOB_FILE_COUNT" != "" ]; then
+        if [ "$BLOB_FILE_COUNT" == 0 ];then
+            echo "ERROR ::: No blobs available in destination storage. Metadata assignment ::: FAILED"
+            METADATA_ASSIGNMENT_STATUS="FAILED"
+        else
+            echo "INFO ::: Metadata assignment ::: SUCCESS"
+            METADATA_ASSIGNMENT_STATUS="SUCCESS"
+        fi
+    else ### BLOB_FILE_COUNT" == "" so azcopy did not assign the metadata to blobs
+        echo "ERROR ::: Metadata assignment ::: FAILED"
         METADATA_ASSIGNMENT_STATUS="FAILED"
     fi
 
@@ -619,6 +627,7 @@ GIT_BRANCH_NAME="nac_v1.0.7.dev6"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
+CURRENT_STATE="Provision-NAC-Started"
 NMC_API_ENDPOINT=""
 NMC_API_USERNAME=""
 NMC_API_PASSWORD=""
