@@ -31,10 +31,10 @@ get_destination_container_url(){
     DESTINATION_CONTAINER_NAME="destcontainer"
     #### Destination Storage account and container creation####
     STORAGE_ACCOUNT_NAME=`az storage account create -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP -l $NAC_AZURE_LOCATION --sku Standard_LRS --public-network-access Enabled --dns-endpoint-type Standard --require-infrastructure-encryption false --allow-cross-tenant-replication true --allow-shared-key-access true`
-    CONTAINER_NAME=`az storage container create -n $DESTINATION_CONTAINER_NAME --public-access off --account-name $DESTINATION_STORAGE_ACCOUNT_NAME`
     SAS_EXPIRY=$(date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ')
     ### Destination account-key: 
 	DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+    CONTAINER_NAME=`az storage container create -n $DESTINATION_CONTAINER_NAME --public-access off --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --account-key $DESTINATION_ACCOUNT_KEY`
 	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
 	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
 	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
