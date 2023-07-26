@@ -23,6 +23,54 @@ LOG_FILE=provision_nac_$DATE_WITH_TIME.log
 START=$(date +%s)
 {
 
+get_destination_container_url(){
+	
+	EDGEAPPLIANCE_RESOURCE_GROUP=$1
+    AZURE_LOCATION=$2
+    RND=$(( $RANDOM % 10000 ))
+    DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
+    DESTINATION_CONTAINER_NAME="destcontainer"
+    #### Destination Storage account and container creation####
+    STORAGE_ACCOUNT_NAME=`az storage account create -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP -l $AZURE_LOCATION --sku Standard_LRS --public-network-access Enabled --dns-endpoint-type Standard --require-infrastructure-encryption false --allow-cross-tenant-replication true --allow-shared-key-access true`
+    CONTAINER_NAME=`az storage container create -n $DESTINATION_CONTAINER_NAME --public-access off --account-name $DESTINATION_STORAGE_ACCOUNT_NAME`
+    SAS_EXPIRY=$(date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ')
+    ### Destination account-key: 
+	DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
+	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
+	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
+
+	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string -g $EDGEAPPLIANCE_RESOURCE_GROUP --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
+	echo "INFO ::: SUCCESS :: Get destination container url."
+}
+update_destination_container_url(){
+	ACS_ADMIN_APP_CONFIG_NAME="$1"
+
+	# COMMAND SAMPLE="az appconfig kv set --endpoint https://nasuni-labs-acs-admin.azconfig.io --key test2 --value red2 --auth-mode login --yes"
+	for config_value in destination-container-name datasource-connection-string 
+	do
+		option="${config_value}" 
+		case ${option} in 
+		"destination-container-name")
+			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --label destination-container-name --value $DESTINATION_CONTAINER_NAME --auth-mode login --yes"
+			$COMMAND
+			;; 
+		"datasource-connection-string") 
+			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key datasource-connection-string --label datasource-connection-string --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
+			$COMMAND
+			;; 
+		esac 
+	done
+
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then 
+		echo "INFO ::: appconfig update SUCCESS"
+	else
+		echo "INFO ::: appconfig update FAILED"
+		exit 1
+	fi
+}
+
 parse_file_nmc_txt() {
     file="$1"
 
@@ -47,6 +95,7 @@ parse_file_NAC_txt() {
             "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
+            "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
             "sp_application_id") SP_APPLICATION_ID="$value" ;;
@@ -59,6 +108,7 @@ parse_file_NAC_txt() {
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
             "user_subnet_name") USER_SUBNET_NAME="$value" ;;
             "volume_key_blob_url") VOLUME_KEY_BLOB_URL="$value" ;;
+            "edge_appliance_group") EDGEAPPLIANCE_RESOURCE_GROUP="$value";;
             esac
         done <"$file"
 }
@@ -83,7 +133,7 @@ root_login(){
 get_volume_key_blob_url(){
 	VOLUME_KEY_BLOB_URL=$1
     
-	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) #"keysa"
+	VOLUME_KEY_STORAGE_ACCOUNT_NAME=$(echo ${VOLUME_KEY_BLOB_URL}} | cut -d/ -f3-|cut -d'.' -f1) 
 	VOLUME_KEY_BLOB_NAME=$(echo $VOLUME_KEY_BLOB_URL | cut -d/ -f4)
 	VOLUME_ACCOUNT_KEY=`az storage account keys list --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
 	VOLUME_KEY_BLOB_TOCKEN=`az storage blob generate-sas --account-name ${VOLUME_KEY_STORAGE_ACCOUNT_NAME} --name ${VOLUME_KEY_BLOB_NAME} --permissions r --expiry ${SAS_EXPIRY} --account-key ${VOLUME_ACCOUNT_KEY} --blob-url ${VOLUME_KEY_BLOB_URL} --https-only`
@@ -157,6 +207,9 @@ append_nmc_details_to_config_dat(){
     sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
     sed -i "s|SourceContainerSASURL.*||g" config.dat
     echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> config.dat
+    sed -i "s/DestinationContainer:.*/DestinationContainer: $DESTINATION_CONTAINER_NAME/g" config.dat
+    sed -i "s|DestinationContainerSASURL.*||g" config.dat
+    echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >> config.dat
     sed -i "s|VolumeKeySASURL.*||g" config.dat
     echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL >> config.dat
     sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" config.dat
@@ -192,8 +245,6 @@ parse_config_file_for_user_secret_keys_values() {
         case "$key" in
             "Name") NAC_RESOURCE_GROUP_NAME="$value" ;;
             "AzureSubscriptionID") AZURE_SUBSCRIPTION_ID="$value" ;;
-            "DestinationContainer") DESTINATION_CONTAINER_NAME="$value" ;;
-            "DestinationContainerSASURL") DESTINATION_CONTAINER_SAS_URL="$value" ;;
             "AzureLocation") NAC_AZURE_LOCATION="$value" ;;
             "vnetResourceGroup") NETWORKING_RESOURCE_GROUP="$value" ;;
             "vnetName") USER_VNET_NAME="$value" ;;
@@ -226,26 +277,20 @@ install_NAC_CLI() {
 }
 
 add_metadat_to_destination_blob(){
-    # Azure Storage Account and Container information
-    CONTAINER_NAME="$1"
-    DESTINATION_CONTAINER_SAS_URL="$2"
-    NMC_VOLUME_NAME="$3"
+    NMC_VOLUME_NAME="$1"
 
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 
-    STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1)
-    STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-
-    echo "INFO ::: CONTAINER NAME $CONTAINER_NAME"
+    echo "INFO ::: CONTAINER NAME $DESTINATION_CONTAINER_NAME"
     echo "INFO ::: NMC VOLUME NAME $NMC_VOLUME_NAME"
-    echo "INFO ::: DESTINATION STORAGE ACCOUNT NAME $STORAGE_ACCOUNT_NAME"
+    echo "INFO ::: DESTINATION STORAGE ACCOUNT NAME $DESTINATION_STORAGE_ACCOUNT_NAME"
 
     # Generate SAS token
-    CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$STORAGE_ACCOUNT_KEY" --account-name "$STORAGE_ACCOUNT_NAME" --name "$CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
+    CONTAINER_SAS_TOKEN=$(az storage container generate-sas --account-key "$DESTINATION_ACCOUNT_KEY" --account-name "$DESTINATION_STORAGE_ACCOUNT_NAME" --name "$DESTINATION_CONTAINER_NAME" --permissions "wdl" --expiry "$SAS_EXPIRY" --https-only)
     CONTAINER_SAS_TOKEN=$(echo "$CONTAINER_SAS_TOKEN" | tr -d \")
 
     # Generate URL with SAS token
-    CONTAINER_SAS_URL="https://$STORAGE_ACCOUNT_NAME.blob.core.windows.net/$CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
+    CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/$DESTINATION_CONTAINER_NAME?$CONTAINER_SAS_TOKEN"
     METADATA_ASSIGNMENT_STATUS="FAILED"
     echo "INFO ::: Assigning Metadata to all blobs present in destination container  ::: STARTED"
     BLOB_FILE_COUNT=`azcopy set-properties "$CONTAINER_SAS_URL" --metadata=volume_name=$NMC_VOLUME_NAME --recursive=true --output-type json --output-level essential | jq '. | select(.MessageType == "EndOfJob")' | jq -r '.MessageContent | fromjson | .TransfersCompleted'`
@@ -322,15 +367,10 @@ run_cognitive_search_indexer(){
 }
 
 destination_blob_cleanup(){
-    DESTINATION_CONTAINER_NAME="$1"
-    DESTINATION_CONTAINER_SAS_URL="$2"
-    ACS_SERVICE_NAME="$3"
-    ACS_API_KEY="$4"
-    USE_PRIVATE_IP="$5"
+    ACS_SERVICE_NAME="$1"
+    ACS_API_KEY="$2"
+    USE_PRIVATE_IP="$3"
     ACS_INDEXER_NAME="indexer"
-
-    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-|cut -d'.' -f1) #"destinationbktsa"
-    DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
     while :
@@ -361,7 +401,7 @@ destination_blob_cleanup(){
             $COMMAND
             echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: COMPLETED"
             if [ "$USE_PRIVATE_IP" = "Y" ]; then
-                remove_shared_private_access $DESTINATION_CONTAINER_SAS_URL $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
+                remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
             echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
             exit 1
@@ -371,12 +411,10 @@ destination_blob_cleanup(){
 
 create_shared_private_access(){
     
-    DESTINATION_CONTAINER_SAS_URL="$1"
+    EDGEAPPLIANCE_RESOURCE_GROUP="$1"
     ACS_URL="$2"
     ENDPOINT_NAME="$3"
 
-    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
-    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup'`
     DESTINATION_STORAGE_ACCOUNT_ID=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.id'`
 
     ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
@@ -389,12 +427,12 @@ create_shared_private_access(){
 
     if [ "$SHARED_LINK_STATUS" == "Pending" ] && [ "$SHARED_LINK_PROVISIONING_STATE" == "Succeeded" ] ; then
      	
-        PRIVATE_ENDPOINT_LIST=`az network private-endpoint-connection list -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts`
+        PRIVATE_ENDPOINT_LIST=`az network private-endpoint-connection list -g $EDGEAPPLIANCE_RESOURCE_GROUP -n $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts`
 
         PRIVATE_CONNECTION_NAME=$(echo "$PRIVATE_ENDPOINT_LIST" | jq '.[]' | jq 'select(.properties.privateEndpoint.id | contains('\"$ENDPOINT_NAME\"'))'| jq -r '.name')
 
         echo "INFO ::: Approve Private Endpoint Connection ::: STARTED"
-        CONNECTION_APPROVE=`az network private-endpoint-connection approve -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts --description "Request Approved"`
+        CONNECTION_APPROVE=`az network private-endpoint-connection approve -g $EDGEAPPLIANCE_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME --type Microsoft.Storage/storageAccounts --description "Request Approved"`
         if [[ "$(echo $CONNECTION_APPROVE | jq -r '.properties.privateLinkServiceConnectionState.status')" == "Approved" ]]; then
             echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
         else
@@ -408,17 +446,14 @@ create_shared_private_access(){
 }
 
 remove_shared_private_access(){
-    
-    DESTINATION_CONTAINER_SAS_URL="$1"
+    EDGEAPPLIANCE_RESOURCE_GROUP="$1"
     PRIVATE_CONNECTION_NAME="$2"
     ENDPOINT_NAME="$3"
     ACS_URL="$4"
 
-    DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
-    DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP=`az storage account show -n ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.resourceGroup'`
-    
+
     echo "INFO ::: Delete Private Endpoint Connection ::: STARTED"
-    DELETE_PRIVATE_ENDPOINT_CONNECTION=`az network private-endpoint-connection delete -g $DESTINATION_STORAGE_ACCOUNT_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME  --type Microsoft.Storage/storageAccounts --yes -y`
+    DELETE_PRIVATE_ENDPOINT_CONNECTION=`az network private-endpoint-connection delete -g $EDGEAPPLIANCE_RESOURCE_GROUP -n $PRIVATE_CONNECTION_NAME --resource-name $DESTINATION_STORAGE_ACCOUNT_NAME  --type Microsoft.Storage/storageAccounts --yes -y`
     echo "INFO ::: Delete Private Endpoint Connection ::: FINISHED"
     ACS_NAME=$(echo ${ACS_URL} | cut -d/ -f3-| cut -d'.' -f1)
 
@@ -635,6 +670,9 @@ NMC_VOLUME_NAME=""
 WEB_ACCESS_APPLIANCE_ADDRESS=""
 DESTINATION_STORAGE_ACCOUNT_NAME=""
 DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=""
+DESTINATION_CONTAINER_SAS_URL=""
+DESTINATION_CONTAINER_NAME=""
+DESTINATION_ACCOUNT_KEY=""
 PRIVATE_CONNECTION_NAME=""
 ROOT_USER=""
 BLOB_FILE_COUNT=0
@@ -692,7 +730,8 @@ if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     exit 1
 fi
-
+get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP $AZURE_LOCATION
+update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
 parse_config_file_for_user_secret_keys_values config.dat
  
@@ -702,7 +741,7 @@ AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
 NAC_AZURE_LOCATION=$(echo $NAC_AZURE_LOCATION | tr -d ' ')
 
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
-    create_shared_private_access $DESTINATION_CONTAINER_SAS_URL $ACS_URL $ENDPOINT_NAME
+    create_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $ACS_URL $ENDPOINT_NAME
     NAC_SUBNETS=()
     DISCOVERY_OUTBOUND_SUBNET=()
     get_subnets $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME "28" "17"
@@ -830,9 +869,8 @@ echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . 
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
 $COMMAND
 
-DESTINATION_STORAGE_ACCOUNT_NAME=$(echo ${DESTINATION_CONTAINER_SAS_URL} | cut -d/ -f3-| cut -d'.' -f1)
-STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
-DATA_IS_PRESENT=`az storage blob list --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --container-name $DESTINATION_CONTAINER_NAME --account-key $STORAGE_ACCOUNT_KEY`
+##################################### 2nd Run for Tracker_UI ########################################################
+DATA_IS_PRESENT=`az storage blob list --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --container-name $DESTINATION_CONTAINER_NAME --account-key $DESTINATION_ACCOUNT_KEY`
 if [ "$DATA_IS_PRESENT" != "[]" ]; then
 	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: SUCCESS"
 	CURRENT_STATE="Export-completed-And-MetadataAssignment-In-progress"
@@ -842,7 +880,7 @@ if [ "$DATA_IS_PRESENT" != "[]" ]; then
 	echo "INFO ::: NAC_Activity : Export Completed. Metadata Assignment in Progress"
     
     ################### Add Metadata to blobs and Update Tracker Json ###################
-    add_metadat_to_destination_blob $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $NMC_VOLUME_NAME $UNIFS_TOC_HANDLE
+    add_metadat_to_destination_blob $NMC_VOLUME_NAME
     
 else
     #########################################################################
@@ -874,7 +912,7 @@ run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
 ##################################### Blob Store Cleanup START ###############################################################
 
-destination_blob_cleanup $DESTINATION_CONTAINER_NAME $DESTINATION_CONTAINER_SAS_URL $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP
+destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP
 
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
