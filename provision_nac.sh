@@ -26,16 +26,15 @@ START=$(date +%s)
 get_destination_container_url(){
 	
 	EDGEAPPLIANCE_RESOURCE_GROUP=$1
-    AZURE_LOCATION=$2
     RND=$(( $RANDOM % 10000 ))
     DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
     DESTINATION_CONTAINER_NAME="destcontainer"
     #### Destination Storage account and container creation####
-    STORAGE_ACCOUNT_NAME=`az storage account create -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP -l $AZURE_LOCATION --sku Standard_LRS --public-network-access Enabled --dns-endpoint-type Standard --require-infrastructure-encryption false --allow-cross-tenant-replication true --allow-shared-key-access true`
-    CONTAINER_NAME=`az storage container create -n $DESTINATION_CONTAINER_NAME --public-access off --account-name $DESTINATION_STORAGE_ACCOUNT_NAME`
+    STORAGE_ACCOUNT_NAME=`az storage account create -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP -l $NAC_AZURE_LOCATION --sku Standard_LRS --public-network-access Enabled --dns-endpoint-type Standard --require-infrastructure-encryption false --allow-cross-tenant-replication true --allow-shared-key-access true`
     SAS_EXPIRY=$(date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ')
     ### Destination account-key: 
 	DESTINATION_ACCOUNT_KEY=`az storage account keys list --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
+    CONTAINER_NAME=`az storage container create -n $DESTINATION_CONTAINER_NAME --public-access off --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --account-key $DESTINATION_ACCOUNT_KEY`
 	DESTINATION_CONTAINER_TOCKEN=`az storage account generate-sas --expiry ${SAS_EXPIRY} --permissions wdl --resource-types co --services b --account-key ${DESTINATION_ACCOUNT_KEY} --account-name ${DESTINATION_STORAGE_ACCOUNT_NAME} --https-only`
 	DESTINATION_CONTAINER_TOCKEN=$(echo "$DESTINATION_CONTAINER_TOCKEN" | tr -d \")
 	DESTINATION_CONTAINER_SAS_URL="https://$DESTINATION_STORAGE_ACCOUNT_NAME.blob.core.windows.net/?$DESTINATION_CONTAINER_TOCKEN"
@@ -95,7 +94,6 @@ parse_file_NAC_txt() {
             "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
-            "azure_location") AZURE_LOCATION="$value" ;;
             "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
             "sp_application_id") SP_APPLICATION_ID="$value" ;;
@@ -347,7 +345,6 @@ run_cognitive_search_indexer(){
         ### Indexing is Successfully Done.
         ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
         #########################################################################
-        CURRENT_STATE="Indexing-Completed"
         LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
@@ -370,6 +367,7 @@ destination_blob_cleanup(){
     ACS_SERVICE_NAME="$1"
     ACS_API_KEY="$2"
     USE_PRIVATE_IP="$3"
+    EDGEAPPLIANCE_RESOURCE_GROUP="$4"
     ACS_INDEXER_NAME="indexer"
 
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
@@ -396,10 +394,10 @@ destination_blob_cleanup(){
             generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
             append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
             ### Post Indexing Cleanup from Destination Buckets
-            echo "INFO ::: Post Indexing Cleanup from Destination Blob Container: $DESTINATION_CONTAINER_NAME ::: STARTED"
-            COMMAND="az storage blob delete-batch --account-name $DESTINATION_STORAGE_ACCOUNT_NAME --source $DESTINATION_CONTAINER_NAME --connection-string $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --verbose"
+            echo "INFO ::: Deleting the storage account : $DESTINATION_STORAGE_ACCOUNT_NAME ::: STARTED"
+            COMMAND="az storage account delete -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP --yes"            
             $COMMAND
-            echo "INFO ::: Post Indexing Cleanup from Destination Blob Container : $DESTINATION_CONTAINER_NAME ::: COMPLETED"
+            echo "INFO ::: Deleting the storage account : $DESTINATION_STORAGE_ACCOUNT_NAME ::: COMPLETED"
             if [ "$USE_PRIVATE_IP" = "Y" ]; then
                 remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
@@ -679,6 +677,11 @@ BLOB_FILE_COUNT=0
 SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt"
+parse_config_file_for_user_secret_keys_values config.dat
+NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
+USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
+AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
+NAC_AZURE_LOCATION=$(echo $NAC_AZURE_LOCATION | tr -d ' ')
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
 root_login $CRED_VAULT
@@ -730,16 +733,10 @@ if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     exit 1
 fi
-get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP $AZURE_LOCATION
+get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP 
 update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
-parse_config_file_for_user_secret_keys_values config.dat
  
-NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
-USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
-AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
-NAC_AZURE_LOCATION=$(echo $NAC_AZURE_LOCATION | tr -d ' ')
-
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
     create_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $ACS_URL $ENDPOINT_NAME
     NAC_SUBNETS=()
@@ -912,7 +909,7 @@ run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
 ##################################### Blob Store Cleanup START ###############################################################
 
-destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP
+destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP
 
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
