@@ -395,7 +395,8 @@ destination_blob_cleanup(){
             append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
             ### Post Indexing Cleanup from Destination Buckets
             echo "INFO ::: Deleting the storage account : $DESTINATION_STORAGE_ACCOUNT_NAME ::: STARTED"
-            COMMAND="az storage account delete -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP --yes"            $COMMAND
+            COMMAND="az storage account delete -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP --yes"            
+            $COMMAND
             echo "INFO ::: Deleting the storage account : $DESTINATION_STORAGE_ACCOUNT_NAME ::: COMPLETED"
             if [ "$USE_PRIVATE_IP" = "Y" ]; then
                 remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
