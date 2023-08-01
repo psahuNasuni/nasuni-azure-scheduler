@@ -721,7 +721,7 @@ ACS_NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr '[:upper:]' '[:lower:]')
 ### To remove all characters from acs_nmc_volume_name that are not alphanumeric
 ACS_NMC_VOLUME_NAME=$(echo "$ACS_NMC_VOLUME_NAME" | tr -cd '[:alnum:]')
 
-get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP $NAC_AZURE_LOCATION
+get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP
 update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
  
