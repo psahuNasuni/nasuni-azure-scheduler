@@ -47,16 +47,23 @@ update_destination_container_url(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
 
 	# COMMAND SAMPLE="az appconfig kv set --endpoint https://nasuni-labs-acs-admin.azconfig.io --key test2 --value red2 --auth-mode login --yes"
-	for config_value in destination-container-name datasource-connection-string 
+	for config_value in destination-container-name datasource-connection-string web-access-appliance-address
 	do
 		option="${config_value}" 
 		case ${option} in 
 		"destination-container-name")
-			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --label destination-container-name --value $DESTINATION_CONTAINER_NAME --auth-mode login --yes"
+			KEY_LABEL="${ACS_NMC_VOLUME_NAME}-destination-container-name"
+            COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --label $KEY_LABEL --value $DESTINATION_CONTAINER_NAME --auth-mode login --yes"
 			$COMMAND
 			;; 
-		"datasource-connection-string") 
-			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key datasource-connection-string --label datasource-connection-string --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
+		"datasource-connection-string")
+			KEY_LABEL="${ACS_NMC_VOLUME_NAME}-datasource-connection-string"
+            COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key datasource-connection-string --label $KEY_LABEL --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
+			$COMMAND
+			;;
+		"web-access-appliance-address")
+            KEY_LABEL="${ACS_NMC_VOLUME_NAME}-web-access-appliance-address"
+			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key web-access-appliance-address --label $KEY_LABEL --value $WEB_ACCESS_APPLIANCE_ADDRESS --auth-mode login --yes"
 			$COMMAND
 			;; 
 		esac 
@@ -94,9 +101,7 @@ parse_file_NAC_txt() {
             "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
             "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
-            "nmc_volume_name") NMC_VOLUME_NAME="$value" ;;
             "azure_location") AZURE_LOCATION="$value" ;;
-            "web_access_appliance_address") WEB_ACCESS_APPLIANCE_ADDRESS="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
             "sp_application_id") SP_APPLICATION_ID="$value" ;;
             "sp_secret") SP_SECRET="$value" ;;
@@ -229,7 +234,7 @@ nmc_api_call(){
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
     #move share_data file to var/www
-    chmod 775 /var/www/SearchUI_Web/
+    sudo chmod 775 /var/www/SearchUI_Web/
     sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     sudo rm -rf nmc_api_*.txt
@@ -337,7 +342,7 @@ add_metadat_to_destination_blob(){
 run_cognitive_search_indexer(){
     ACS_SERVICE_NAME=$1
     ACS_API_KEY=$2
-    ACS_INDEXER_NAME="indexer"
+    ACS_INDEXER_NAME="${ACS_NMC_VOLUME_NAME}indexer"
     CURRENT_STATE="MetadataAssignment-Completed-Indexing-InProgress"
     LATEST_TOC_HANDLE_FROM_TRACKER_JSON=""
     INDEXER_RUN_STATUS=`curl -d -X POST "https://${ACS_SERVICE_NAME}.search.windows.net/indexers/${ACS_INDEXER_NAME}/run?api-version=2021-04-30-Preview" -H "Content-Type:application/json" -H "api-key:${ACS_API_KEY}"`
@@ -347,7 +352,6 @@ run_cognitive_search_indexer(){
         ### Indexing is Successfully Done.
         ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
         #########################################################################
-        CURRENT_STATE="Indexing-Completed"
         LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "INFO ::: Cognitive Search Indexer Run ::: SUCCESS"
@@ -370,7 +374,7 @@ destination_blob_cleanup(){
     ACS_SERVICE_NAME="$1"
     ACS_API_KEY="$2"
     USE_PRIVATE_IP="$3"
-    ACS_INDEXER_NAME="indexer"
+    ACS_INDEXER_NAME="${ACS_NMC_VOLUME_NAME}indexer"
 
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
     while :
@@ -589,7 +593,7 @@ get_subnets(){
     DIRECTORY=$(pwd)
     # echo "INFO ::: Directory: $DIRECTORY"
     FILENAME="$DIRECTORY/create_subnet_infra.py"
-    chmod 777 $FILENAME
+    sudo chmod 777 $FILENAME
     OUTPUT=$(python3 $FILENAME $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
     COUNTER=0
     NAC_SUBNETS=()
@@ -617,29 +621,6 @@ get_subnets(){
     NAC_SUBNETS+="]"	
     NAC_SUBNETS=$(echo "$NAC_SUBNETS" | sed 's/ //g')
     DISCOVERY_OUTBOUND_SUBNET=$(echo "$DISCOVERY_OUTBOUND_SUBNET" | sed 's/ //g')
-}
-
-import_configuration(){
-    ### Import Configurations details if exist
-    INDEX_ENDPOINT_KEY="index-endpoint"
-    INDEX_ENDPOINT_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $INDEX_ENDPOINT_KEY --label $INDEX_ENDPOINT_KEY --query value --output tsv 2> /dev/null`
-    if [ "$INDEX_ENDPOINT_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: index-endpoint already exist in the App Config. Importing the existing index-endpoint. "
-        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$INDEX_ENDPOINT_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$INDEX_ENDPOINT_KEY/Label/$INDEX_ENDPOINT_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $INDEX_ENDPOINT_KEY does not exist. It will provision a new $INDEX_ENDPOINT_KEY."
-    fi
-
-    WEB_ACCESS_APPLIANCE_ADDRESS_KEY="web-access-appliance-address"
-    WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --label $WEB_ACCESS_APPLIANCE_ADDRESS_KEY --query value --output tsv 2> /dev/null`
-    if [ "$WEB_ACCESS_APPLIANCE_ADDRESS_KEY_APP_CONFIG_STATUS" != "" ]; then
-        echo "INFO ::: web-access-appliance-address already exist in the App Config. Importing the existing web-access-appliance-address. "
-        COMMAND="terraform import -var-file=$NAC_TFVARS_FILE_NAME azurerm_app_configuration_key.$WEB_ACCESS_APPLIANCE_ADDRESS_KEY /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP/providers/Microsoft.AppConfiguration/configurationStores/$ACS_ADMIN_APP_CONFIG_NAME/AppConfigurationKey/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY/Label/$WEB_ACCESS_APPLIANCE_ADDRESS_KEY"
-        $COMMAND
-    else
-        echo "INFO ::: $WEB_ACCESS_APPLIANCE_ADDRESS_KEY does not exist. It will provision a new $WEB_ACCESS_APPLIANCE_ADDRESS_KEY."
-    fi
 }
 
 read_latest_toc_handle_from_tracker_json(){
@@ -730,6 +711,12 @@ if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     exit 1
 fi
+
+### To make Upper case value of nmc_volume_name to Lower case 
+ACS_NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr '[:upper:]' '[:lower:]')
+### To remove all characters from acs_nmc_volume_name that are not alphanumeric
+ACS_NMC_VOLUME_NAME=$(echo "$ACS_NMC_VOLUME_NAME" | tr -cd '[:alnum:]')
+
 get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP $AZURE_LOCATION
 update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
@@ -806,14 +793,14 @@ $COMMAND
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
 $COMMAND
-chmod 755 $(pwd)/*
+sudo chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 sudo rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
-echo "web_access_appliance_address="\"$WEB_ACCESS_APPLIANCE_ADDRESS\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_nmc_volume_name="\"$ACS_NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
@@ -834,10 +821,6 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     ### Create the Storage Account DNS Zone
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
-
-
-
-import_configuration
 
 echo "INFO ::: Scheduler Tracker json file path: $JSON_FILE_PATH"
 LATEST_TOC_HANDLE=""

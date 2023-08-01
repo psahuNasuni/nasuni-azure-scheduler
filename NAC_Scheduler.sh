@@ -545,7 +545,7 @@ provision_Azure_Cognitive_Search(){
 		COMMAND="terraform init"
 		$COMMAND
 
-		chmod 755 $(pwd)/*
+		sudo chmod 755 $(pwd)/*
 		### Dont Change the sequence of function calls
 		echo "ACS_RESOURCE_GROUP $ACS_RESOURCE_GROUP ACS_ADMIN_APP_CONFIG_NAME $ACS_ADMIN_APP_CONFIG_NAME"
 		check_if_resourcegroup_exist $ACS_RESOURCE_GROUP $AZURE_SUBSCRIPTION_ID
@@ -721,7 +721,7 @@ Schedule_CRON_JOB() {
 	check_if_pem_file_exists $PEM
 	ls
 	echo $PEM
-	chmod 400 $PEM
+	sudo chmod 400 $PEM
 	echo "INFO ::: Public IP Address:- $NAC_SCHEDULER_IP_ADDR"
 	echo "ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
 	### Create TFVARS File for PROVISION_NAC.SH which is Used by CRON JOB - to Provision NAC Stack
@@ -769,16 +769,14 @@ Schedule_CRON_JOB() {
 		echo "vnetName: "$USER_VNET_NAME >>$CONFIG_DAT_FILE_NAME
 	fi
 
-    chmod 777 $CONFIG_DAT_FILE_NAME
+    sudo chmod 777 $CONFIG_DAT_FILE_NAME
 
 	CRON_DIR_NAME="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
 	
 	NAC_TXT_FILE_NAME="NAC.txt"
 	sudo rm -rf "$NAC_TXT_FILE_NAME"
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
-    echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
-	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NAC_TXT_FILE_NAME
-	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NAC_TXT_FILE_NAME
+	echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	echo "user_secret="$KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
 	echo "sp_application_id="$SP_APPLICATION_ID >>$NAC_TXT_FILE_NAME
@@ -800,7 +798,7 @@ Schedule_CRON_JOB() {
 		echo "use_private_ip="N >>$NAC_TXT_FILE_NAME
 	fi
 	
-	chmod 777 $NAC_TXT_FILE_NAME
+	sudo chmod 777 $NAC_TXT_FILE_NAME
 
 	### Create File to transfer data related to NMC 
 	NMC_DETAILS_TXT="nmc_details.txt"
@@ -813,7 +811,7 @@ Schedule_CRON_JOB() {
 	echo "nmc_volume_name="$NMC_VOLUME_NAME >>$NMC_DETAILS_TXT
 	echo "web_access_appliance_address="$WEB_ACCESS_APPLIANCE_ADDRESS >>$NMC_DETAILS_TXT
 	echo "" >>$NMC_DETAILS_TXT
-	chmod 777 $NMC_DETAILS_TXT
+	sudo chmod 777 $NMC_DETAILS_TXT
 
 	
 	NMC_DETAILS_JSON="nmc_details.json"
@@ -826,7 +824,7 @@ Schedule_CRON_JOB() {
 	echo '"nmc_volume_name":"'$NMC_VOLUME_NAME'",' >>$NMC_DETAILS_JSON
 	echo '"web_access_appliance_address":"'$WEB_ACCESS_APPLIANCE_ADDRESS'"}' >>$NMC_DETAILS_JSON
 	echo "" >>$NMC_DETAILS_JSON
-	chmod 777 $NMC_DETAILS_JSON
+	sudo chmod 777 $NMC_DETAILS_JSON
 
 	JSON_FILE_PATH="/var/www/Tracker_UI/docs/"
 	### Create Directory for each Volume
@@ -1019,7 +1017,7 @@ if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
 	echo "INFO ::: NAC Scheduler Instance is Available. IP Address: $NAC_SCHEDULER_IP_ADDR"
 	### Copy the Pem Key from provided path to current folder
 	cp $PEM_KEY_PATH ./
-	chmod 400 $PEM
+	sudo chmod 400 $PEM
 	### Call this function to add Local public IP to Network Security Group (NSG rule) of NAC_SCHEDULER IP
 	ls
 	echo $PEM
@@ -1069,9 +1067,9 @@ else
 	pwd
 	TFVARS_NAC_SCHEDULER="NACScheduler.tfvars"
 	sudo rm -rf "$TFVARS_NAC_SCHEDULER" 
-	chmod 755 $PEM_KEY_PATH
+	sudo chmod 755 $PEM_KEY_PATH
 	cp $PEM_KEY_PATH ./
-	chmod 400 $PEM
+	sudo chmod 400 $PEM
 	echo "sp_application_id="\"$SP_APPLICATION_ID\" >>$TFVARS_NAC_SCHEDULER
 	echo "sp_secret="\"$SP_SECRET\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
