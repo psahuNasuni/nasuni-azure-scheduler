@@ -51,17 +51,17 @@ update_destination_container_url(){
 		option="${config_value}" 
 		case ${option} in 
 		"destination-container-name")
-			KEY_LABEL="${ACS_NMC_VOLUME_NAME}-destination-container-name"
+			KEY_LABEL="${NMC_VOLUME_NAME}-destination-container-name"
             COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key destination-container-name --label $KEY_LABEL --value $DESTINATION_CONTAINER_NAME --auth-mode login --yes"
 			$COMMAND
 			;; 
 		"datasource-connection-string")
-			KEY_LABEL="${ACS_NMC_VOLUME_NAME}-datasource-connection-string"
+			KEY_LABEL="${NMC_VOLUME_NAME}-datasource-connection-string"
             COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key datasource-connection-string --label $KEY_LABEL --value $DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING --auth-mode login --yes"
 			$COMMAND
 			;;
 		"web-access-appliance-address")
-            KEY_LABEL="${ACS_NMC_VOLUME_NAME}-web-access-appliance-address"
+            KEY_LABEL="${NMC_VOLUME_NAME}-web-access-appliance-address"
 			COMMAND="az appconfig kv set --endpoint https://$ACS_ADMIN_APP_CONFIG_NAME.azconfig.io --key web-access-appliance-address --label $KEY_LABEL --value $WEB_ACCESS_APPLIANCE_ADDRESS --auth-mode login --yes"
 			$COMMAND
 			;; 
@@ -660,6 +660,7 @@ SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt"
 parse_config_file_for_user_secret_keys_values config.dat
+parse_file_nmc_txt "nmc_details.txt"
 NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
 USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
 AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
@@ -798,7 +799,7 @@ NAC_TFVARS_FILE_NAME="NAC.tfvars"
 sudo rm -rf "$NAC_TFVARS_FILE_NAME"
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
-echo "acs_nmc_volume_name="\"$ACS_NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "acs_nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
