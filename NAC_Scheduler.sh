@@ -1071,7 +1071,6 @@ else
 	echo "sp_application_id="\"$SP_APPLICATION_ID\" >>$TFVARS_NAC_SCHEDULER
 	echo "sp_secret="\"$SP_SECRET\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
-	echo "edgeappliance_resource_group="\"$EDGEAPPLIANCE_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$NAC_SCHEDULER_NAME" != "" ]]; then
