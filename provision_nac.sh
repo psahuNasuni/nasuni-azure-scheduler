@@ -22,7 +22,25 @@ LOG_FILE=provision_nac_$DATE_WITH_TIME.log
 (
 START=$(date +%s)
 {
+disable_crontab(){
+        # Comment the matching cron jobs based on the script's directory name
+        USER_CRONTAB_DISABLE=$(echo "$USER_CRONTAB" | sed "/$SCRIPT_DIRECTORY_NAME/s/^/# /")
 
+        # Set the modified crontab for the user (commented)
+        echo "$USER_CRONTAB_DISABLE" | crontab -
+
+        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been commented"
+}
+    
+enable_crontab(){
+        # Uncomment the matching cron jobs based on the script's directory name
+        USER_CRONTAB_ENABLE=$(echo "$USER_CRONTAB" | sed "/$SCRIPT_DIRECTORY_NAME/s/^# //")
+
+        # Set the modified crontab for the user (uncommented)
+        echo "$USER_CRONTAB_ENABLE" | crontab -
+
+        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been uncommented"
+}
 get_destination_container_url(){
 	
 	EDGEAPPLIANCE_RESOURCE_GROUP=$1
@@ -73,7 +91,9 @@ update_destination_container_url(){
 		echo "INFO ::: appconfig update SUCCESS"
 	else
 		echo "INFO ::: appconfig update FAILED"
-		exit 1
+        echo "Enabling the crontab as the code execution FAILS"
+        enable_crontab
+        exit 1
 	fi
 }
 
@@ -192,6 +212,8 @@ validate_github() {
     REPO_EXISTS=$?
     if [ $REPO_EXISTS -ne 0 ]; then
             echo "ERROR ::: Unable to Access the git repo $GIT_REPO. Execution STOPPED"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
             exit 1
     else
             echo "INFO ::: git repo accessible. Continue . . . Provisioning . . . "
@@ -324,6 +346,8 @@ add_metadat_to_destination_blob(){
         LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "ERROR ::: Metadata Assignment Failed in destination container."
+        echo "Enabling the crontab as the code execution FAILS"
+        enable_crontab
         exit 1
     else
         #########################################################################
@@ -364,6 +388,8 @@ run_cognitive_search_indexer(){
         LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "ERROR ::: Cognitive Search Indexer Run ::: FAILED"
+        echo "Enabling the crontab as the code execution FAILS"
+        enable_crontab
         exit 1
     fi
 }
@@ -407,6 +433,8 @@ destination_blob_cleanup(){
                 remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
             echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
             exit 1
         fi
     done
@@ -440,10 +468,14 @@ create_shared_private_access(){
             echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
         else
             echo "ERROR ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
             exit 1
         fi
     else
         echo "ERROR ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
+        echo "Enabling the crontab as the code execution FAILS"
+        enable_crontab
         exit 1
     fi
 }
@@ -490,6 +522,8 @@ create_azure_function_private_dns_zone_virtual_network_link(){
 			echo "INFO ::: COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
 			exit 1
 		fi
 	fi
@@ -522,6 +556,8 @@ create_storage_account_private_dns_zone_virtual_network_link(){
 			echo "INFO ::: COMPLETED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
 			exit 1
 		fi
 	fi		
@@ -550,6 +586,8 @@ create_azure_function_private_dns_zone(){
 			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
 			exit 1
 		fi
 	fi
@@ -578,6 +616,8 @@ create_storage_account_private_dns_zone(){
 			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
+            echo "Enabling the crontab as the code execution FAILS"
+            enable_crontab
 			exit 1
 		fi
 	fi
@@ -638,10 +678,15 @@ read_latest_toc_handle_from_tracker_json(){
 ###################################################################################
 ############################# START - EXECUTION ###################################
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="nac_v1.0.7.dev6"
+GIT_BRANCH_NAME="CTPROJECT-669"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
+SCRIPT_DIRECTORY="$(cd "$(dirname "$0")" ; pwd -P)"
+SCRIPT_DIRECTORY_NAME="${SCRIPT_DIRECTORY##*/}"
+USER_CRONTAB=$(crontab -l)
+echo "Disabling the crontab as the execution started"
+disable_crontab
 CURRENT_STATE="Provision-NAC-Started"
 NMC_API_ENDPOINT=""
 NMC_API_USERNAME=""
@@ -714,6 +759,8 @@ echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
 
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
+    echo "Enabling the crontab as the code execution fails"
+    enable_crontab
     exit 1
 fi
 
@@ -737,6 +784,8 @@ fi
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
+   echo "Enabling the crontab as the code execution FAILS"
+   enable_crontab
    exit 1
 fi
 ##################################### START NAC Provisioning ###################################################
@@ -769,6 +818,9 @@ if [ $RESULT -eq 0 ]; then
 else
     echo "ERROR ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
     echo "ERROR ::: Unable to Proceed with NAC Provisioning."
+    echo "Enabling the crontab as the code execution FAILS"
+    enable_crontab
+    echo "Calling uncommented Function when execution FAILS:::: COMPLETED"
     exit 1
 fi
 # move config. dat to nasuni-azure-analyticsconnector
@@ -878,7 +930,9 @@ else
     LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
    	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
 	echo "INFO ::: NAC_Activity : Export Failed."
-	exit 1
+    echo "Enabling the crontab as the code execution FAILS"
+    enable_crontab
+    exit 1
 fi
 
 ##################################### END NAC Provisioning and Data Export ###################################################################
@@ -895,7 +949,8 @@ run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 ##################################### Blob Store Cleanup START ###############################################################
 
 destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP
-
+echo "Enabling the crontab as the code executed SUCCESSFULLY"
+enable_crontab
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
 
