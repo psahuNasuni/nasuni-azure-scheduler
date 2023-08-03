@@ -995,15 +995,15 @@ if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 	### User has provided the NACScheduler Name as Key-Value from 4th Argument
 	if [[ "$USE_PRIVATE_IP" != "Y" ]]; then
 		### Getting Public_IP of NAC Scheduler
-		NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $EDGEAPPLIANCE_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
+		NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NETWORKING_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 		echo "INFO ::: Public_IP of NAC Scheduler is: $NAC_SCHEDULER_IP_ADDR"
 	else
 		### Getting Private_IP of NAC Scheduler
 		echo "INFO ::: Private_IP of NAC Scheduler is: $NAC_SCHEDULER_IP_ADDR"
-		NAC_SCHEDULER_IP_ADDR=`az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $EDGEAPPLIANCE_RESOURCE_GROUP --query "[0].virtualMachine.network.privateIpAddresses[0]" | cut -d":" -f 2 | tr -d '"' | tr -d ' '`
+		NAC_SCHEDULER_IP_ADDR=`az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NETWORKING_RESOURCE_GROUP --query "[0].virtualMachine.network.privateIpAddresses[0]" | cut -d":" -f 2 | tr -d '"' | tr -d ' '`
 	fi
 else
-	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $EDGEAPPLIANCE_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
+	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $NETWORKING_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
 fi
 echo $PEM_KEY_PATH
 AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
@@ -1071,7 +1071,6 @@ else
 	echo "sp_application_id="\"$SP_APPLICATION_ID\" >>$TFVARS_NAC_SCHEDULER
 	echo "sp_secret="\"$SP_SECRET\" >>$TFVARS_NAC_SCHEDULER
 	echo "subscription_id="\"$AZURE_SUBSCRIPTION_ID\" >>$TFVARS_NAC_SCHEDULER
-	echo "edgeappliance_resource_group="\"$EDGEAPPLIANCE_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
 	echo "region="\"$AZURE_LOCATION\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$NAC_SCHEDULER_NAME" != "" ]]; then
