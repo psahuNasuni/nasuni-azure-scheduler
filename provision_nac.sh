@@ -434,6 +434,7 @@ destination_blob_cleanup(){
             fi
             echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
         fi
+        break
     done
 }
 
