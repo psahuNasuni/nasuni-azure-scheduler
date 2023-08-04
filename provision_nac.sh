@@ -29,7 +29,7 @@ disable_crontab(){
         # Set the modified crontab for the user (commented)
         echo "$USER_CRONTAB_DISABLE" | crontab -
 
-        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been commented"
+        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been DISABLED"
 }
     
 enable_crontab(){
@@ -39,7 +39,7 @@ enable_crontab(){
         # Set the modified crontab for the user (uncommented)
         echo "$USER_CRONTAB_ENABLE" | crontab -
 
-        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been uncommented"
+        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been ENABLED"
 }
 get_destination_container_url(){
 	
@@ -817,7 +817,6 @@ else
     echo "ERROR ::: Unable to Proceed with NAC Provisioning."
     echo "Enabling the crontab as the code execution FAILS"
     enable_crontab
-    echo "Calling uncommented Function when execution FAILS:::: COMPLETED"
     exit 1
 fi
 # move config. dat to nasuni-azure-analyticsconnector
