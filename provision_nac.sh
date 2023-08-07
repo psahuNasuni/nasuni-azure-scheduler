@@ -232,7 +232,7 @@ nmc_api_call(){
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
     #move share_data file to var/www
-    sudo chmod 775 /var/www/SearchUI_Web/
+    sudo sudo chmod 775 /var/www/SearchUI_Web/
     sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     sudo rm -rf nmc_api_*.txt
@@ -743,9 +743,9 @@ fi
 CONFIG_DAT_FILE_NAME="config.dat"
 CONFIG_DAT_FILE_PATH="/usr/local/bin"
 sudo chmod 777 $CONFIG_DAT_FILE_PATH
-CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$CONFIG_DAT_FILE_NAME
+CONFIG_DAT_FILE=$CONFIG_DAT_FILE_PATH/$NMC_VOLUME_NAME.dat
 sudo rm -rf "$CONFIG_DAT_FILE"
-cp $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH
+cp $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH/$NMC_VOLUME_NAME.dat
 
 echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
@@ -772,7 +772,7 @@ else
     exit 1
 fi
 # move config. dat to nasuni-azure-analyticsconnector
-cp $CONFIG_DAT_FILE_NAME $GIT_REPO_NAME
+cp $CONFIG_DAT_FILE_NAME $GIT_REPO_NAME/$NMC_VOLUME_NAME.dat
 ########################### Completed - Git Clone  ###############################################################
 cd "${GIT_REPO_NAME}"
 NAC_MANAGER_EXIST='N'
