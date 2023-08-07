@@ -676,7 +676,7 @@ read_latest_toc_handle_from_tracker_json(){
 ###################################################################################
 ############################# START - EXECUTION ###################################
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
-GIT_BRANCH_NAME="CTPROJECT-669"
+GIT_BRANCH_NAME="nac_v1.0.7.dev6"
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
