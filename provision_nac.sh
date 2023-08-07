@@ -232,7 +232,7 @@ nmc_api_call(){
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
     #move share_data file to var/www
-    sudo sudo chmod 775 /var/www/SearchUI_Web/
+    sudo chmod 775 /var/www/SearchUI_Web/
     sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     sudo rm -rf nmc_api_*.txt
