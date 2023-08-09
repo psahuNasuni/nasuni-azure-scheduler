@@ -23,23 +23,47 @@ LOG_FILE=provision_nac_$DATE_WITH_TIME.log
 START=$(date +%s)
 {
 disable_crontab(){
-        # Comment the matching cron jobs based on the script's directory name
-        USER_CRONTAB_DISABLE=$(echo "$USER_CRONTAB" | sed "/$SCRIPT_DIRECTORY_NAME/s/^/# /")
+        local retry_count=0
+        MAX_RETRIES=5
 
-        # Set the modified crontab for the user (commented)
-        echo "$USER_CRONTAB_DISABLE" | crontab -
+        echo "$script_directory_name"
+        while [ $retry_count -lt $MAX_RETRIES ]; do
+            
+            if [[ $(crontab -l | grep -c "^#.*$script_directory_name") -eq 0 ]]; then
+                user_crontab_commented=$(crontab -l| sed "/$script_directory_name/s/^/# /")
 
-        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been DISABLED"
+            echo "$user_crontab_commented" | crontab -
+            crontab -l
+            break
+
+            else
+                echo "Already commented"
+                break
+            fi
+
+            retry_count=$((retry_count + 1))
+            sleep 10
+        done 
 }
     
 enable_crontab(){
-        # Uncomment the matching cron jobs based on the script's directory name
-        USER_CRONTAB_ENABLE=$(echo "$USER_CRONTAB" | sed "/$SCRIPT_DIRECTORY_NAME/s/^# //")
+    local retry_count=0
+    MAX_RETRIES=5
 
-        # Set the modified crontab for the user (uncommented)
-        echo "$USER_CRONTAB_ENABLE" | crontab -
-
-        echo "The cron jobs related to $SCRIPT_DIRECTORY_NAME have been ENABLED"
+    while [ $retry_count -lt $MAX_RETRIES ]; do
+    if [[ $(crontab -l | grep -c "^#.*$script_directory_name") -eq 1 ]]; then 
+        user_crontab_uncommented=$(crontab -l | sed -E "s/^#(.*$script_directory_name.*)/\1/")
+        
+        echo "$user_crontab_uncommented" | crontab -
+        crontab -l
+        break
+    else
+        echo "Already uncommented"
+        break
+    fi
+    retry_count=$((retry_count + 1))
+    sleep 10
+    done
 }
 get_destination_container_url(){
 	
@@ -681,7 +705,7 @@ if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
 SCRIPT_DIRECTORY="$(cd "$(dirname "$0")" ; pwd -P)"
-SCRIPT_DIRECTORY_NAME="${SCRIPT_DIRECTORY##*/}"
+script_directory_name="${SCRIPT_DIRECTORY##*/}"
 USER_CRONTAB=$(crontab -l)
 echo "Disabling the crontab as the execution started"
 disable_crontab
