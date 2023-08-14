@@ -37,8 +37,8 @@ disable_crontab(){
             break
 
             else
-                echo "Already commented"
-                break
+                echo "Already commented.Another execution is in progress"
+                exit 1
             fi
 
             retry_count=$((retry_count + 1))
