@@ -68,7 +68,7 @@ enable_crontab(){
 get_destination_container_url(){
 	
 	EDGEAPPLIANCE_RESOURCE_GROUP=$1
-    RND=$(( $RANDOM % 10000 ))
+    #RND=$(( $RANDOM % 10000 ))
     DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
     DESTINATION_CONTAINER_NAME="destcontainer"
     #### Destination Storage account and container creation####
@@ -250,7 +250,10 @@ append_nmc_details_to_config_dat(){
     SOURCE_CONTAINER_SAS_URL=$3
     PREV_UNIFS_TOC_HANDLE=$4
 	CONFIG_DAT_FILE_NAME="config.dat"
+    NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     ### Be careful while modifieng the values
+    sed -i "s|\<Name\>:.*||g" config.dat
+    echo "Name: "$NAC_RESOURCE_GROUP_NAME >> config.dat
     sed -i "s|\<UniFSTOCHandle\>:.*||g" config.dat
     echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >> config.dat
     sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
@@ -790,7 +793,7 @@ fi
 ACS_NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr '[:upper:]' '[:lower:]')
 ### To remove all characters from acs_nmc_volume_name that are not alphanumeric
 ACS_NMC_VOLUME_NAME=$(echo "$ACS_NMC_VOLUME_NAME" | tr -cd '[:alnum:]')
-
+RND=$(( $RANDOM % 1000000 ))
 get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP
 update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
@@ -951,6 +954,15 @@ else
     LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
    	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
 	echo "INFO ::: NAC_Activity : Export Failed."
+    echo "INFO ::: Deleting the nac_resource_group : ${NAC_RESOURCE_GROUP_NAME}"
+	COMMAND="az group delete --name $NAC_RESOURCE_GROUP_NAME --yes --no-wait"
+	$COMMAND
+	RESULT=$?
+	if [ $RESULT -eq 0 ]; then
+        	echo "INFO ::: Deleted the nac_resource_group : ${NAC_RESOURCE_GROUP_NAME}"
+    	else
+        	echo "ERROR ::: nac_resource_group : ${NAC_RESOURCE_GROUP_NAME} not found"
+    	fi
     echo "Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1

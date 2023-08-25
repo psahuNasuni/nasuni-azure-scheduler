@@ -738,7 +738,7 @@ Schedule_CRON_JOB() {
 	DESTINATION_CONTAINER_NAME=""
 	DESTINATION_CONTAINER_SAS_URL=""
     ### Generating NAC Resource group name dynamically
-    NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
+    NAC_RESOURCE_GROUP_NAME=""
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >>$CONFIG_DAT_FILE_NAME
 	### AzureSubscriptionID >>>>> Read from user_secret Key Vault
     echo "AzureSubscriptionID: "$AZURE_SUBSCRIPTION_ID >>$CONFIG_DAT_FILE_NAME
