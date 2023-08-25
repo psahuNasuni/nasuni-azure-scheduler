@@ -68,7 +68,6 @@ enable_crontab(){
 get_destination_container_url(){
 	
 	EDGEAPPLIANCE_RESOURCE_GROUP=$1
-    #RND=$(( $RANDOM % 10000 ))
     DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
     DESTINATION_CONTAINER_NAME="destcontainer"
     #### Destination Storage account and container creation####
