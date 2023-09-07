@@ -251,21 +251,21 @@ append_nmc_details_to_config_dat(){
 	CONFIG_DAT_FILE_NAME="config.dat"
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
     ### Be careful while modifieng the values
-    sed -i "s|\<Name\>:.*||g" config.dat
-    echo "Name: "$NAC_RESOURCE_GROUP_NAME >> config.dat
-    sed -i "s|\<UniFSTOCHandle\>:.*||g" config.dat
-    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >> config.dat
-    sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" config.dat
-    sed -i "s|SourceContainerSASURL.*||g" config.dat
-    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> config.dat
-    sed -i "s/DestinationContainer:.*/DestinationContainer: $DESTINATION_CONTAINER_NAME/g" config.dat
-    sed -i "s|DestinationContainerSASURL.*||g" config.dat
-    echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >> config.dat
-    sed -i "s|VolumeKeySASURL.*||g" config.dat
-    echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL >> config.dat
-    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" config.dat
-    echo "PrevUniFSTOCHandle: "$PREV_UNIFS_TOC_HANDLE >> config.dat
-    sed -i '/^$/d' config.dat
+    sed -i "s|\<Name\>:.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    echo "Name: "$NAC_RESOURCE_GROUP_NAME >> "$CONFIG_DAT_FILE_NAME"
+    sed -i "s|\<UniFSTOCHandle\>:.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    echo "UniFSTOCHandle: "$UNIFS_TOC_HANDLE >> "$CONFIG_DAT_FILE_NAME"
+    sed -i "s/SourceContainer:.*/SourceContainer: $SOURCE_CONTAINER/g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    sed -i "s|SourceContainerSASURL.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    echo "SourceContainerSASURL: "$SOURCE_CONTAINER_SAS_URL >> "$CONFIG_DAT_FILE_NAME"
+    sed -i "s/DestinationContainer:.*/DestinationContainer: $DESTINATION_CONTAINER_NAME/g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    sed -i "s|DestinationContainerSASURL.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    echo "DestinationContainerSASURL: "$DESTINATION_CONTAINER_SAS_URL >> "$CONFIG_DAT_FILE_NAME"
+    sed -i "s|VolumeKeySASURL.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    echo "VolumeKeySASURL: "$VOLUME_KEY_BLOB_SAS_URL >> "$CONFIG_DAT_FILE_NAME"
+    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
+    echo "PrevUniFSTOCHandle: "$PREV_UNIFS_TOC_HANDLE >> "$CONFIG_DAT_FILE_NAME"
+    sed -i '/^$/d' "$CONFIG_DAT_FILE_NAME" 2> /dev/null
 }
 
 nmc_api_call(){
