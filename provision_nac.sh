@@ -65,6 +65,18 @@ enable_crontab(){
     sleep 10
     done
 }
+
+delete_destination_storage_account() {
+        # Check if the destination storage account exists
+        if az storage account show -n "$DESTINATION_STORAGE_ACCOUNT_NAME" -g "$EDGEAPPLIANCE_RESOURCE_GROUP" &>/dev/null; then
+                # Delete the destination storage account
+                az storage account delete -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP --yes
+                echo "INFO ::: Destination storage account '$DESTINATION_STORAGE_ACCOUNT_NAME' has been deleted."
+        else
+                echo "INFO ::: Destination storage account '$DESTINATION_STORAGE_ACCOUNT_NAME' does not exist in the '$EDGEAPPLIANCE_RESOURCE_GROUP'."
+        fi
+}
+
 get_destination_container_url(){
 	
 	EDGEAPPLIANCE_RESOURCE_GROUP=$1
@@ -114,6 +126,8 @@ update_destination_container_url(){
 		echo "INFO ::: appconfig update SUCCESS"
 	else
 		echo "INFO ::: appconfig update FAILED"
+        echo "INFO ::: Deleting the destination storage account"
+        delete_destination_storage_account
         echo "Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
@@ -372,6 +386,8 @@ add_metadat_to_destination_blob(){
         LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "ERROR ::: Metadata Assignment Failed in destination container."
+        echo "INFO ::: Deleting the destination storage account"
+        delete_destination_storage_account
         echo "Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
@@ -414,6 +430,8 @@ run_cognitive_search_indexer(){
         LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "ERROR ::: Cognitive Search Indexer Run ::: FAILED"
+        echo "INFO ::: Deleting the destination storage account"
+        delete_destination_storage_account
         echo "Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
@@ -451,10 +469,8 @@ destination_blob_cleanup(){
             generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
             append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
             ### Post Indexing Cleanup from Destination Buckets
-            echo "INFO ::: Deleting the storage account : $DESTINATION_STORAGE_ACCOUNT_NAME ::: STARTED"
-            COMMAND="az storage account delete -n $DESTINATION_STORAGE_ACCOUNT_NAME -g $EDGEAPPLIANCE_RESOURCE_GROUP --yes"            
-            $COMMAND
-            echo "INFO ::: Deleting the storage account : $DESTINATION_STORAGE_ACCOUNT_NAME ::: COMPLETED"
+            echo "INFO ::: Deleting the destination storage account"
+            delete_destination_storage_account
             if [ "$USE_PRIVATE_IP" = "Y" ]; then
                 remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
@@ -842,6 +858,8 @@ if [ $RESULT -eq 0 ]; then
 else
     echo "ERROR ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
     echo "ERROR ::: Unable to Proceed with NAC Provisioning."
+    echo "INFO ::: Deleting the destination storage account"
+    delete_destination_storage_account
     echo "Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
@@ -963,6 +981,8 @@ else
     	else
         	echo "ERROR ::: nac_resource_group : ${NAC_RESOURCE_GROUP_NAME} not found"
     	fi
+    echo "INFO ::: Deleting the destination storage account"
+    delete_destination_storage_account
     echo "Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
