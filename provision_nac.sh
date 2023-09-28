@@ -541,7 +541,7 @@ create_azure_function_private_dns_zone_virtual_network_link(){
 		VIRTUAL_NETWORK_ID=`az network vnet show -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $AZURE_FUNCTION_VNET_NAME --query id --output tsv 2> /dev/null`
 		
 		echo "INFO ::: START $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
-        creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ"
+        creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ")
 		FUNCTION_APP_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $AZURE_FUNCTION_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False | jq -r '.provisioningState' --tags  "Application=Nasuni Analytics Connector with Azure Cognitive Search" "Developer=Nasuni" "PublicationType="Nasuni Labs" "CreationDate=$creationDate" "Version=0.2"`
 		if [ "$FUNCTION_APP_DNS_PRIVATE_LINK" == "Succeeded" ]; then
 			echo "INFO ::: COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
@@ -574,7 +574,7 @@ create_storage_account_private_dns_zone_virtual_network_link(){
 		VIRTUAL_NETWORK_ID=`az network vnet show -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $STORAGE_ACCOUNT_VNET_NAME --query id --output tsv 2> /dev/null`
 		
 		echo "INFO ::: STARTED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation ::: $LINK_NAME"
-		creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ"
+		creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ")
 		STORAGE_ACCOUNT_DNS_PRIVATE_LINK=`az network private-dns link vnet create -g $STORAGE_ACCOUNT_PRIVATE_DNS_ZONE_VIRTUAL_NETWORK_LINK_RESOURCE_GROUP -n $LINK_NAME -z $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME -v $VIRTUAL_NETWORK_ID -e False  | jq -r '.provisioningState' --tags  "Application=Nasuni Analytics Connector with Azure Cognitive Search" "Developer=Nasuni" "PublicationType="Nasuni Labs" "CreationDate=$creationDate" "Version=0.2"`
 
 		if [ "$STORAGE_ACCOUNT_DNS_PRIVATE_LINK" == "Succeeded" ]; then
@@ -634,8 +634,8 @@ create_storage_account_private_dns_zone(){
 		echo "INFO ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone does not exist. It will create a new $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME."
 		
 		echo "INFO ::: STARTED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation"
-		creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ"
-		STORAGE_ACCOUNT_APP_DNS_ZONE=`az network private-dns zone create -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState' --tags  "Application=Nasuni Analytics Connector with Azure Cognitive Search" "Developer=Nasuni" "PublicationType="Nasuni Labs" "CreationDate=$creationDate" "Version=0.2"`
+		creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ")
+		STORAGE_ACCOUNT_APP_DNS_ZONE=`az network private-dns zone creationDate -g $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP -n $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME | jq -r '.provisioningState' --tags  "Application=Nasuni Analytics Connector with Azure Cognitive Search" "Developer=Nasuni" "PublicationType="Nasuni Labs" "CreationDate=$creationDate" "Version=0.2"`
 		if [ "$STORAGE_ACCOUNT_APP_DNS_ZONE" == "Succeeded" ]; then
 			echo "INFO ::: COMPLETED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone successfully created"
 			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
