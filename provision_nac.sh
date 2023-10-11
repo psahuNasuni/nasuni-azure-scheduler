@@ -462,22 +462,29 @@ destination_blob_cleanup(){
         TOTAL_INDEX_FILE_COUNT=$(("$FILE_PROCESSED_COUNT"+"$FILE_FAILED_COUNT"))
         echo "INFO ::: TOTAL_INDEX_FILE_COUNT : $TOTAL_INDEX_FILE_COUNT"
 
-        if [[ $BLOB_FILE_COUNT -eq $TOTAL_INDEX_FILE_COUNT ]];then
-            echo "All files are indexed, Start cleanup"
-            echo "NAC_Activity : Indexing Completed"
-            MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
-            CURRENT_STATE="Indexing-Completed"
-            LATEST_TOC_HANDLE_PROCESSED="$UNIFS_TOC_HANDLE"
-            generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-            append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
-            ### Post Indexing Cleanup from Destination Buckets
-            echo "INFO ::: Deleting the destination storage account"
-            delete_destination_storage_account
-            if [ "$USE_PRIVATE_IP" = "Y" ]; then
-                remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
+        INDEXER_LAST_RUN_STATUS=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.status)
+        echo "INFO ::: TOTAL_INDEX_FILE_COUNT : $INDEXER_LAST_RUN_STATUS"
+
+        INDEXER_END_TIME=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.endTime)
+
+        if [[ "$INDEXER_LAST_RUN_STATUS" != "inProgress" ]];then
+            if [ -n "$INDEXER_END_TIME" ]; then
+                echo "Indexer run finished, Start cleanup"
+                echo "NAC_Activity : Indexing Completed"
+                MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
+                CURRENT_STATE="Indexing-Completed"
+                LATEST_TOC_HANDLE_PROCESSED="$UNIFS_TOC_HANDLE"
+                generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+                append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
+                ### Post Indexing Cleanup from Destination Buckets
+                echo "INFO ::: Deleting the destination storage account"
+                delete_destination_storage_account
+                if [ "$USE_PRIVATE_IP" = "Y" ]; then
+                    remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
+                fi
+                echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
+            break
             fi
-            echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
-        break
         fi      
     done
 }
