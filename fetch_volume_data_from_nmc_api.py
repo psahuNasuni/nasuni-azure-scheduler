@@ -7,6 +7,24 @@ import requests
 import re
 from datetime import *
 
+def create_share_data_json(data_json, volume_name):
+    share_data_path = "/var/www/SearchUI_Web/share_data.json"
+
+    if os.path.exists(share_data_path):
+        with open(share_data_path, 'r') as share_data_file:
+            share_data = json.load(share_data_file)
+        
+        if volume_name in share_data:
+            share_data[volume_name] = data_json
+        else:
+            share_data[volume_name] = data_json
+    else:
+        share_data = {volume_name: data_json}
+    
+    with open(share_data_path, 'w') as share_data_file:
+        json.dump(share_data, share_data_file, indent=4)
+
+
 if len(sys.argv) < 6:
     print(
         'Usage -- python3 fetch_volume_data_from_nmc_api.py <ip_address> <username> <password> <volume_name> <web_access_appliance_address>')
@@ -60,7 +78,7 @@ try:
     stdout, stderr = process.communicate()
     json_data = json.loads(stdout.decode('utf-8'))
     #logging.info(json_data)    
-    # My Accelerate Test
+
     share_url = open('nmc_api_data_external_share_url'+ '.txt', 'w')
     share_url.write(web_access_appliance_address)
 
@@ -95,27 +113,17 @@ try:
 
 
     if len(name_list)==0 or len(path_list) == 0:
-        #logging.info('dict is empty'.format(share_data))
-       
         data={"shares":[{"test-key-for-sharedata":"test-value-for-sharedata"}]}
         
-        data_json=json.dumps(data, indent=1)
+        create_share_data_json(data, volume_name)
 
-        share_data = open('share_data' + '.json', 'w')
-        share_data.write(data_json)
-        share_data.close()
     else:
-        #logging.info('dict has data'.format(share_data))
         data={"shares":[]}
 
         for name,value in zip(name_list,path_list):
             data["shares"].append({name:value})
-        
-        data_json=json.dumps(data, indent=1)
 
-        share_data = open('share_data'  + '.json', 'w')
-        share_data.write(data_json)
-        share_data.close()
+        create_share_data_json(data, volume_name)
 
 except Exception as e:
     print('Runtime Errors', e)
