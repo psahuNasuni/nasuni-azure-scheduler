@@ -290,14 +290,12 @@ nmc_api_call(){
     ### NMC API CALL  ####
     #RND=$(( $RANDOM % 1000000 ))
     #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-    python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $WEB_ACCESS_APPLIANCE_ADDRESS
+    sudo chmod -R 775 /var/www/SearchUI_Web/
+    sudo python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $WEB_ACCESS_APPLIANCE_ADDRESS
     ### FILTER Values From NMC API Call
     SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-    #move share_data file to var/www
-    sudo chmod 775 /var/www/SearchUI_Web/
-    sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     sudo rm -rf nmc_api_*.txt
     SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
