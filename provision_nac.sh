@@ -290,14 +290,12 @@ nmc_api_call(){
     ### NMC API CALL  ####
     #RND=$(( $RANDOM % 1000000 ))
     #'Usage -- python3 fetch_nmc_api_23-8.py <ip_address> <username> <password> <volume_name> <rid> <web_access_appliance_address>')
-    python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $WEB_ACCESS_APPLIANCE_ADDRESS
+    sudo chmod -R 775 /var/www/SearchUI_Web/
+    sudo python3 fetch_volume_data_from_nmc_api.py $NMC_API_ENDPOINT $NMC_API_USERNAME $NMC_API_PASSWORD $NMC_VOLUME_NAME $WEB_ACCESS_APPLIANCE_ADDRESS
     ### FILTER Values From NMC API Call
     SOURCE_STORAGE_ACCOUNT_NAME=$(cat nmc_api_data_source_storage_account_name.txt)
     UNIFS_TOC_HANDLE=$(cat nmc_api_data_root_handle.txt)
     SOURCE_CONTAINER=$(cat nmc_api_data_source_container.txt)
-    #move share_data file to var/www
-    sudo chmod 775 /var/www/SearchUI_Web/
-    sudo mv share_data.json /var/www/SearchUI_Web
     SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
     sudo rm -rf nmc_api_*.txt
     SOURCE_STORAGE_ACCOUNT_KEY=`az storage account keys list --account-name ${SOURCE_STORAGE_ACCOUNT_NAME} | jq -r '.[0].value'`
@@ -445,6 +443,7 @@ destination_blob_cleanup(){
     ACS_API_KEY="$2"
     USE_PRIVATE_IP="$3"
     EDGEAPPLIANCE_RESOURCE_GROUP="$4"
+    LAST_TOC_HANDLE_PROCESSED="$5"
     ACS_INDEXER_NAME="${ACS_NMC_VOLUME_NAME}indexer"
 
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
@@ -463,28 +462,35 @@ destination_blob_cleanup(){
         echo "INFO ::: TOTAL_INDEX_FILE_COUNT : $TOTAL_INDEX_FILE_COUNT"
 
         INDEXER_LAST_RUN_STATUS=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.status)
-        echo "INFO ::: TOTAL_INDEX_FILE_COUNT : $INDEXER_LAST_RUN_STATUS"
+        echo "INFO ::: INDEXER_LAST_RUN_STATUS : $INDEXER_LAST_RUN_STATUS"
 
         INDEXER_END_TIME=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.endTime)
+        echo "INFO ::: INDEXER_END_TIME : $INDEXER_END_TIME"
 
-        if [[ "$INDEXER_LAST_RUN_STATUS" != "inProgress" ]];then
-            if [ -n "$INDEXER_END_TIME" ]; then
-                echo "Indexer run finished, Start cleanup"
-                echo "NAC_Activity : Indexing Completed"
-                MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
-                CURRENT_STATE="Indexing-Completed"
-                LATEST_TOC_HANDLE_PROCESSED="$UNIFS_TOC_HANDLE"
-                generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-                append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
-                ### Post Indexing Cleanup from Destination Buckets
-                echo "INFO ::: Deleting the destination storage account"
-                delete_destination_storage_account
-                if [ "$USE_PRIVATE_IP" = "Y" ]; then
-                    remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
-                fi
-                echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
-            break
+        if [ "$INDEXER_LAST_RUN_STATUS" == "success" ] && [ -n "$INDEXER_END_TIME" ]; then
+            echo "Indexer run finished, Start cleanup"
+            echo "NAC_Activity : Indexing Completed"
+            MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
+            CURRENT_STATE="Indexing-Completed"
+            LATEST_TOC_HANDLE_PROCESSED="$UNIFS_TOC_HANDLE"
+            generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+            append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
+            ### Post Indexing Cleanup from Destination Buckets
+            echo "INFO ::: Deleting the destination storage account"
+            delete_destination_storage_account
+            if [ "$USE_PRIVATE_IP" = "Y" ]; then
+                remove_shared_private_access $EDGEAPPLIANCE_RESOURCE_GROUP $PRIVATE_CONNECTION_NAME $ENDPOINT_NAME $ACS_URL
             fi
+            echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
+            break 
+        else
+            echo "ERROR ::: Failed to index due to INDEXER_LAST_RUN_STATUS is $INDEXER_LAST_RUN_STATUS "
+            CURRENT_STATE="Indexing-$INDEXER_LAST_RUN_STATUS"
+            LATEST_TOC_HANDLE_PROCESSED=$LAST_TOC_HANDLE_PROCESSED
+            generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+            echo "INFO ::: Re-run the Cognitive-search-Indexer"
+            run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
+            exit 1   
         fi      
     done
 }
@@ -804,7 +810,7 @@ echo "INFO ::: current user :-"`whoami`
 nmc_api_call "nmc_details.txt"
 echo "INFO ::: Snapshot ID (UniFS toc handle) retrieved by NMC Api call: $UNIFS_TOC_HANDLE"
 echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
-
+LAST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_PROCESSED
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     echo "Enabling the crontab as the code execution fails"
@@ -1009,7 +1015,7 @@ run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
 ##################################### Blob Store Cleanup START ###############################################################
 
-destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP
+destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
 echo "Enabling the crontab as the code executed SUCCESSFULLY"
 enable_crontab
 cd ..
