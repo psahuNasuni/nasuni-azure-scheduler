@@ -445,6 +445,7 @@ destination_blob_cleanup(){
     ACS_API_KEY="$2"
     USE_PRIVATE_IP="$3"
     EDGEAPPLIANCE_RESOURCE_GROUP="$4"
+    LAST_TOC_HANDLE_PROCESSED="$5"
     ACS_INDEXER_NAME="${ACS_NMC_VOLUME_NAME}indexer"
 
     echo "INFO ::: BLOB FILE COUNT : $BLOB_FILE_COUNT"
@@ -487,7 +488,7 @@ destination_blob_cleanup(){
         else
             echo "ERROR ::: Failed to index due to INDEXER_LAST_RUN_STATUS is $INDEXER_LAST_RUN_STATUS "
             CURRENT_STATE="Indexing-$INDEXER_LAST_RUN_STATUS"
-            LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
+            LATEST_TOC_HANDLE_PROCESSED=$LAST_TOC_HANDLE_PROCESSED
             generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
             echo "INFO ::: Re-run the Cognitive-search-Indexer"
             run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
@@ -811,7 +812,7 @@ echo "INFO ::: current user :-"`whoami`
 nmc_api_call "nmc_details.txt"
 echo "INFO ::: Snapshot ID (UniFS toc handle) retrieved by NMC Api call: $UNIFS_TOC_HANDLE"
 echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
-
+LAST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_PROCESSED
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     echo "Enabling the crontab as the code execution fails"
@@ -1016,7 +1017,7 @@ run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 
 ##################################### Blob Store Cleanup START ###############################################################
 
-destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP
+destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
 echo "Enabling the crontab as the code executed SUCCESSFULLY"
 enable_crontab
 cd ..
