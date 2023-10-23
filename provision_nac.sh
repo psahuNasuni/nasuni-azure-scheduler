@@ -467,7 +467,8 @@ destination_blob_cleanup(){
         INDEXER_END_TIME=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.endTime)
         echo "INFO ::: INDEXER_END_TIME : $INDEXER_END_TIME"
 
-        if [ "$INDEXER_LAST_RUN_STATUS" == "success" ] && [ -n "$INDEXER_END_TIME" ]; then
+        if [[ "$INDEXER_LAST_RUN_STATUS"  == "success" ]];then
+            if [ -n "$INDEXER_END_TIME" ]; then
             echo "Indexer run finished, Start cleanup"
             echo "NAC_Activity : Indexing Completed"
             MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
@@ -483,14 +484,17 @@ destination_blob_cleanup(){
             fi
             echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
             break 
-        else
-            echo "ERROR ::: Failed to index due to INDEXER_LAST_RUN_STATUS is $INDEXER_LAST_RUN_STATUS "
-            CURRENT_STATE="Indexing-$INDEXER_LAST_RUN_STATUS"
-            LATEST_TOC_HANDLE_PROCESSED=$LAST_TOC_HANDLE_PROCESSED
-            generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-            echo "INFO ::: Re-run the Cognitive-search-Indexer"
-            run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
-            exit 1   
+            fi
+        elif  [[ "$INDEXER_LAST_RUN_STATUS" != "inProgress" ]];then
+            if [ -n "$INDEXER_END_TIME" ]; then
+                echo "ERROR ::: Failed to index due to INDEXER_LAST_RUN_STATUS is $INDEXER_LAST_RUN_STATUS "
+                CURRENT_STATE="Indexing-$INDEXER_LAST_RUN_STATUS"
+                LATEST_TOC_HANDLE_PROCESSED=$LAST_TOC_HANDLE_PROCESSED
+                generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+                echo "INFO ::: Re-run the Cognitive-search-Indexer"
+                run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
+                exit 1   
+            fi
         fi      
     done
 }
