@@ -733,6 +733,25 @@ read_latest_toc_handle_from_tracker_json(){
 
 }
 
+generate_unique_random_value() {
+    while true; do
+        RND=$(( $RANDOM % 1000000 ))
+        NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
+        DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
+
+        if az group show --name $NAC_RESOURCE_GROUP_NAME &> /dev/null; then
+            continue
+        fi
+
+        if az storage account show --name $DESTINATION_STORAGE_ACCOUNT_NAME  &> /dev/null; then
+            continue
+        fi
+        break
+    done
+
+    echo "NAC_RESOURCE_GROUP_NAME=$NAC_RESOURCE_GROUP_NAME, DESTINATION_STORAGE_ACCOUNT_NAME=$DESTINATION_STORAGE_ACCOUNT_NAME"
+}
+
 ###################################################################################
 ############################# START - EXECUTION ###################################
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
@@ -826,7 +845,9 @@ fi
 ACS_NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr '[:upper:]' '[:lower:]')
 ### To remove all characters from acs_nmc_volume_name that are not alphanumeric
 ACS_NMC_VOLUME_NAME=$(echo "$ACS_NMC_VOLUME_NAME" | tr -cd '[:alnum:]')
-RND=$(( $RANDOM % 1000000 ))
+
+generate_unique_random_value
+
 get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP
 update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
