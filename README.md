@@ -9,19 +9,15 @@ The NAC Scheduler is a configuration script that:
  
 There is an AI enabled Azure Cognitive Search service that the NAC Scheduler currently supports: [Azure Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview). Each deployment is started with a single command-line script that takes at most five arguments, and can deploy an entire system with one command.
 
-* [Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview) is a community-driven, open-source search and analytics suite derived from Apache 2.0-licensed Elasticsearch 7.10.2 and Kibana 7.10.2. It consists of a search engine daemon, OpenSearch, and a visualization and user interface, OpenSearch Dashboards.
+* [Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview) is a cloud search service that gives developers infrastructure, APIs, and tools for building a rich search experience over private, heterogeneous content in web, mobile, and enterprise applications.
 
-    OpenSearch enables people to easily ingest, secure, search, aggregate, view, and analyze data. These capabilities are popular for use cases such as application search, log analytics, and more. With OpenSearch, people benefit from having an open-source product that they can use, modify, extend, monetize, and resell however they want. At the same time, OpenSearch will continue to provide a secure, high-quality search and analytics suite with a rich roadmap of new and innovative functionality.
-
-* [AWS Kendra] is an intelligent search service powered by Machine Learning. It offers natural-language search, suggested answers, and the ability to customize the search experience. (This integration is still under development. Check back soon for updates)
-
-* [Amazon SageMaker Model Building Pipelines] is a tool for building machine-learning pipelines. The NAC Scheduler feeds those pipelines with data from Nasuni volumes. (This integration is still under development. Check back soon for updates)
+    CognitiveSearch enables people to easily ingest (i.e. ingestion, parsing, and storing of textual content and tokens that populate a search index.), secure, search, aggregate, view, and analyze data. These capabilities are popular for use cases such as application search, log analytics, and more. With CognitiveSearch, people benefit from having an AI enabled Free-form text search that provide a secure, high-quality search and analytics suite with a rich roadmap of new and innovative functionality.
 
 # Prerequisites
 
 To install the NAC Scheduler, you need the following:
 
-1. The [command line AWS tools], [jq], wget, Terraform, Python, curl, dos2unix and [git] installed on a computer that is able to connect to the region in which you choose to deploy the NAC.
+1. The [command line Azure tools](https://learn.microsoft.com/en-us/cli/azure/), [jq], wget, Terraform, Python, curl, dos2unix and [git] installed on a computer that is able to connect to the region in which you choose to deploy the NAC.
 2. An AWS account with API access stored in a profile named ‘nasuni’ on the computer on which the AWS tools are installed. In the profile, a region must be identified. To install that profile use: 
 ```sh
 aws configure --profile nasuni
@@ -126,14 +122,11 @@ The NAC Scheduler currently supports the following services:
 
 To get help, please [submit an issue] to this Github repository.
 
-[Amazon SageMaker Model Building Pipelines]: https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines.html
 [Analytics Connector]: https://nac.cs.nasuni.com/launch.html
-[AWS Kendra]: https://aws.amazon.com/kendra/
 [AWS Secrets Manager]: https://console.aws.amazon.com/secretsmanager/home
 [command line AWS tools]: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 [git]: https://git-scm.com/downloads
 [key pairs]: https://console.aws.amazon.com/ec2/v2/home#KeyPairs:
 [NAC Technical Documentation]: https://b.link/Nasuni_Analytics_Connector_AWS
 [Nasuni Cloud Services page]: https://account.nasuni.com/account/cloudservices/
-[OpenSearch]: https://opensearch.org/
 [submit an issue]: https://github.com/nasuni-community-tools/sch-nac/issues
