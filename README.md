@@ -76,17 +76,17 @@ When the script has completed, you will see a URL.
     
     |Key|Value (example)|Notes|
     |---|---------------|-----|
-    |web_access_appliance_address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
-    |destination_bucket|temporarybucket|See the fourth prerequisite described above.|
-    |nmc_api_endpoint|10.1.1.2|Should be accessible to the resources created by this script.|
-    |nmc_api_username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes". For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
-    |nmc_api_password|notarealpassword|Password for this user.|
-    |nac_product_key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
-    |volume_key|/nasuni/keyname.pgp-111111|This is the parameter value created by Nasuni when you upload your keys through the [Nasuni Cloud Services page]. After you are on the [Nasuni Cloud Services page], click **Launch**. On the next page, choose "Run in AWS". On the next page, click **Get Started**. Select a region and make sure it is the same region that you set when you created the AWS default profile in the Prerequisites above. After accepting the Terms of Service, click **Continue**. You are then prompted to upload keys. (**Note**: Key names cannot have spaces in the names.) Upload the keys, and you receive a path back in the format listed here. |
-    |volume_key_passphrase|mysecretpassphrase|Use the passphrase associated with the keys|
-    |pem_key_path|/home/johndoe/.ssh/mypemkey.pem|A pem key which is also stored as one of the [key pairs] in your AWS account. (NB: case matters. Make sure that the pem key in the pem_key_path has the same capitalization as the corresponding key in AWS)|
-    |nac_scheduler_name|My_NAC_Scheduler|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
-    |github_organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
+    |web-access-appliance-address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
+    |destination-container-url|temporary bucket|Url of destination container.|
+    |nmc-api-endpoint|10.1.1.2|Should be accessible to the resources created by this script.|
+    |nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes". For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
+    |nmc-api-password|notarealpassword|Password for this user.|
+    |product-key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
+    |volume-key-container-url|/nasuni/keyname.pgp-111111|This is the parameter value created by Nasuni when you upload your keys through the [Nasuni Cloud Services page]. After you are on the [Nasuni Cloud Services page], click **Launch**. On the next page, choose "Run in AWS". On the next page, click **Get Started**. Select a region and make sure it is the same region that you set when you created the AWS default profile in the Prerequisites above. After accepting the Terms of Service, click **Continue**. You are then prompted to upload keys. (**Note**: Key names cannot have spaces in the names.) Upload the keys, and you receive a path back in the format listed here. |
+    |user-vnet-name|mysecretpassphrase|Use the passphrase associated with the keys|
+    |pem-key-path|/home/johndoe/.ssh/mypemkey.pem|A pem key which is also stored as one of the [key pairs] in your AWS account. (NB: case matters. Make sure that the pem key in the pem_key_path has the same capitalization as the corresponding key in AWS)|
+    |nac-scheduler-name|My_NAC_Scheduler|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
+    |github-organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
     |use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the instruction in with use_private_ip. All resources will be provisioned in the provided Private , if the value passed as "Y". If this variable is not provided, the execution will happen in the Default VPC's default Public Subnet.|
     |user_subnet_id|sunbet-XXXXXXXXXXX|(Optinal)If you want to provision the infrastructure in a Private subnet, add the Private Subnet ID of your choice as user_subnet_id . All resources will be provisioned in the provided Private subnet. If this variable is not provided, the execution will happen in the Default VPC Subnet.|
     4. After you have entered all the key value pairs, click **Next**.
