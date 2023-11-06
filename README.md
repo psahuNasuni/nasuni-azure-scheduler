@@ -19,17 +19,16 @@ To install the NAC Scheduler, you need the following:
 
 1. The [command line Azure tools](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [jq](https://jqlang.github.io/jq/), wget, [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli), [Python](https://www.python.org/downloads/), curl, dos2unix and [git] installed on a computer that is able to connect to the Azure Location in which you choose to deploy the NAC.
 To install the above dependencies/prerequisite tools; you can execute the install_packages.sh file which is available in this repository.
+```sh
+./install_packages.sh
+```
 2. An AZURE subscription with Administrator permissions.
 3. Confirm that you have access to create and manage following services: 
     Azure Cognitive Search Service, Azure Function App, Application Configurations, Azure KeyVault, Azure Storage Account and Application Insights.    
- 
-aws configure --profile nasuni
-```
-3. Upload to the [Analytics Connector] the encryption keys for the volume that you want to search, via the NAC’s Volume Encryption Key Export page. 
+4. Upload to the [Analytics Connector] the encryption keys for the volume that you want to search, via the NAC’s Volume Encryption Key Export page. 
 If you are using encryption keys generated internally by the Nasuni Edge Appliance, you can export (download) your encryption keys with the Nasuni Edge Appliance. For details, see “Downloading (Exporting) Generated Encryption Keys” on page 379 of the [Nasuni Edge Appliance Administration Guide](https://b.link/Nasuni_Edge_Appliance_Administration_Guide). 
 If you have escrowed your key with Nasuni and do not have it in your possession, contact Nasuni Support.
-
-4. A Nasuni Edge Appliance with Web Access enabled on the volume that is being searched. That Edge Appliance should be deployed in the same region that had been selected in #2 above.
+5. A Nasuni Edge Appliance with Web Access enabled on the volume that is being searched. That Edge Appliance should be deployed in the same region that had been selected in #2 above.
 
 # Installation
 
@@ -37,20 +36,20 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
 1. Download the script NAC Scheduler from this repository, or clone this repository.
 
-2. Make the NAC Scheduler script executable on your local computer. For example, you can run this command:
+2. Make the NAC Scheduler script executable on your computer (i.e. Linux Jump box). For example, you can run this command:
 ```sh 
 chmod 755 NAC_Scheduler.sh
 ```
 3. Run the NAC Scheduler script with at least four arguments:
     * The name of the volume.
-    * The name of the service to be integrated with (see Services Available below).
+    * The name of the service to be integrated with (i.e. acs).
     * The frequency of the indexing (in minutes).
-    * The name of the secrets manager used.
+    * The name of the user input Vault used.
     
 For example, a command like this:
 
 ```sh 
-./NAC_Scheduler.sh Projects es 30 admin/nac/secret
+./NAC_Scheduler.sh Projects acs 200 user_inut_vault
 ```
 
 When the script has completed, you will see a URL.
@@ -61,7 +60,7 @@ When the script has completed, you will see a URL.
 
 2. Make the NAC Scheduler script executable on your local computer.
 
-3. If you have not created a secret in the [AWS Secrets Manager], create one now using one of two methods:
+3. If you have not created a KeyVault in the [AWS Secrets Manager], create one now using one of two methods:
 
     **Create via AWS Console**
     
@@ -124,9 +123,8 @@ The NAC Scheduler currently supports the following services:
 To get help, please [submit an issue] to this Github repository.
 
 [Analytics Connector]: https://nac.cs.nasuni.com/launch.html
-[AWS Secrets Manager]: https://console.aws.amazon.com/secretsmanager/home
+[Azure KeyVault]: https://azure.microsoft.com/en-in/products/key-vault
 [git]: https://git-scm.com/downloads
-[key pairs]: https://console.aws.amazon.com/ec2/v2/home#KeyPairs:
 [NAC Technical Documentation]: https://b.link/Nasuni_Analytics_Connector_AWS
 [Nasuni Cloud Services page]: https://account.nasuni.com/account/cloudservices/
 [submit an issue]: https://github.com/nasuni-community-tools/sch-nac/issues
