@@ -17,7 +17,7 @@ There is an AI enabled Azure Cognitive Search service that the NAC Scheduler cur
 
 To install the NAC Scheduler, you need the following:
 
-1. The [command line Azure tools](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [jq](https://jqlang.github.io/jq/), wget, [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli), [Python](https://www.python.org/downloads/), curl, dos2unix and [git] installed on a computer that is able to connect to the Azure Location in which you choose to deploy the NAC.
+1. The [Azure command line tools](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [jq](https://jqlang.github.io/jq/), wget, [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli), [Python](https://www.python.org/downloads/), curl, dos2unix and [git] installed on a computer that is able to connect to the Azure Location in which you choose to deploy the NAC.
 To install the above dependencies/prerequisite tools; you can execute the install_packages.sh file which is available in this repository.
 ```sh
 ./install_packages.sh
@@ -125,6 +125,6 @@ To get help, please [submit an issue] to this Github repository.
 [Analytics Connector]: https://nac.cs.nasuni.com/launch.html
 [Azure KeyVault]: https://azure.microsoft.com/en-in/products/key-vault
 [git]: https://git-scm.com/downloads
-[NAC Technical Documentation]: https://b.link/Nasuni_Analytics_Connector_AWS
+[NAC Technical Documentation]: https://b.link/Nasuni_Analytics_Connector_AZURE
 [Nasuni Cloud Services page]: https://account.nasuni.com/account/cloudservices/
 [submit an issue]: https://github.com/nasuni-community-tools/sch-nac/issues
