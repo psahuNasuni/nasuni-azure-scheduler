@@ -60,13 +60,19 @@ When the script has completed, you will see a URL.
 
 2. Make the NAC Scheduler script executable on your local computer.
 
-3. If you have not created a KeyVault in the [AWS Secrets Manager], create one now using one of two methods:
+3. If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
 
-    **Create via AWS Console**
+    **Create via Azure Portal**
     
-    1. On the [AWS Secrets Manager] home page, click "**Store a New Secret**".
-    2. On the next page, select "Other type of Secret".
-    3. Create key value pairs for the following key/value pairs:
+    1. Login to [Azure Portal](https://portal.azure.com/#home) with your subscription 
+    2. On the portal Navigate to [Create a Key Vault](https://portal.azure.com/#create/Microsoft.KeyVault) page, provide the following information:
+        - Name: provide a unique name.
+        - Subscription: Choose a subscription.
+        - Under Resource Group, choose Create new and enter a resource group name.
+        - In the Location pull-down menu, choose a location.
+        - Provide the other options as per your need. 
+    click "**Create**" button.
+    3. Create secrets or key value pairs with the following:
     
     |Key|Value (example)|Notes|
     |---|---------------|-----|
@@ -96,7 +102,7 @@ When the script has completed, you will see a URL.
 
 5. Save this list of variables as a text file (for example, nacvariables.txt) in the same folder as the NAC_Scheduler.sh script.
 
-6. Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a  NAC variables file. The order of arguments should be as follows:
+6. Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a NAC variables file. The order of arguments should be as follows:
     * The name of the volume.
     * The name of the service to be integrated with (see Services Available below).
     * The frequency of the indexing (in minutes).
