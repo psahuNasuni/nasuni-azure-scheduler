@@ -17,18 +17,19 @@ There is an AI enabled Azure Cognitive Search service that the NAC Scheduler cur
 
 To install the NAC Scheduler, you need the following:
 
-1. The [command line Azure tools](https://learn.microsoft.com/en-us/cli/azure/), [jq], wget, Terraform, Python, curl, dos2unix and [git] installed on a computer that is able to connect to the region in which you choose to deploy the NAC.
-2. An AWS account with API access stored in a profile named ‘nasuni’ on the computer on which the AWS tools are installed. In the profile, a region must be identified. To install that profile use: 
-```sh
+1. The [command line Azure tools](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [jq](https://jqlang.github.io/jq/), wget, [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli), [Python](https://www.python.org/downloads/), curl, dos2unix and [git] installed on a computer that is able to connect to the Azure Location in which you choose to deploy the NAC.
+To install the above dependencies/prerequisite tools; you can execute the install_packages.sh file which is available in this repository.
+2. An AZURE subscription with Administrator permissions.
+3. Confirm that you have access to create and manage following services: 
+    Azure Cognitive Search Service, Azure Function App, Application Configurations, Azure KeyVault, Azure Storage Account and Application Insights.    
+ 
 aws configure --profile nasuni
 ```
 3. Upload to the [Analytics Connector] the encryption keys for the volume that you want to search, via the NAC’s Volume Encryption Key Export page. 
 If you are using encryption keys generated internally by the Nasuni Edge Appliance, you can export (download) your encryption keys with the Nasuni Edge Appliance. For details, see “Downloading (Exporting) Generated Encryption Keys” on page 379 of the [Nasuni Edge Appliance Administration Guide](https://b.link/Nasuni_Edge_Appliance_Administration_Guide). 
 If you have escrowed your key with Nasuni and do not have it in your possession, contact Nasuni Support.
 
-4. An S3 bucket accessible to Lambda functions deployed by this project.
-
-5. A Nasuni Edge Appliance with Web Access enabled on the volume that is being searched. That Edge Appliance should be deployed in the same region that had been selected in #2 above.
+4. A Nasuni Edge Appliance with Web Access enabled on the volume that is being searched. That Edge Appliance should be deployed in the same region that had been selected in #2 above.
 
 # Installation
 
@@ -124,7 +125,6 @@ To get help, please [submit an issue] to this Github repository.
 
 [Analytics Connector]: https://nac.cs.nasuni.com/launch.html
 [AWS Secrets Manager]: https://console.aws.amazon.com/secretsmanager/home
-[command line AWS tools]: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 [git]: https://git-scm.com/downloads
 [key pairs]: https://console.aws.amazon.com/ec2/v2/home#KeyPairs:
 [NAC Technical Documentation]: https://b.link/Nasuni_Analytics_Connector_AWS
