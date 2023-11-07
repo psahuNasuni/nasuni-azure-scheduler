@@ -78,23 +78,23 @@ When the script has completed, you will see a URL.
     click "**Create**" button.
     3. Create secrets or key value pairs with the following:
     
-    |Key|Value (example)|Notes|
-    |---|---------------|-----|
-    |web-access-appliance-address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
-    |destination-container-url|temporary bucket|Url of destination container.|
-    |nmc-api-endpoint|10.1.1.2|Should be accessible to the resources created by this script.|
-    |nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes". For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
-    |nmc-api-password|notarealpassword|Password for this user.|
-    |product-key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
-    |volume-key-container-url|https://<<VolumeStorageContainer>>.blob.core.windows.net/key/<<XXXXX>>.pgp|This is the parameter value created when you upload your pgp key file to the <<VolumeStorageContainer>> container. After uploading, follow below steps to get the volume-key-container-url: - Login to the Azure Portal and navigate to Microsoft_Azure_Storage. - Identify the VolumeKey Storage account - Navigate to Containers   - Click on the container name    - Click on the pgp file name     - Copy the URL under Properties|
-    |pem-key-path|/home/johndoe/.ssh/mypemkey.pem|A pem key which is also stored as one of the [key pairs] in your Azure account. (NB: case matters. Make sure that the pem key in the pem-key-path has the same capitalization as the corresponding key in AZURE)|
-    |nac-scheduler-name|NAC_Scheduler_VM|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
-    |github-organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
-    |use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the instruction in with use_private_ip. All resources will be provisioned in the provided Private , if the value passed as "Y". If this variable is not provided, the execution will happen in the Default VPC's default Public Subnet.|
-    |networking-resource-group|network-rg-XXXXX|This is the Azure Resource Group, where all network related resources will be provisioned.|
-    |user-vnet-name|myuser_vnet|Provide the Specified vnet name. This vNet should reside in the networking resource group|
-    |edgeappliance-resource-group|edgeappliance-rg-XXXXX|This is the Azure Resource Group, where the edge Appliance and source storage account resides. You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group|
-    |sp-secret|sunbet-XXXXXXXXXXX|Provide the value of the Service Principal Id. All resources will be provisioned with Service Principal user. Follow the below stps to get the sp-secret from Azure Portal: - Login to the Azure Portal. Navigate to **Microsoft Entra ID** Click on **App registrations** from left menu, Search your SP (i.e. pubnactest-sp), and Click on the **Certificates & secrets**. Value of sp-secret is the hidden Value in the table. If, you dont remember the avlue of the SP Secret, you can create one by **+ create**|
+    |Sl|Key|Value (example)|Notes|
+    |---|---|------------------|------------|
+    |1|web-access-appliance-address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
+    |2|destination-container-url|temporary bucket|Url of destination container.|
+    |3|nmc-api-endpoint|10.1.1.2|Should be accessible to the resources created by this script.|
+    |4|nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes". For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
+    |5|nmc-api-password|notarealpassword|Password for this user.|
+    |6|product-key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
+    |7|volume-key-container-url|https://<<VolumeStorageContainer>>.blob.core.windows.net/key/<<XXXXX>>.pgp|This is the parameter value created when you upload your pgp key file to the <<VolumeStorageContainer>> container. After uploading, follow below steps to get the volume-key-container-url: - Login to the Azure Portal and navigate to Microsoft_Azure_Storage. - Identify the VolumeKey Storage account - Navigate to Containers   - Click on the container name    - Click on the pgp file name     - Copy the URL under Properties|
+    |8|pem-key-path|/home/johndoe/.ssh/mypemkey.pem|A pem key which is also stored as one of the [key pairs] in your Azure account. (NB: case matters. Make sure that the pem key in the pem-key-path has the same capitalization as the corresponding key in AZURE)|
+    |9|nac-scheduler-name|NAC_Scheduler_VM|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
+    |10|github-organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
+    |12|use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the instruction in with use_private_ip. All resources will be provisioned in the provided Private , if the value passed as "Y". If this variable is not provided, the execution will happen in the Default VPC's default Public Subnet.|
+    |13|networking-resource-group|network-rg-XXXXX|This is the Azure Resource Group, where all network related resources will be provisioned.|
+    |14|user-vnet-name|myuser_vnet|Provide the Specified vnet name. This vNet should reside in the networking resource group|
+    |15|edgeappliance-resource-group|edgeappliance-rg-XXXXX|This is the Azure Resource Group, where the edge Appliance and source storage account resides. You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group|
+    |16|sp-secret|sunbet-XXXXXXXXXXX|Provide the value of the Service Principal Id. All resources will be provisioned with Service Principal user. Follow the below stps to get the sp-secret from Azure Portal: - Login to the Azure Portal. Navigate to **Microsoft Entra ID** Click on **App registrations** from left menu, Search your SP (i.e. pubnactest-sp), and Click on the **Certificates & secrets**. Value of sp-secret is the hidden Value in the table. If, you dont remember the avlue of the SP Secret, you can create one by **+ create**|
     |asa|aaaa|aaa23a|
     4. After you have entered all the key value pairs, click **Next**.
     5. Choose a name for your key. Remember this name for when you run the initial script.  
