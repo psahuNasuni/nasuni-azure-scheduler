@@ -23,12 +23,15 @@ To install the above dependencies/prerequisite tools; you can execute the instal
 ./install_packages.sh
 ```
 2. An AZURE subscription with Administrator permissions.
-3. Confirm that you have access to create and manage following services: 
+3. ServicePrincipal with owner access . Example: nac_sp_user
+4. Confirm that you have access to create and manage following services: 
     Azure Cognitive Search Service, Azure Function App, Application Configurations, Azure KeyVault, Azure Storage Account and Application Insights.    
-4. Upload to the [Analytics Connector] the encryption keys for the volume that you want to search, via the NAC’s Volume Encryption Key Export page. 
-If you are using encryption keys generated internally by the Nasuni Edge Appliance, you can export (download) your encryption keys with the Nasuni Edge Appliance. For details, see “Downloading (Exporting) Generated Encryption Keys” on page 379 of the [Nasuni Edge Appliance Administration Guide](https://b.link/Nasuni_Edge_Appliance_Administration_Guide). 
+5. Azure Storage account Container.
+    Upload the NAC Volume key (.pgp file) in the "Volume key container". Upload to the [Analytics Connector] the encryption keys for the volume that you want to search, via the NAC’s Volume Encryption Key Export page. 
+    
+    If you are using encryption keys generated internally by the Nasuni Edge Appliance, you can export (download) your encryption keys with the Nasuni Edge Appliance. For details, see “Downloading (Exporting) Generated Encryption Keys” on page 379 of the [Nasuni Edge Appliance Administration Guide](https://b.link/Nasuni_Edge_Appliance_Administration_Guide). 
 If you have escrowed your key with Nasuni and do not have it in your possession, contact Nasuni Support.
-5. A Nasuni Edge Appliance with Web Access enabled on the volume that is being searched. That Edge Appliance should be deployed in the same region that had been selected in #2 above.
+6. A Nasuni Edge Appliance with Web Access enabled on the volume that is being searched. That Edge Appliance should be deployed in the same region that had been selected in #2 above.
 
 # Installation
 
@@ -40,6 +43,7 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 ```sh 
 chmod 755 NAC_Scheduler.sh
 ```
+
 3. Run the NAC Scheduler script with at least four arguments:
     * The name of the volume.
     * The name of the service to be integrated with (i.e. acs).
@@ -82,13 +86,23 @@ When the script has completed, you will see a URL.
     |nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes". For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
     |nmc-api-password|notarealpassword|Password for this user.|
     |product-key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
-    |volume-key-container-url|/nasuni/keyname.pgp-111111|This is the parameter value created by Nasuni when you upload your keys through the [Nasuni Cloud Services page]. After you are on the [Nasuni Cloud Services page], click **Launch**. On the next page, choose "Run in AWS". On the next page, click **Get Started**. Select a region and make sure it is the same region that you set when you created the AWS default profile in the Prerequisites above. After accepting the Terms of Service, click **Continue**. You are then prompted to upload keys. (**Note**: Key names cannot have spaces in the names.) Upload the keys, and you receive a path back in the format listed here. |
+    |volume-key-container-url|https://<<VolumeStorageContainer>>.blob.core.windows.net/key/<<XXXXX>>.pgp|
+    This is the parameter value created when you upload your pgp key file to the <<VolumeStorageContainer>> container. After uploading, follow below steps to get the volume-key-container-url: 
+    - Login to the Azure Portal and navigate to Microsoft_Azure_Storage. 
+    - Identify the VolumeKey Storage account
+    - Navigate to Containers
+    - Click on the container name 
+    - Click on the pgp file name 
+    - Copy the URL under Properties |
     |user-vnet-name|mysecretpassphrase|Use the passphrase associated with the keys|
     |pem-key-path|/home/johndoe/.ssh/mypemkey.pem|A pem key which is also stored as one of the [key pairs] in your AWS account. (NB: case matters. Make sure that the pem key in the pem_key_path has the same capitalization as the corresponding key in AWS)|
-    |nac-scheduler-name|My_NAC_Scheduler|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
+    |nac-scheduler-name|NAC_Scheduler_VM|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
     |github-organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
     |use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the instruction in with use_private_ip. All resources will be provisioned in the provided Private , if the value passed as "Y". If this variable is not provided, the execution will happen in the Default VPC's default Public Subnet.|
-    |user_subnet_id|sunbet-XXXXXXXXXXX|(Optinal)If you want to provision the infrastructure in a Private subnet, add the Private Subnet ID of your choice as user_subnet_id . All resources will be provisioned in the provided Private subnet. If this variable is not provided, the execution will happen in the Default VPC Subnet.|
+    |networking-resource-group|network-rg-XXXXX|This is the Azure Resource Group, where all network related resources will be provisioned.
+    |edgeappliance-resource-group|edgeappliance-rg-XXXXX|This is the Azure Resource Group, where the edge Appliance and source storage account resides.
+    You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group
+|   |user_subnet_id|sunbet-XXXXXXXXXXX|(Optinal)If you want to provision the infrastructure in a Private subnet, add the Private Subnet ID of your choice as user_subnet_id . All resources will be provisioned in the provided Private subnet. If this variable is not provided, the execution will happen in the Default VPC Subnet.|
     4. After you have entered all the key value pairs, click **Next**.
     5. Choose a name for your key. Remember this name for when you run the initial script.  
 
