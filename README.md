@@ -128,7 +128,7 @@ The NAC Scheduler currently supports the following services:
 
 |Service Name|Argument Short Name|Description|What is deployed|
 |------------|-------------------|-----------|----------------|
-|Azure CognitiveSearch|acs|Automates the indexing of files created on a Nasuni volume.|1. NAC Scheduler (Azure VM) Instance (if not already deployed). 2. Azure CognitiveSearch service (if not already deployed). 3. Cron job to run terraform scripts to periodically create and destroy the NAC. 4. Azure function for indexing data exported by the NAC to the destination bucket(Azure Destination Container) and deleting the data after it has been indexed. 5. A simple Search UI available on the NAC Scheduler VM.|
+|Azure CognitiveSearch|acs|Automates the indexing of files created on a Nasuni volume.|1. NAC Scheduler (Azure VM) Instance (if not already deployed). 2. Azure CognitiveSearch service (if not already deployed). 3. Cron job to run terraform scripts to periodically create and destroy the NAC. 4. Azure Destination Container for preserving the short lived copy of the files in UniFS format 5. Azure function for indexing data exported by the NAC to the destination bucket(Azure Destination Container) and deleting the data after it has been indexed. 6. A simple Search UI available on the NAC Scheduler VM.|
 
 # Getting Help
 
