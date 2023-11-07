@@ -99,10 +99,11 @@ When the script has completed, you will see a URL.
     |nac-scheduler-name|NAC_Scheduler_VM|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
     |github-organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
     |use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the instruction in with use_private_ip. All resources will be provisioned in the provided Private , if the value passed as "Y". If this variable is not provided, the execution will happen in the Default VPC's default Public Subnet.|
-    |networking-resource-group|network-rg-XXXXX|This is the Azure Resource Group, where all network related resources will be provisioned.
+    |networking-resource-group|network-rg-XXXXX|This is the Azure Resource Group, where all network related resources will be provisioned.|
     |edgeappliance-resource-group|edgeappliance-rg-XXXXX|This is the Azure Resource Group, where the edge Appliance and source storage account resides.
-    You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group
-|   |user_subnet_id|sunbet-XXXXXXXXXXX|(Optinal)If you want to provision the infrastructure in a Private subnet, add the Private Subnet ID of your choice as user_subnet_id . All resources will be provisioned in the provided Private subnet. If this variable is not provided, the execution will happen in the Default VPC Subnet.|
+    You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group|
+    |user_subnet_id|sunbet-XXXXXXXXXXX|(Optinal)If you want to provision the infrastructure in a Private subnet, add the Private Subnet ID of your choice as user_subnet_id . All resources will be provisioned in the provided Private subnet. If this variable is not provided, the execution will happen in the Default VPC Subnet.|
+    |asa|aaaa|aaaa|
     4. After you have entered all the key value pairs, click **Next**.
     5. Choose a name for your key. Remember this name for when you run the initial script.  
 
