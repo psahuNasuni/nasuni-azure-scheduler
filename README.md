@@ -1,6 +1,6 @@
 # Description
 
-The NAC Scheduler extends the capabilities of the [Nasuni Analytics Connector](https://nac.cs.nasuni.com/) (NAC) by automatically exporting a volume in native object format, and then scheduling AWS services to run against the data on a periodic basis. For details of operating the Nasuni Analytics Connector, see [Nasuni Analytics Connector Azure](https://b.link/Nasuni_Analytics_Connector_AZURE).
+The NAC Scheduler extends the capabilities of the [Nasuni Analytics Connector](https://nac.cs.nasuni.com/) (NAC) by automatically exporting a volume in native object format, and then scheduling Azure services to run against the data on a periodic basis. For details of operating the Nasuni Analytics Connector, see [Nasuni Analytics Connector Azure](https://b.link/Nasuni_Analytics_Connector_AZURE).
 
 The NAC Scheduler is a configuration script that:
 * Deploys a Azure VM, that acts as a scheduler of the Nasuni Analytics Connector.
@@ -17,7 +17,7 @@ There is an AI enabled Azure Cognitive Search service that the NAC Scheduler cur
 
 To install the NAC Scheduler, you need the following:
 
-1. The [Azure command line tools](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [jq](https://jqlang.github.io/jq/), wget, [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli), [Python](https://www.python.org/downloads/), curl, dos2unix and [git] installed on a computer that is able to connect to the Azure Location in which you choose to deploy the NAC.
+1. The [Azure command line tools](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [jq](https://jqlang.github.io/jq/), wget, [Terraform](https://developer.hashicorp.com/terraform/tutorials/azure-get-started), [Python](https://www.python.org/downloads/), curl, dos2unix and [git] installed on a computer that is able to connect to the Azure Location in which you choose to deploy the NAC.
 To install the above dependencies/prerequisite tools; you can execute the install_packages.sh file which is available in this repository.
 ```sh
 ./install_packages.sh
