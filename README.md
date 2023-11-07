@@ -102,7 +102,7 @@ When the script has completed, you will see a URL.
     |edgeappliance-resource-group|edgeappliance-rg-XXXXX|This is the Azure Resource Group, where the edge Appliance and source storage account resides.
     You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group|
     |user_subnet_id|sunbet-XXXXXXXXXXX|(Optinal)If you want to provision the infrastructure in a Private subnet, add the Private Subnet ID of your choice as user_subnet_id . All resources will be provisioned in the provided Private subnet. If this variable is not provided, the execution will happen in the Default VPC Subnet.|
-    |asa|aaaa|aaaa|
+    |asa|aaaa|aaa22a|
     4. After you have entered all the key value pairs, click **Next**.
     5. Choose a name for your key. Remember this name for when you run the initial script.  
 
