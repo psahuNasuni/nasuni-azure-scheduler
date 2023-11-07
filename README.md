@@ -78,7 +78,7 @@ When the script has completed, you will see a URL.
     click "**Create**" button.
     3. Create secrets or key value pairs with the following:
     
-    |Sl|Key|Value (example)|Notes|
+    |Sl|Key|Value (example)|    Notes        |
     |---|---|-----------|--------------------------|
     |1|web-access-appliance-address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
     |2|destination-container-url|temporary bucket|Url of destination container.|
