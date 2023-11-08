@@ -52,10 +52,11 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     * The name of the service to be integrated with (i.e. acs).
     * The frequency of the indexing (in minutes).
     * The name of the user input Vault used.
+    * (Optional) The name of the KeyValue Pairs Text file, that contains the overridable static parameters for NAC. If you dont pass this parameters, it will take default values for NAC Execution.  
     
-    For example, a command like this:
+    For example, a command like this: (Here Volume name is Projects_volume_1)
     ```sh 
-        ./NAC_Scheduler.sh Projects acs 300 my-secret-vault
+        ./NAC_Scheduler.sh Projects_volume_1 acs 300 my-secret-vault
     ```
 
     When the script has completed, you will see a URL.
@@ -158,17 +159,35 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 - Save this list of variables as a text file (for example, nacvariables.txt) in the same folder as the NAC_Scheduler.sh script.
 
 6. #### Execute the script NAC_Scheduler.sh
-- Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a NAC variables file. The order of arguments should be as follows:
-    * The name of the volume.
-    * The name of the service to be integrated with (see Services Available below).
-    * The frequency of the indexing (in minutes).
-    * The path to the secrets file created in Step 3 **Create via Azure Portal**, or the name of the User Input Vault generated in Step 3 **Create a local file**.
-    * (OPTIONAL) The path to the NAC variables file.
+    - ##### Scheduling NAC for Single Volume
+        - Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a NAC variables file. The order of arguments should be as follows:
+            * The name of the volume.
+            * The name of the service to be integrated with (see Services Available below).
+            * The frequency of the indexing (in minutes).
+            * The path to the secrets file created in Step 3 **Create via Azure Portal**, or the name of the User Input Vault generated in Step 3 **Create a local file**.
+            * (OPTIONAL) The path to the NAC variables file.
 
-For example, a command with all five arguments would look like this:
-```sh
-    ./NAC_Scheduler.sh Projects acs 300 my-secret-vault nacvariables.txt
-```
+        For example, a command to Execute the script NAC_Scheduler.sh with Four arguments would look like this:
+        ```sh
+            ./NAC_Scheduler.sh Projects_volume_1 acs 300 my-secret-vault
+        ```
+
+        For example, a command with all five arguments would look like this:
+        ```sh
+            ./NAC_Scheduler.sh Projects_volume_1 acs 300 my-secret-vault nacvariables.txt
+        ```
+
+   - ##### Scheduling NAC for Multiple Volume(s)
+        - If, you want to schedule NAC for multiple volumes;
+            - You need to create a secomd_volume specific secret Vault by following steps given in section *Create secret Vault*.
+            - You need to execute the NAC_Scheduler.sh script as mentioned in above section *Scheduling NAC for Single Volume* from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument.
+                For example, a command like this:
+                ```sh 
+                    ./NAC_Scheduler.sh Projects_volume_2 acs 400 my-secret-vault_2
+                    # Here, Volume name is Projects_volume_2,
+                    # and Vault name is my-secret-vault_2
+                ```
+                
 # Services Available
 
 The NAC Scheduler currently supports the following services:
