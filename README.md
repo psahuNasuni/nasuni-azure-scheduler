@@ -96,11 +96,15 @@ When the script has completed, you will see a URL.
     export ARM_SUBSCRIPTION_ID="<<Azure Subscription ID>>"
 ```
 
-2. Download the NAC Scheduler script from this repository, or clone this repository.
-
-3. Make the NAC Scheduler script executable on your local computer.
-
-4. If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
+2. #### Download the NAC Scheduler script from this repository, or clone this repository.
+    ```sh
+    Examlpe:  
+    git clone https://github.com/psahuNasuni/nasuni-nac-scheduler.git -b nac_v1.0.7.dev6
+    ```
+3. #### Make the NAC Scheduler script executable on your local computer.
+    Refer the step 3 of "*Quick Start*" 
+4. #### Create secret Vault 
+    If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
 
     **Create via Azure Portal**
     
