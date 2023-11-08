@@ -118,7 +118,7 @@ When the script has completed, you will see a URL.
     |Sl No|Secret Key| Value (example)|             Notes        .|
     |---|----------|------------------|---------------------------|
     |1|nmc-api-endpoint|10.1.1.2|Should be accessible to the resources created by this script.|
-    |2|nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes". For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
+    |2|nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes".  For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
     |3|nmc-api-password|notarealpassword|Password for this user.|
     |4|product-key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
     |5|web-access-appliance-address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
