@@ -37,15 +37,15 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
 ## Quick Start
 
-1. Sign in to Azure CLI using a service principal
+1. On your linux terminal, Sign in to Azure CLI using a service principal
 
 2. Download the script NAC Scheduler from this repository, or clone this repository.
 
 3. Make the NAC Scheduler script executable on your computer (i.e. Linux Jump box). 
     For example, you can run this command:
-        ```sh 
-            chmod 755 NAC_Scheduler.sh
-        ```
+    ```sh 
+        chmod 755 NAC_Scheduler.sh
+    ```
 
 4. Run the NAC Scheduler script with at least four arguments:
     * The name of the volume.
@@ -162,9 +162,9 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     * (OPTIONAL) The path to the NAC variables file.
 
 For example, a command with all five arguments would look like this:
-    ```sh
-        ./NAC_Scheduler.sh Projects acs 300 my-secret-vault nacvariables.txt
-    ```
+```sh
+    ./NAC_Scheduler.sh Projects acs 300 my-secret-vault nacvariables.txt
+```
 # Services Available
 
 The NAC Scheduler currently supports the following services:
