@@ -165,10 +165,16 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     * The path to the secrets file created in Step 3 **Create via Azure Portal**, or the name of the User Input Vault generated in Step 3 **Create a local file**.
     * (OPTIONAL) The path to the NAC variables file.
 
+For example, a command to Execute the script NAC_Scheduler.sh with Four arguments would look like this:
+```sh
+    ./NAC_Scheduler.sh Projects acs 300 my-secret-vault
+```
+
 For example, a command with all five arguments would look like this:
 ```sh
     ./NAC_Scheduler.sh Projects acs 300 my-secret-vault nacvariables.txt
 ```
+
 # Services Available
 
 The NAC Scheduler currently supports the following services:
