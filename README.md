@@ -67,25 +67,25 @@ When the script has completed, you will see a URL.
 ```sh 
    az account show
 ``` 
-Confirm that the output shows correct Service Principal App ID under section “user >> name” 
-	Example: 	
+    Confirm that the output shows correct Service Principal App ID under section “user >> name” 
+	    Example: 	
 ```sh 
-        “user” : {
-			“name” : “<<Your Service Principal Application ID>>”
+    “user” : {
+        “name” : “<<Your Service Principal Application ID>>”
 ```
-Confirm that the output has “type” : “servicePrincipal” under section “user”
-    Example: 
+    Confirm that the output has “type” : “servicePrincipal” under section “user”
+        Example: 
 ```sh
-		“user” : {
-			“name” : “<<Your Service Principal Application ID>>”
-			“type” : “servicePrincipal”
+    “user” : {
+        “name” : “<<Your Service Principal Application ID>>”
+        “type” : “servicePrincipal”
 ```
-Verify the Microsoft Entra tenant ID.
-	Example: 
+    Verify the Microsoft Entra tenant ID.
+        Example: 
 ```sh
-		“tenantId” : “<<Your Microsoft Entra Tenant ID>>”
+    “tenantId” : “<<Your Microsoft Entra Tenant ID>>”
 ```
-Export the useful environment variables using below Syntax:
+    Export the useful environment variables using below Syntax:
 ```sh
     export ARM_CLIENT_ID="<<Service Principal Application ID>>"  
     export ARM_CLIENT_SECRET="<<Service Principal Password>>" 
@@ -93,11 +93,11 @@ Export the useful environment variables using below Syntax:
     export ARM_SUBSCRIPTION_ID="<<Azure Subscription ID>>"
 ```
 
-1. Download the NAC Scheduler script from this repository, or clone this repository.
+2. Download the NAC Scheduler script from this repository, or clone this repository.
 
-2. Make the NAC Scheduler script executable on your local computer.
+3. Make the NAC Scheduler script executable on your local computer.
 
-3. If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
+4. If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
 
     **Create via Azure Portal**
     
