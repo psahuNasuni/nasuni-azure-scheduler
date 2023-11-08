@@ -115,8 +115,8 @@ When the script has completed, you will see a URL.
     3. Create secrets or key value pairs with the following:
     Example: Vault Name = my-secret-vault
     
-    |Sl No|Secret Key| Value (example)    |             Notes        .    |
-    |---|----------|------------------    |---------------------------    |
+    |Sl No|Secret Key| Value (example)    | Notes   .    |
+    |---|----------|--------| ---------------------------    |
     |1|nmc-api-endpoint|10.1.1.2|Should be accessible to the resources created by this script.|
     |2|nmc-api-username|apiuser|Make sure that this API user has the following Permissions: "Enable NMC API Access" and "Manage all aspects of Volumes".  For details, see “Adding Permission Groups” on page 461 of the [Nasuni Management Console Guide](https://b.link/Nasuni_NMC_Guide).|
     |3|nmc-api-password|notarealpassword|Password for this user.|
