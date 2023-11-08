@@ -7,11 +7,11 @@ The NAC Scheduler is a configuration script that:
 * Creates a custom Azure function for indexing data into an Azure Cognitive Search service.
 * It also, creates a simple UI for accessing that service.
  
-There is an AI enabled Azure Cognitive Search service that the NAC Scheduler currently supports: [Azure Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview). Each deployment is started with a single command-line script that takes at most five arguments, and can deploy an entire system with one command.
+There is an AI powered information retrieval platform service that enable enterprise search to extract increasingly relevant and complete results. The NAC Scheduler currently supports: [Azure Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview). Each deployment is started with a single command-line script that takes at most five arguments, and can deploy an entire system with one command.
 
-* [Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview) is a cloud search service that gives developers infrastructure, APIs, and tools for building a rich search experience over private, heterogeneous content in web, mobile, and enterprise applications.
+[Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview) is a cloud search service that gives developers infrastructure, APIs, and tools for building a rich search experience over private, heterogeneous content in web, mobile, and enterprise applications.
 
-    CognitiveSearch enables people to easily ingest (i.e. ingestion, parsing, and storing of textual content and tokens that populate a search index.), secure, search, aggregate, view, and analyze data. These capabilities are popular for use cases such as application search, log analytics, and more. With CognitiveSearch, people benefit from having an AI enabled Free-form text search that provide a secure, high-quality search and analytics suite with a rich roadmap of new and innovative functionality.
+CognitiveSearch enables people to easily ingest (i.e. ingestion, parsing, and storing of textual content and tokens that populate a search index.), secure, search, aggregate, view, and analyze data. These capabilities are popular for use cases such as application search, log analytics, and more. With CognitiveSearch, people benefit from having an AI enabled Free-form text search that provide a secure, high-quality search and analytics suite with a rich roadmap of new and innovative functionality.
 
 # Prerequisites
 
@@ -179,8 +179,8 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
    - ##### Scheduling NAC for Multiple Volume(s)
         - If, you want to schedule NAC for multiple volumes;
-            - You need to create a secomd_volume specific secret Vault by following steps given in section *Create secret Vault*.
-            - You need to execute the NAC_Scheduler.sh script as mentioned in above section *Scheduling NAC for Single Volume* from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument.
+            - You need to create a secomd_volume specific secret Vault by following steps given in section **Create secret Vault**.
+            - You need to execute the NAC_Scheduler.sh script as mentioned in above section **Scheduling NAC for Single Volume** from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument.
                 For example, a command like this:
                 ```sh 
                     ./NAC_Scheduler.sh Projects_volume_2 acs 400 my-secret-vault_2
