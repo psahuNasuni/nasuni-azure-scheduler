@@ -67,33 +67,37 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     ```sh 
     az account show
     ``` 
-- Confirm that the output shows correct Service Principal App ID under section “user >> name” 
-    Example: 	
-    ```sh 
-        “user” : {
+    - Confirm that the output shows correct Service Principal App ID under section “user >> name” 
+        Example: 	
+        ```sh 
+            “user” : {
+                    “name” : “<<Your Service Principal Application ID>>”
+                    . . . 
+            }
+        ```
+    - Confirm that the output has “type” : “servicePrincipal” under section “user”
+        Example: 
+        ```sh
+            “user” : {
                 “name” : “<<Your Service Principal Application ID>>”
-                . . . 
-        }
-    ```
-- Confirm that the output has “type” : “servicePrincipal” under section “user”
-    Example: 
-    ```sh
-        “user” : {
-            “name” : “<<Your Service Principal Application ID>>”
-            “type” : “servicePrincipal”
-        }
-    ```
-- Verify the Microsoft Entra tenant ID.
-    Example: 
-    ```sh
-        “tenantId” : “<<Your Microsoft Entra Tenant ID>>”
-    ```
+                “type” : “servicePrincipal”
+            }
+        ```
+    - Verify the Microsoft Entra tenant ID.
+        Example: 
+        ```sh
+            “tenantId” : “<<Your Microsoft Entra Tenant ID>>”
+        ```
 - Export the useful environment variables using below Syntax:
     ```sh
         export ARM_CLIENT_ID="<<Service Principal Application ID>>"  
         export ARM_CLIENT_SECRET="<<Service Principal Password>>" 
         export ARM_TENANT_ID="<<Microsoft Entra Tenant ID>>" 
         export ARM_SUBSCRIPTION_ID="<<Azure Subscription ID>>"
+    ```
+- Login to Azure from Azure CLI using Azure ServicePrincipal. You can use the below Syntax:
+    ```sh
+        az login --service-principal --tenant <Microsoft_Entra_Tenant_ID> --username <Service_Principal_Application_ID> --password <Service_Principal_password>
     ```
 
 2. #### Download the NAC Scheduler script from this repository, or clone this repository.
