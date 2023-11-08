@@ -67,14 +67,14 @@ When the script has completed, you will see a URL.
 ```sh 
    az account show
 ``` 
-    Confirm that the output shows correct Service Principal App ID under section “user >> name” 
-	    Example: 	
+Confirm that the output shows correct Service Principal App ID under section “user >> name” 
+	Example: 	
 ```sh 
         “user” : {
 			“name” : “<<Your Service Principal Application ID>>”
 ```
-    Confirm that the output has “type” : “servicePrincipal” under section “user”
-        Example: 
+Confirm that the output has “type” : “servicePrincipal” under section “user”
+    Example: 
 ```sh
 		“user” : {
 			“name” : “<<Your Service Principal Application ID>>”
@@ -82,14 +82,16 @@ When the script has completed, you will see a URL.
 ```
 Verify the Microsoft Entra tenant ID.
 	Example: 
+```sh
 		“tenantId” : “<<Your Microsoft Entra Tenant ID>>”
-
-
+```
 Export the useful environment variables using below Syntax:
-export ARM_CLIENT_ID="<<Service Principal Application ID>>"  
-export ARM_CLIENT_SECRET="<<Service Principal Password>>" 
-export ARM_TENANT_ID="<<Microsoft Entra Tenant ID>>" 
-export ARM_SUBSCRIPTION_ID="<<Azure Subscription ID>>"
+```sh
+    export ARM_CLIENT_ID="<<Service Principal Application ID>>"  
+    export ARM_CLIENT_SECRET="<<Service Principal Password>>" 
+    export ARM_TENANT_ID="<<Microsoft Entra Tenant ID>>" 
+    export ARM_SUBSCRIPTION_ID="<<Azure Subscription ID>>"
+```
 
 1. Download the NAC Scheduler script from this repository, or clone this repository.
 
