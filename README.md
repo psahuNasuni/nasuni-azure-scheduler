@@ -71,7 +71,9 @@ When the script has completed, you will see a URL.
     Example: 	
 ```sh 
     “user” : {
-        “name” : “<<Your Service Principal Application ID>>”
+            “name” : “<<Your Service Principal Application ID>>”
+            . . . 
+     }
 ```
     - Confirm that the output has “type” : “servicePrincipal” under section “user”
     Example: 
@@ -79,6 +81,7 @@ When the script has completed, you will see a URL.
     “user” : {
         “name” : “<<Your Service Principal Application ID>>”
         “type” : “servicePrincipal”
+    }
 ```
 Verify the Microsoft Entra tenant ID.
     Example: 
