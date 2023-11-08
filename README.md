@@ -179,8 +179,8 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
    - ##### Scheduling NAC for Multiple Volume(s)
         - If, you want to schedule NAC for multiple volumes;
-            - You need to create a secomd_volume specific secret Vault by following steps given in section *Create secret Vault*.
-            - You need to execute the NAC_Scheduler.sh script as mentioned in above section *Scheduling NAC for Single Volume* from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument.
+            - You need to create a secomd_volume specific secret Vault by following steps given in section **Create secret Vault**.
+            - You need to execute the NAC_Scheduler.sh script as mentioned in above section **Scheduling NAC for Single Volume** from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument.
                 For example, a command like this:
                 ```sh 
                     ./NAC_Scheduler.sh Projects_volume_2 acs 400 my-secret-vault_2
