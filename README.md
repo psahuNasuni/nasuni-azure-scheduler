@@ -62,7 +62,7 @@ When the script has completed, you will see a URL.
 
 ## Detailed Instructions
 
-1. ### Sign in to Azure CLI using a service principal
+1. #### Sign in to Azure CLI using a service principal
 
 Verify your logged in user with below command: 
    az account show 
