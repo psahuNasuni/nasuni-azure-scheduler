@@ -63,29 +63,29 @@ When the script has completed, you will see a URL.
 ## Detailed Instructions
 
 1. #### Sign in to Azure CLI using a service principal
-    Verify your logged in user with below command: 
+- Verify your logged in user with below command: 
 ```sh 
    az account show
 ``` 
-    Confirm that the output shows correct Service Principal App ID under section “user >> name” 
-	    Example: 	
+- Confirm that the output shows correct Service Principal App ID under section “user >> name” 
+    Example: 	
 ```sh 
     “user” : {
         “name” : “<<Your Service Principal Application ID>>”
 ```
-    Confirm that the output has “type” : “servicePrincipal” under section “user”
-        Example: 
+Confirm that the output has “type” : “servicePrincipal” under section “user”
+    Example: 
 ```sh
     “user” : {
         “name” : “<<Your Service Principal Application ID>>”
         “type” : “servicePrincipal”
 ```
-    Verify the Microsoft Entra tenant ID.
-        Example: 
+Verify the Microsoft Entra tenant ID.
+    Example: 
 ```sh
     “tenantId” : “<<Your Microsoft Entra Tenant ID>>”
 ```
-    Export the useful environment variables using below Syntax:
+Export the useful environment variables using below Syntax:
 ```sh
     export ARM_CLIENT_ID="<<Service Principal Application ID>>"  
     export ARM_CLIENT_SECRET="<<Service Principal Password>>" 
