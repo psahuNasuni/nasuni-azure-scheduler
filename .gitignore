@@ -6,7 +6,7 @@
 .terraform
 *.tfvars
 *.json
-*copy.sh
+*copy.*
 #.gitignore
 *.pem
 *.7z

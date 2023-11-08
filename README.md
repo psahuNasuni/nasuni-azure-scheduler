@@ -37,14 +37,16 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
 ## Quick Start
 
-1. Download the script NAC Scheduler from this repository, or clone this repository.
+1. Sign in to Azure CLI using a service principal
 
-2. Make the NAC Scheduler script executable on your computer (i.e. Linux Jump box). For example, you can run this command:
+2. Download the script NAC Scheduler from this repository, or clone this repository.
+
+3. Make the NAC Scheduler script executable on your computer (i.e. Linux Jump box). For example, you can run this command:
 ```sh 
 chmod 755 NAC_Scheduler.sh
 ```
 
-3. Run the NAC Scheduler script with at least four arguments:
+4. Run the NAC Scheduler script with at least four arguments:
     * The name of the volume.
     * The name of the service to be integrated with (i.e. acs).
     * The frequency of the indexing (in minutes).
@@ -53,12 +55,36 @@ chmod 755 NAC_Scheduler.sh
 For example, a command like this:
 
 ```sh 
-./NAC_Scheduler.sh Projects acs 200 user_inut_vault
+./NAC_Scheduler.sh Projects acs 300 my-secret-vault
 ```
 
 When the script has completed, you will see a URL.
 
 ## Detailed Instructions
+
+1. ### Sign in to Azure CLI using a service principal
+
+Verify your logged in user with below command: 
+   az account show 
+Confirm that the output shows correct Service Principal App ID under section “user >> name” 
+	Example: 
+		“user” : {
+			“name” : “<<Your Service Principal Application ID>>”
+Confirm that the output has “type” : “servicePrincipal” under section “user”
+	Example: 
+		“user” : {
+			“name” : “<<Your Service Principal Application ID>>”
+			“type” : “servicePrincipal”
+Verify the Microsoft Entra tenant ID.
+	Example: 
+		“tenantId” : “<<Your Microsoft Entra Tenant ID>>”
+
+
+Export the useful environment variables using below Syntax:
+export ARM_CLIENT_ID="<<Service Principal Application ID>>"  
+export ARM_CLIENT_SECRET="<<Service Principal Password>>" 
+export ARM_TENANT_ID="<<Microsoft Entra Tenant ID>>" 
+export ARM_SUBSCRIPTION_ID="<<Azure Subscription ID>>"
 
 1. Download the NAC Scheduler script from this repository, or clone this repository.
 
@@ -77,6 +103,7 @@ When the script has completed, you will see a URL.
         - Provide the other options as per your need. 
     click "**Create**" button.
     3. Create secrets or key value pairs with the following:
+    Example: Vault Name = my-secret-vault
     
     |Sl No|Secret Key|Secret Value (example)|    Notes    .|
     |---|-------|-----------|--------------------|
