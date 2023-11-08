@@ -61,15 +61,6 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
     When the script has completed, you will see a URL.
 
-5. If, you want to schedule analytics for a second_volume (and So on); you need to execute the above command with the second_volume as first argument, and second_volume specific vault as Fourth argument: 
-
-    For example, a command like this:(Here Volume name is Projects_volume_2, and vault name is my-secret-vault_2)
-
-    ```sh 
-        ./NAC_Scheduler.sh Projects_volume_2 acs 400 my-secret-vault_2
-    ```
-
-
 ## Detailed Instructions
 
 1. #### Sign in to Azure CLI using a service principal
@@ -188,13 +179,15 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
    - ##### Scheduling NAC for Multiple Volume(s)
         - If, you want to schedule NAC for multiple volumes;
-            - You need to create a secomd_volume specific secret Vault by following steps given in *Create secret Vault*.
-            - You need to execute the NAC_Scheduler.sh script as mentioned in above section *Scheduling NAC for Single Volume* from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument: 
-                For example, a command like this:(Here Volume name is Projects_volume_2, and vault name is my-secret-vault_2)
+            - You need to create a secomd_volume specific secret Vault by following steps given in section *Create secret Vault*.
+            - You need to execute the NAC_Scheduler.sh script as mentioned in above section *Scheduling NAC for Single Volume* from JumpBox Computer with the second_volume as first argument, and second_volume specific vault as Fourth argument.
+                For example, a command like this:
                 ```sh 
                     ./NAC_Scheduler.sh Projects_volume_2 acs 400 my-secret-vault_2
+                    # Here, Volume name is Projects_volume_2,
+                    # and Vault name is my-secret-vault_2
                 ```
-
+                
 # Services Available
 
 The NAC Scheduler currently supports the following services:
