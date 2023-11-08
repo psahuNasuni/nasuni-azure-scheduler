@@ -41,10 +41,11 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
 
 2. Download the script NAC Scheduler from this repository, or clone this repository.
 
-3. Make the NAC Scheduler script executable on your computer (i.e. Linux Jump box). For example, you can run this command:
-    ```sh 
-        chmod 755 NAC_Scheduler.sh
-    ```
+3. Make the NAC Scheduler script executable on your computer (i.e. Linux Jump box). 
+    For example, you can run this command:
+        ```sh 
+            chmod 755 NAC_Scheduler.sh
+        ```
 
 4. Run the NAC Scheduler script with at least four arguments:
     * The name of the volume.
@@ -52,12 +53,12 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     * The frequency of the indexing (in minutes).
     * The name of the user input Vault used.
     
-For example, a command like this:
+    For example, a command like this:
     ```sh 
-    ./NAC_Scheduler.sh Projects acs 300 my-secret-vault
+        ./NAC_Scheduler.sh Projects acs 300 my-secret-vault
     ```
 
-When the script has completed, you will see a URL.
+    When the script has completed, you will see a URL.
 
 ## Detailed Instructions
 
@@ -116,7 +117,7 @@ When the script has completed, you will see a URL.
         - Provide the other options as per your need. 
     click "**Create**" button.
     3. Create secrets or key value pairs with the following:
-    
+
         Example: Vault Name = my-secret-vault
     
         |Sl No|Secret Key| Value (example)    | Notes   .    |
