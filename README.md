@@ -102,7 +102,7 @@ When the script has completed, you will see a URL.
     git clone https://github.com/psahuNasuni/nasuni-nac-scheduler.git -b nac_v1.0.7.dev6
     ```
 3. #### Make the NAC Scheduler script executable on your local computer.
-    Refer the step 3 of "*Quick Start*" 
+    Refer the step 3 of "**Quick Start**" 
 4. #### Create secret Vault 
     If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
 
@@ -147,11 +147,13 @@ When the script has completed, you will see a URL.
     2. Do not use quotes for either the key or the value. For example: azure-location="canadacentral"
     3. Save this as a text file (for example, mysecret.txt) in the same folder as the NAC_Scheduler.sh script.
 
-4. If you need to override any of the NAC parameters (as described in the Appendix: Automating Analytics Connector section of the [NAC Technical Documentation]), you can create a NAC variables file that lists the parameters you would like to change.
+5. #### Provide NAC Parameters (Optional) 
+- If you need to override any of the NAC parameters (as described in the Appendix: Automating Analytics Connector section of the [NAC Technical Documentation]), you can create a NAC variables file that lists the parameters you would like to change.
 
-5. Save this list of variables as a text file (for example, nacvariables.txt) in the same folder as the NAC_Scheduler.sh script.
+- Save this list of variables as a text file (for example, nacvariables.txt) in the same folder as the NAC_Scheduler.sh script.
 
-6. Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a NAC variables file. The order of arguments should be as follows:
+6. #### Execute the script NAC_Scheduler.sh
+- Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a NAC variables file. The order of arguments should be as follows:
     * The name of the volume.
     * The name of the service to be integrated with (see Services Available below).
     * The frequency of the indexing (in minutes).
