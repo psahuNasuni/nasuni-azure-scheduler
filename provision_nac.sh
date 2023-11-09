@@ -752,6 +752,26 @@ generate_unique_random_value() {
     echo "NAC_RESOURCE_GROUP_NAME=$NAC_RESOURCE_GROUP_NAME, DESTINATION_STORAGE_ACCOUNT_NAME=$DESTINATION_STORAGE_ACCOUNT_NAME"
 }
 
+resolve_filer_ip(){
+ip_address=$1
+json_file="/var/www/SearchUI_Web/hostnames.json"
+
+hostname=$(getent hosts "$ip_address" | awk '{print $2}')
+
+if [ -n "$hostname" ]; then
+
+
+    if [ -f "$json_file" ]; then
+        sudo jq --arg ip "$ip_address" --arg host "$hostname" '. + {($ip): $host}' "$json_file" > "$json_file.tmp" && sudo mv "$json_file.tmp" "$json_file"
+        
+    else
+        echo "{\"$ip_address\": \"$hostname\"}" > "$json_file"
+   fi
+else
+    echo "Unable to resolve IP address to hostname.Please add entry in /etc/hosts/ to reflect the required changes in search interface."
+fi
+}
+
 ###################################################################################
 ############################# START - EXECUTION ###################################
 ### GIT_BRANCH_NAME decides the current GitHub branch from Where Code is being executed
@@ -783,6 +803,8 @@ ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt"
 parse_config_file_for_user_secret_keys_values config.dat
 parse_file_nmc_txt "nmc_details.txt"
+sudo chmod -R 777 /var/www/SearchUI_Web/
+resolve_filer_ip $WEB_ACCESS_APPLIANCE_ADDRESS
 NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
 USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
 AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
