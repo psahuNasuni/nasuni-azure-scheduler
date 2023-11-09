@@ -155,9 +155,9 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     2. Do not use quotes for either the key or the value. For example: azure-location="canadacentral"
     3. Save this as a text file (for example, mysecret.txt) in the same folder as the NAC_Scheduler.sh script.
 
-4. #### Create Credential Vault 
+5. #### Create Credential Vault 
     Create a new KeyVault in the [Azure KeyVault] which preserves the user name and password as secrets,( the user name must have owner access)
-    Example:  Vault name is nac_user_cred_vault with below secret keys:
+    Example:  Vault name is nac_user_cred_vault
 
     **Create Credential Vault via Azure Portal**
     
@@ -175,12 +175,12 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
         |1|root-user|root_user_name|Azure user with owner access, the user should have permission to create below resources in AZURE Account : - Azure vNet, - Azure Function, Azure Virtual Machine, Azure App Configuration, Azure Service Bus, Azure Key-Vault, Azure Storage Account, Azure Service plan, Azure Application Insights, Azure Cognitive Search service.|
         |2|root-password|notarealpassword|Password for this user (i.e. root_user_name).|
     4. This user’s credential vault must be accessible by, only the ServicePrincipal user(i.e. pubnactest-sp)
-5. #### Provide NAC Parameters (Optional) 
+6. #### Provide NAC Parameters (Optional) 
 - If you need to override any of the NAC parameters (as described in the Appendix: Automating Analytics Connector section of the [NAC Technical Documentation]), you can create a NAC variables file that lists the parameters you would like to change.
 
 - Save this list of variables as a text file (for example, nacvariables.txt) in the same folder as the NAC_Scheduler.sh script.
 
-6. #### Execute the script NAC_Scheduler.sh
+7. #### Execute the script NAC_Scheduler.sh
     - ##### Scheduling NAC for Single Volume
         - Run the script with three to five arguments, depending on whether or not you have created a local secrets file or a NAC variables file. The order of arguments should be as follows:
             * The name of the volume.
