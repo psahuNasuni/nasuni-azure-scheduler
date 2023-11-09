@@ -6,6 +6,7 @@ The NAC Scheduler is a configuration script that:
 * Deploys a Azure VM, that acts as a scheduler of the Nasuni Analytics Connector.
 * Creates a custom Azure function for indexing data into an Azure Cognitive Search service.
 * It also, creates a simple UI for accessing that service.
+* To enhance security, It gets executed, Only with a pre configured Service Principal User with restricted access.
  
 There is an AI powered information retrieval platform service that enable enterprise search to extract increasingly relevant and complete results. The NAC Scheduler currently supports: [Azure Cognitive Search Service](https://azure.microsoft.com/en-us/products/ai-services/cognitive-search#overview). Each deployment is started with a single command-line script that takes at most five arguments, and can deploy an entire system with one command.
 
@@ -108,6 +109,7 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     ```
 3. #### Make the NAC Scheduler script executable on your local computer.
     Refer the step 3 of "**Quick Start**" 
+
 4. #### Create secret Vault 
     If you have not created a KeyVault in the [Azure KeyVault], create one now using one of two methods:
 
@@ -115,7 +117,7 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     
     1. Login to [Azure Portal](https://portal.azure.com/#home) with your subscription 
     2. On the portal Navigate to [Create a Key Vault](https://portal.azure.com/#create/Microsoft.KeyVault) page, provide the following information:
-        - Name: provide a unique name.
+        - Name: provide a unique name. Example: my-secret-vault
         - Subscription: Choose a subscription.
         - Under Resource Group, choose Create new and enter a resource group name.
         - In the Location pull-down menu, choose a location.
@@ -132,14 +134,14 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
         |3|nmc-api-password|notarealpassword|Password for this user.|
         |4|product-key|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|Your product key can be generated on the [Nasuni Cloud Services page] in your Nasuni dashboard.|
         |5|web-access-appliance-address|10.1.1.1|Should be publicly accessible and include shares for the volume being searched.|
-        |6|cred-vault|nac_user_cred_vault|Provide the User Credential Vault name. This is the Azure Key-Vault containing user name and password,   where; the user name must have owner access|
+        |6|cred-vault|nac_user_cred_vault|Provide the User Credential Vault name. This is the Azure Key-Vault containing user name and password, where; the user name must have owner access|
         |7|volume-key-container-url|    https://VolumeStorageContainer. blob.core.windows.net/key/XXXXX.pgp    |This is the parameter value created when you upload your pgp key file to the VolumeStorageContainer container. After uploading, follow below steps to get the volume-key-container-url: - Login to the Azure Portal and navigate to Microsoft_Azure_Storage. - Identify the VolumeKey Storage account - Navigate to Containers   - Click on the container name    - Click on the pgp file name     - Copy the URL under Properties|
         |8|pem-key-path|/home/my-folder/.ssh/mypemkey.pem|A pem key which is also stored as one of the [key pairs] in your Azure account. (NB: case matters. Make sure that the pem key in the pem-key-path has the same capitalization as the corresponding key in Azure)|
         |9|nac-scheduler-name|NAC_Scheduler_VM|(Optional) The name of the NAC Scheduler. If this variable is not set, the name defaults to "NAC_Scheduler"|
         |10|github-organization|nasuni-labs|(Optional) If you have forked this repository or are using a forked version of this repository, add that organization name here. All calls to github repositories will look within this organization|
         |11|azure-location|canadacentral|The Azure Region/Location, where you want to execute NAC|
         |12|azure-subscription|XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX|The Subscription ID, of your Azure Account|
-        |13|use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the instruction in with use_private_ip. All resources will be provisioned in the provided Private, if the value passed as "Y". If this variable is not provided, the execution will happen in the Default VPC's default Public Subnet.|
+        |13|use_private_ip|Y|(Optinal)If you want to provision the infrastructure in a Private subnet, add the parameter use_private_ip with value "Y". All resources will be provisioned in the provided Private vNet. If this variable is not provided, the execution will happen in the Default Public Subnet.|
         |14|networking-resource-group|network-rg-XXXXX|This is the Azure Resource Group, where all network related resources will be provisioned.|
         |15|user-vnet-name|myuser_vnet|Provide the Specified vnet name. This vNet should reside in the networking resource group|
         |16|edgeappliance-resource-group|edgeappliance-rg-XXXXX|This is the Azure Resource Group, where the edge Appliance and source storage account resides. You can get this Resource Group by following steps: → Login to NMC → navigate to File Browser → select a volume → copy Account → search for the copied account in Azure portal to get the storage account → find the Resource Group  → This should be the edgeappliance-resource-group|
@@ -153,6 +155,26 @@ If you have escrowed your key with Nasuni and do not have it in your possession,
     2. Do not use quotes for either the key or the value. For example: azure-location="canadacentral"
     3. Save this as a text file (for example, mysecret.txt) in the same folder as the NAC_Scheduler.sh script.
 
+4. #### Create Credential Vault 
+    Create a new KeyVault in the [Azure KeyVault] which preserves the user name and password as secrets,( the user name must have owner access)
+    Example:  Vault name is nac_user_cred_vault with below secret keys:
+
+    **Create Credential Vault via Azure Portal**
+    
+    1. Login to [Azure Portal](https://portal.azure.com/#home) with your subscription 
+    2. On the portal Navigate to [Create a Key Vault](https://portal.azure.com/#create/Microsoft.KeyVault) page, provide the following information:
+        - Name: provide a unique name. Example: nac_user_cred_vault
+        - Subscription: Choose a subscription.
+        - Under Resource Group, choose Create new and enter a resource group name.
+        - In the Location pull-down menu, choose a location. Location should be same as Location of the **Secret Vault**
+        - Provide the other options as per your need. 
+    click "**Create**" button.
+    3. Create secrets or key value pairs with the following:
+        |Sl No|Secret Key| Value (example)    | Notes   .    |
+        |-----|----------|--------| ----------------    |
+        |1|root-user|root_user_name|Azure user with owner access, the user should have permission to create below resources in AZURE Account : - Azure vNet, - Azure Function, Azure Virtual Machine, Azure App Configuration, Azure Service Bus, Azure Key-Vault, Azure Storage Account, Azure Service plan, Azure Application Insights, Azure Cognitive Search service.|
+        |2|root-password|notarealpassword|Password for this user (i.e. root_user_name).|
+    4. This user’s credential vault must be accessible by, only the ServicePrincipal user(i.e. pubnactest-sp)
 5. #### Provide NAC Parameters (Optional) 
 - If you need to override any of the NAC parameters (as described in the Appendix: Automating Analytics Connector section of the [NAC Technical Documentation]), you can create a NAC variables file that lists the parameters you would like to change.
 
