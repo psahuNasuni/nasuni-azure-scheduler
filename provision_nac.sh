@@ -64,6 +64,9 @@ enable_crontab(){
     retry_count=$((retry_count + 1))
     sleep 10
     done
+
+    cd nasuni-azure-analyticsconnector
+    terraform destroy -var-file=NAC.tfvars -auto-approve
 }
 
 delete_destination_storage_account() {
