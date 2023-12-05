@@ -25,8 +25,8 @@ check_if_VNET_exists(){
 	SUBNET_0_NAME="$INPUT_VNET-0-subnet"
 	SUBNET_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .provisioningState`
 	if [ "$SUBNET_CHECK" != "Succeeded" ]; then
-		echo "INFO ::: SUBNET $SUBNET_0_NAME is not EXIST should be created New..."
-		echo "INFO ::: Creating Subnet $SUBNET_0_NAME ::: STARTED"
+		echo "INFO ::: SubNet $SUBNET_0_NAME does not Exist. So, a new subnet will be created."
+		echo "INFO ::: Creation of new Subnet $SUBNET_0_NAME ::: STARTED."
 		
 		get_subnets $NETWORKING_RESOURCE_GROUP $INPUT_VNET "24" "1"
 		VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
@@ -35,15 +35,14 @@ check_if_VNET_exists(){
 
 		SUBNET_STATUS_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .provisioningState`
 		if [ "$SUBNET_STATUS_CHECK" != "Succeeded" ]; then
-			echo "ERROR ::: SUBNET $SUBNET_0_NAME Creation Failed."
+			echo "ERROR ::: Failed to create Subnet $SUBNET_0_NAME."
 			exit 1
 		else
-			echo "INFO ::: SUBNET $SUBNET_0_NAME is Created."
+			echo "INFO ::: Subnet $SUBNET_0_NAME is Created."
 		fi
-		
-		echo "INFO ::: Creating Subnet $SUBNET_0_NAME ::: COMPLETED"
+		echo "INFO ::: Creation of new Subnet $SUBNET_0_NAME ::: COMPLETED."
 	else
-		echo "INFO ::: SUBNET $SUBNET_0_NAME is Already EXIST"
+		echo "INFO ::: Subnet $SUBNET_0_NAME Already Exists."
 	fi
 
 	SUBNET_NAME="$SUBNET_0_NAME"
@@ -263,6 +262,8 @@ validate_secret_values() {
 				SP_SECRET=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "github-organization" ]; then
 				GITHUB_ORGANIZATION=$SECRET_VALUE
+			elif [ "$SECRET_NAME" == "git-branch" ]; then
+				GIT_BRANCH=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "volume-key-container-url" ]; then
 				VOLUME_KEY_BLOB_URL=$SECRET_VALUE
 			elif [ "$SECRET_NAME" == "edgeappliance-resource-group" ]; then
@@ -481,16 +482,16 @@ validate_AZURE_SUBSCRIPTION() {
 	echo "INFO ::: Validating AZURE Subscription ${AZURE_SUBSCRIPTION} for NAC . . . . . . . . . !!!"
 	AZURE_SUBSCRIPTION_VALUE=`az account show --query "id" -o tsv`
 	AZURE_USER_TYPE=`az account show --query user | jq -r .type`
-	echo "$AZURE_USER_TYPE"
-	echo "$AZURE_SUBSCRIPTION_VALUE"
+	echo "INFO ::: Azure user type $AZURE_USER_TYPE"
+	# echo "$AZURE_SUBSCRIPTION_VALUE"
 	if [ "$AZURE_SUBSCRIPTION_VALUE" == "$AZURE_SUBSCRIPTION" ] && [ "$AZURE_USER_TYPE" == servicePrincipal ]; then
-		echo "INFO ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does exists and Logged in USER TYPE is ServicePrincipal "
+		echo "INFO ::: AZURE Subscription ${AZURE_SUBSCRIPTION} exists and Logged in to Azure CLI as a ServicePrincipal User."
 		COMMAND=`az account set --subscription "${AZURE_SUBSCRIPTION}"`
 		AZURE_TENANT_ID="$(az account list --query "[?isDefault].tenantId" -o tsv)"
 		AZURE_SUBSCRIPTION_ID="$(az account list --query "[?isDefault].id" -o tsv)"
 		SP_APPLICATION_ID="$(az account list --query "[?isDefault].user.name" -o tsv)"
 	else
-		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exists. or Logged in USER TYPE is not ServicePrincipal . . . . . . . . . !!!"
+		echo "ERROR ::: AZURE Subscription ${AZURE_SUBSCRIPTION} does not exist. or Logged in User is not a ServicePrincipal . . . . . . . . . !!!"
 		echo "To Create AZURE Subscription, Run cli command - az login --service-principal --tenant {TENANT_ID} --username {SP_USERNAME} --password {SP_PASSWORD}"
 		exit 1
 	fi
@@ -656,7 +657,7 @@ check_network_availability(){
 		echo "INFO ::: Azure Virtual Network Resource Group is provided as $NETWORKING_RESOURCE_GROUP"
 	fi
 	if [ "$USER_VNET_NAME" == "" ] || [ "$USER_VNET_NAME" == "null" ]; then
-		echo "INFO ::: USER_VNET_NAME not provided in the user Secret"  
+		echo "INFO ::: user-vnet-name not provided in the user Secret"  
 		exit 1
 	else
 	### If USER_VNET_NAME provided
@@ -883,12 +884,15 @@ fi
 
 #################### Validate Arguments Passed to NAC_Scheduler.sh ####################
 NMC_VOLUME_NAME="$1"   ### 1st argument  ::: NMC_VOLUME_NAME
-ANALYTICS_SERVICE="$2" ### 2nd argument  ::: ANALYTICS_SERVICE
+ANALYTICS_SERVICE="$2" ### 2nd argument  ::: ANALYTICS_SERVICE - Example: EXP for Export only
 FREQUENCY="$3"         ### 3rd argument  ::: FREQUENCY
 FOURTH_ARG="$4"        ### 4th argument  ::: User Secret a KVP file Or an existing Secret
 NAC_INPUT_KVP="$5"     ### 5th argument  ::: User defined KVP file for passing arguments to NAC
 SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
-GIT_BRANCH_NAME="nac_v1.0.7.dev6"
+GIT_BRANCH_NAME="export_v.1"
+	 
+######## EXPORTONLY - if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+
 if [[ $GIT_BRANCH_NAME == "" ]]; then
     GIT_BRANCH_NAME="main"
 fi
@@ -935,6 +939,7 @@ if [[ -n "$FOURTH_ARG" ]]; then
 		validate_secret_values "$AZURE_KEYVAULT_NAME" cred-vault
 		validate_secret_values "$AZURE_KEYVAULT_NAME" sp-secret
 		validate_secret_values "$AZURE_KEYVAULT_NAME" github-organization
+		validate_secret_values "$AZURE_KEYVAULT_NAME" git-branch
 		validate_secret_values "$AZURE_KEYVAULT_NAME" volume-key-container-url
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-endpoint
 		validate_secret_values "$AZURE_KEYVAULT_NAME" nmc-api-username
@@ -955,9 +960,11 @@ fi
 
 validate_AZURE_SUBSCRIPTION
 
-ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-acs-admin"
-ACS_RESOURCE_GROUP="nasuni-labs-acs-rg"
+ACS_ADMIN_APP_CONFIG_NAME="nasuni-labs-${ANALYTICS_SERVICE,,}-admin"
+ACS_RESOURCE_GROUP="nasuni-labs-${ANALYTICS_SERVICE,,}-rg"
 IS_ACS_ADMIN_APP_CONFIG="N"
+
+####### ./NACScheduler.sh VOL exp 23 a.xt
 
 ######################  Check : If appconfig is permanently deleted ##############################
 
@@ -983,46 +990,47 @@ ACS_SERVICE_NAME=""
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	check_network_availability
 fi
-
-provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
-
+if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+	provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
+fi
 ######################  Check : if NAC Scheduler Instance is Available ##############################
-echo "INFO ::: Get IP Address of NAC Scheduler Instance"
-
+echo "INFO ::: Checking existence of NAC Scheduler Instance = $NAC_SCHEDULER_NAME!!!"
 ### parse_4thArgument_for_nac_KVPs "$FOURTH_ARG"
-echo "INFO ::: nac_scheduler_name = $NAC_SCHEDULER_NAME "
 if [ "$NAC_SCHEDULER_NAME" != "" ]; then
 	### User has provided the NACScheduler Name as Key-Value from 4th Argument
 	if [[ "$USE_PRIVATE_IP" != "Y" ]]; then
 		### Getting Public_IP of NAC Scheduler
 		NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NETWORKING_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
-		echo "INFO ::: Public_IP of NAC Scheduler is: $NAC_SCHEDULER_IP_ADDR"
+		echo "INFO ::: Public_IP of provided NAC Scheduler VM is: $NAC_SCHEDULER_IP_ADDR"
 	else
 		### Getting Private_IP of NAC Scheduler
-		echo "INFO ::: Private_IP of NAC Scheduler is: $NAC_SCHEDULER_IP_ADDR"
+		echo "INFO ::: Private_IP of NAC Scheduler VM is: $NAC_SCHEDULER_IP_ADDR"
 		NAC_SCHEDULER_IP_ADDR=`az vm list-ip-addresses --name $NAC_SCHEDULER_NAME --resource-group $NETWORKING_RESOURCE_GROUP --query "[0].virtualMachine.network.privateIpAddresses[0]" | cut -d":" -f 2 | tr -d '"' | tr -d ' '`
 	fi
 else
+	### NAC Scheduler is available in a Public vNet 
 	NAC_SCHEDULER_IP_ADDR=$(az vm list-ip-addresses --name NACScheduler --resource-group $NETWORKING_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" | cut -d":" -f 2 | tr -d '"' | tr -d ' ')
+	echo "INFO ::: Public_IP of NAC Scheduler VM is: $NAC_SCHEDULER_IP_ADDR"
 fi
 echo $PEM_KEY_PATH
 AZURE_KEY=$(echo ${PEM_KEY_PATH} | sed 's/.*\/\([^ ]*\/[^.]*\).*/\1/' | cut -d "/" -f 2)
 echo $AZURE_KEY
 PEM="$AZURE_KEY.pem"
 
-echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: $NAC_SCHEDULER_IP_ADDR"
+##### echo "INFO ::: NAC_SCHEDULER_IP_ADDR ::: $NAC_SCHEDULER_IP_ADDR"
 if [ "$NAC_SCHEDULER_IP_ADDR" != "" ]; then
-	echo "INFO ::: NAC Scheduler Instance is Available. IP Address: $NAC_SCHEDULER_IP_ADDR"
+	echo "INFO ::: NAC Scheduler Instance is Available !!!"
 	### Copy the Pem Key from provided path to current folder
 	cp $PEM_KEY_PATH ./
 	sudo chmod 400 $PEM
 	### Call this function to add Local public IP to Network Security Group (NSG rule) of NAC_SCHEDULER IP
-	ls
-	echo $PEM
+	# ls
+	# echo $PEM
 	### nmc endpoint accessibility $NAC_SCHEDULER_NAME $NAC_SCHEDULER_IP_ADDR
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 ###################### NAC Scheduler VM Instance is NOT Available ##############################
 else
+	echo "INFO ::: NAC Scheduler Instance is Not Available !!!"
 	
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 		get_subnets $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME "28" "1"
@@ -1032,7 +1040,7 @@ else
 		check_network_availability
 	fi
 	### "NAC Scheduler is not present. Creating new Virtual machine."
-	echo "INFO ::: NAC Scheduler Instance is not present. Creating new Virtual Machine."
+	echo "INFO ::: NAC Scheduler Instance does not exist.So, Creating a new Azure Virtual Machine."
 	########## Download NAC Scheduler Instance Provisioning Code from GitHub ##########
 	### GITHUB_ORGANIZATION defaults to nasuni-labs
 	REPO_FOLDER="nasuni-azure-analyticsconnector-manager"
@@ -1055,6 +1063,7 @@ else
 		COMMAND="git pull origin main"
 		$COMMAND
 	fi
+		
 	### Download Provisioning Code from GitHub completed
 	echo "INFO ::: NAC Scheduler VM provisioning ::: BEGIN - Executing ::: Terraform init . . . . . . . . "
 	COMMAND="terraform init"
@@ -1062,7 +1071,8 @@ else
 	echo "INFO ::: NAC Scheduler VM provisioning ::: FINISH - Executing ::: Terraform init."
 	echo "INFO ::: NAC Scheduler VM provisioning ::: BEGIN - Executing ::: Terraform apply . . . . . . . . . . . . . . . . . . ."
 	### Create .tfvars file to be used by the NACScheduler Instance Provisioning
-	pwd
+	echo "INFO ::: `pwd`"
+
 	TFVARS_NAC_SCHEDULER="NACScheduler.tfvars"
 	sudo rm -rf "$TFVARS_NAC_SCHEDULER" 
 	sudo chmod 755 $PEM_KEY_PATH
@@ -1096,7 +1106,6 @@ else
 	fi
 	echo "INFO ::: $TFVARS_NAC_SCHEDULER created"
 	dos2unix $TFVARS_NAC_SCHEDULER
-
 	COMMAND="terraform apply -var-file=$TFVARS_NAC_SCHEDULER -auto-approve"
 	$COMMAND
 	if [ $? -eq 0 ]; then
@@ -1113,6 +1122,7 @@ else
 	pwd
 	echo "Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM_KEY_PATH
+exit 888
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 fi
 
@@ -1121,3 +1131,4 @@ secs=$((END - START))
 DIFF=$(printf '%02dh:%02dm:%02ds\n' $((secs / 3600)) $((secs % 3600 / 60)) $((secs % 60)))
 echo "INFO ::: Total execution Time ::: $DIFF"
 )2>&1 | tee $LOG_FILE
+
