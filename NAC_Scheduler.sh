@@ -828,9 +828,9 @@ Schedule_CRON_JOB() {
 	JSON_FILE_PATH="/var/www/Tracker_UI/docs/"
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
-	echo "Creating $JSON_FILE_PATH Directory"
+	echo "INFO ::: Creating $JSON_FILE_PATH Directory"
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p $JSON_FILE_PATH"
-	echo "$JSON_FILE_PATH Directory Created"
+	echo "INFO ::: $JSON_FILE_PATH Directory Created"
 
 	###Moving nmc_detail file to /var/www/
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p /var/www/SearchUI_Web"
@@ -847,16 +847,19 @@ Schedule_CRON_JOB() {
 		echo "INFO ::: $TFVARS_FILE_NAME Uploaded Successfully to NAC_Scheduer Instance."
 	fi
 	sudo rm -rf $TFVARS_FILE_NAME
-	echo "Copying file tracker_json.py $JSON_FILE_PATH Creating Direcotory "
-	#dos2unix command execute
+	if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+		echo "INFO ::: Copying file tracker_json.py $JSON_FILE_PATH Creating Direcotory "
+		#dos2unix command execute
+		ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo cp ~/$CRON_DIR_NAME/tracker_json.py $JSON_FILE_PATH"
+		### Check If CRON JOB is running for a specific VOLUME_NAME
+		echo "INFO ::: tracker_json.py copied to $JSON_FILE_PATH !!!"
+	fi
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "dos2unix ~/$CRON_DIR_NAME/provision_nac.sh"
-	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo cp ~/$CRON_DIR_NAME/tracker_json.py $JSON_FILE_PATH"
-	### Check If CRON JOB is running for a specific VOLUME_NAME
-	echo "Copy completed file tracker_json.py $JSON_FILE_PATH Creating Direcotory  *****************"
+	
 	CRON_VOL=$(ssh -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@"$NAC_SCHEDULER_IP_ADDR" "crontab -l | grep \"~/$CRON_DIR_NAME/$TFVARS_FILE_NAME\"")
 	if [ "$CRON_VOL" != "" ]; then
 		### DO Nothing. CRON JOB takes care of NAC Provisioning
-		echo "INFO ::: crontab does not require volume entry.As it is already present.:::::"
+		echo "INFO ::: Cron Job already available for the Volume $NMC_VOLUME_NAME"
 	else
 		### Set up a new CRON JOB for NAC Provisioning
 		echo "INFO ::: Setting CRON JOB for $CRON_DIR_NAME as it is not present"
@@ -1101,6 +1104,8 @@ else
 	echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$TFVARS_NAC_SCHEDULER
     echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$TFVARS_NAC_SCHEDULER
     echo "git_branch="\"$GIT_BRANCH_NAME\" >>$TFVARS_NAC_SCHEDULER
+	SERVICE_NAME=${ANALYTICS_SERVICE^^}
+    echo "service_name="\"$SERVICE_NAME\" >>$TFVARS_NAC_SCHEDULER
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 		echo "search_outbound_subnet="$SEARCH_OUTBOUND_SUBNET >>$TFVARS_NAC_SCHEDULER
 	fi

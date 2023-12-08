@@ -165,12 +165,14 @@ parse_file_NAC_txt() {
             "azure_tenant_id") AZURE_TENANT_ID="$value" ;;
             "cred_vault") CRED_VAULT="$value" ;;
             "analytic_service") ANALYTICS_SERVICE="$value" ;;
+            "analytic_service") SERVICE_NAME="$value" ;; ### facilitate ExportOnly
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
             "user_subnet_name") USER_SUBNET_NAME="$value" ;;
             "volume_key_blob_url") VOLUME_KEY_BLOB_URL="$value" ;;
             "edge_appliance_group") EDGEAPPLIANCE_RESOURCE_GROUP="$value";;
+            
             esac
         done <"$file"
 }
@@ -803,7 +805,9 @@ ENDPOINT_NAME="acs-private-connection"
 parse_file_NAC_txt "NAC.txt"
 parse_config_file_for_user_secret_keys_values config.dat
 parse_file_nmc_txt "nmc_details.txt"
-sudo chmod -R 777 /var/www/SearchUI_Web/
+if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+    sudo chmod -R 777 /var/www/SearchUI_Web/
+fi
 resolve_filer_ip $WEB_ACCESS_APPLIANCE_ADDRESS
 NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
 USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
