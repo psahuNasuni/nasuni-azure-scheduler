@@ -58,7 +58,7 @@ enable_crontab(){
         crontab -l
         break
     else
-        echo "Already uncommented"
+        echo "INFO ::: Already uncommented"
         break
     fi
     retry_count=$((retry_count + 1))
@@ -253,7 +253,7 @@ validate_github() {
     REPO_EXISTS=$?
     if [ $REPO_EXISTS -ne 0 ]; then
             echo "ERROR ::: Unable to Access the git repo $GIT_REPO. Execution STOPPED"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "INFO ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
             exit 1
     else
@@ -390,7 +390,7 @@ add_metadat_to_destination_blob(){
         echo "ERROR ::: Metadata Assignment Failed in destination container."
         echo "INFO ::: Deleting the destination storage account"
         delete_destination_storage_account
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "INFO ::: Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
     else
@@ -434,7 +434,7 @@ run_cognitive_search_indexer(){
         echo "ERROR ::: Cognitive Search Indexer Run ::: FAILED"
         echo "INFO ::: Deleting the destination storage account"
         delete_destination_storage_account
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "INFO ::: Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
     fi
@@ -529,13 +529,13 @@ create_shared_private_access(){
             echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
         else
             echo "ERROR ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "INFO ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
             exit 1
         fi
     else
         echo "ERROR ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "INFO ::: Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
     fi
@@ -582,7 +582,7 @@ create_azure_function_private_dns_zone_virtual_network_link(){
 			echo "INFO ::: COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "INFO ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -616,7 +616,7 @@ create_storage_account_private_dns_zone_virtual_network_link(){
 			echo "INFO ::: COMPLETED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "INFO ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -646,7 +646,7 @@ create_azure_function_private_dns_zone(){
 			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "INFO ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -676,7 +676,7 @@ create_storage_account_private_dns_zone(){
 			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "INFO ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -807,8 +807,8 @@ parse_config_file_for_user_secret_keys_values config.dat
 parse_file_nmc_txt "nmc_details.txt"
 if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
     sudo chmod -R 777 /var/www/SearchUI_Web/
+    resolve_filer_ip $WEB_ACCESS_APPLIANCE_ADDRESS
 fi
-resolve_filer_ip $WEB_ACCESS_APPLIANCE_ADDRESS
 NETWORKING_RESOURCE_GROUP=$(echo $NETWORKING_RESOURCE_GROUP | tr -d ' ')
 USER_VNET_NAME=$(echo $USER_VNET_NAME | tr -d ' ')
 AZURE_SUBSCRIPTION_ID=$(echo $AZURE_SUBSCRIPTION_ID | tr -d ' ')
@@ -816,15 +816,18 @@ NAC_AZURE_LOCATION=$(echo $NAC_AZURE_LOCATION | tr -d ' ')
 get_volume_key_blob_url $VOLUME_KEY_BLOB_URL
 sp_login $SP_APPLICATION_ID $SP_SECRET $AZURE_TENANT_ID
 root_login $CRED_VAULT
+USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
+echo "INFO ::: NAC_Activity : Export In Progress"
+
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
 add_appconfig_role_assignment
-USE_PRIVATE_IP=$(echo "$USE_PRIVATE_IP" | tr -d '"')
-
-echo "INFO ::: NAC_Activity : Export In Progress"
-ACS_URL=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key nmc-api-acs-url --label nmc-api-acs-url --query value --output tsv 2> /dev/null`
-ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&search=*"
-DEFAULT_URL="/search/index.html"
+if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+    ACS_URL=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key nmc-api-acs-url --label nmc-api-acs-url --query value --output tsv 2> /dev/null`
+    ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&search=*"
+    DEFAULT_URL="/search/index.html"
+fi
+    
 FREQUENCY=$(echo "$FREQUENCY" | tr -d '"')
 USER_SECRET=$KEY_VAULT_NAME
 CREATED_BY=$(echo "$SP_APPLICATION_ID" | tr -d '"')
@@ -836,23 +839,27 @@ CURRENT_STATE="Export-In-progress"
 LATEST_TOC_HANDLE_PROCESSED="null"
 NAC_SCHEDULER_NAME=$(echo "$NAC_SCHEDULER_NAME" | tr -d '"')
 echo "INFO ::: NAC scheduler name: " ${NAC_SCHEDULER_NAME}
-JSON_FILE_PATH="/var/www/Tracker_UI/docs/${NAC_SCHEDULER_NAME}_tracker.json"
-echo "INFO ::: JSON_FILE_PATH:" $JSON_FILE_PATH
-if [ -f "$JSON_FILE_PATH" ] ; then
-	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
-	TRACKER_JSON=$(cat $JSON_FILE_PATH)
-	# echo "Tracker json" $TRACKER_JSON
-	LATEST_TOC_HANDLE_PROCESSED=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)	
-	if [ -z "$LATEST_TOC_HANDLE_PROCESSED" ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == " " ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == "null" ]; then	
- 		LATEST_TOC_HANDLE_PROCESSED="null"
-    else
-        LATEST_TOC_HANDLE_PROCESSED="$LATEST_TOC_HANDLE_PROCESSED"
-	fi
-	echo "INFO ::: Latest processed SnapshotID from NAC Integration Tracker: "  $LATEST_TOC_HANDLE_PROCESSED
-fi
+if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
 
-generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
-pwd
+    JSON_FILE_PATH="/var/www/Tracker_UI/docs/${NAC_SCHEDULER_NAME}_tracker.json"
+
+    echo "INFO ::: JSON_FILE_PATH:" $JSON_FILE_PATH
+    if [ -f "$JSON_FILE_PATH" ] ; then
+        TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
+        TRACKER_JSON=$(cat $JSON_FILE_PATH)
+        # echo "Tracker json" $TRACKER_JSON
+        LATEST_TOC_HANDLE_PROCESSED=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)	
+        if [ -z "$LATEST_TOC_HANDLE_PROCESSED" ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == " " ] || [ "$LATEST_TOC_HANDLE_PROCESSED" == "null" ]; then	
+            LATEST_TOC_HANDLE_PROCESSED="null"
+        else
+            LATEST_TOC_HANDLE_PROCESSED="$LATEST_TOC_HANDLE_PROCESSED"
+        fi
+        echo "INFO ::: Latest processed SnapshotID from NAC Integration Tracker: "  $LATEST_TOC_HANDLE_PROCESSED
+    fi
+
+    generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+    pwd
+fi
 echo "INFO ::: current user :-"`whoami`
 #############################################################################################################
 
@@ -862,7 +869,7 @@ echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
 LAST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_PROCESSED
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
-    echo "Enabling the crontab as the code execution fails"
+    echo "INFO ::: Enabling the crontab as the code execution fails"
     enable_crontab
     exit 1
 fi
@@ -889,7 +896,7 @@ fi
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
-   echo "Enabling the crontab as the code execution FAILS"
+   echo "INFO ::: Enabling the crontab as the code execution FAILS"
    enable_crontab
    exit 1
 fi
@@ -925,7 +932,7 @@ else
     echo "ERROR ::: Unable to Proceed with NAC Provisioning."
     echo "INFO ::: Deleting the destination storage account"
     delete_destination_storage_account
-    echo "Enabling the crontab as the code execution FAILS"
+    echo "INFO ::: Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
 fi
@@ -1033,9 +1040,12 @@ else
 	echo "INFO ::: NAC provisioning ::: FINISH ::: Terraform apply ::: FAILED"
  	CURRENT_STATE="Export-Failed"
     LATEST_TOC_HANDLE_FROM_TRACKER_JSON=""
-    read_latest_toc_handle_from_tracker_json
-    LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
-   	generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+    if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+
+        read_latest_toc_handle_from_tracker_json
+        LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
+        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+    fi
 	echo "INFO ::: NAC_Activity : Export Failed."
     echo "INFO ::: Deleting the nac_resource_group : ${NAC_RESOURCE_GROUP_NAME}"
 	COMMAND="az group delete --name $NAC_RESOURCE_GROUP_NAME --yes --no-wait"
@@ -1048,26 +1058,29 @@ else
     	fi
     echo "INFO ::: Deleting the destination storage account"
     delete_destination_storage_account
-    echo "Enabling the crontab as the code execution FAILS"
+    echo "INFO ::: Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
 fi
 
 ##################################### END NAC Provisioning and Data Export ###################################################################
 ##################################### Indexing START ###############################################################
-ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
-echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
+if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
 
-ACS_API_KEY=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
-echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
+    ACS_SERVICE_NAME=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-service-name --label acs-service-name --query value --output tsv 2> /dev/null`
+    echo "INFO ::: ACS Service Name : $ACS_SERVICE_NAME"
 
-run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
-##################################### Indexing COMPLETE ###############################################################
+    ACS_API_KEY=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key acs-api-key --label acs-api-key --query value --output tsv 2> /dev/null`
+    echo "INFO ::: ACS Service API Key : $ACS_API_KEY"
 
-##################################### Blob Store Cleanup START ###############################################################
+    run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
+    ##################################### Indexing COMPLETE ###############################################################
 
-destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
-echo "Enabling the crontab as the code executed SUCCESSFULLY"
+    ##################################### Blob Store Cleanup START ###############################################################
+
+    destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
+fi
+echo "INFO ::: Enabling the crontab as the code executed SUCCESSFULLY"
 enable_crontab
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################

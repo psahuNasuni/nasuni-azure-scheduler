@@ -29,6 +29,7 @@ check_if_VNET_exists(){
 		echo "INFO ::: Creation of new Subnet $SUBNET_0_NAME ::: STARTED."
 		
 		get_subnets $NETWORKING_RESOURCE_GROUP $INPUT_VNET "24" "1"
+
 		VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
 		echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
 		VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $NETWORKING_RESOURCE_GROUP --service-endpoints "Microsoft.Web" "Microsoft.Storage" --address-prefixes "$VNET_0_SUBNET_CIDR")
@@ -530,7 +531,7 @@ provision_Azure_Cognitive_Search(){
 		echo "INFO ::: GIT_REPO $GIT_REPO"
 		echo "INFO ::: GIT_REPO_NAME $GIT_BRANCH_NAME ::: GIT_BRANCH_NAME $GIT_BRANCH_NAME"
 		sudo rm -rf "${GIT_REPO_NAME}"
-		pwd
+		# pwd
 		COMMAND="git clone -q -b $GIT_BRANCH_NAME $GIT_REPO"
 		$COMMAND
 		RESULT=$?
@@ -687,7 +688,7 @@ check_if_resourcegroup_exist(){
 	echo "INFO ::: Check if Resource Group $ACS_RESOURCE_GROUP exist . . . . "
 	ACS_RG_STATUS=`az group show --name $ACS_RESOURCE_GROUP --query properties.provisioningState --output tsv 2> /dev/null`
 	if [ "$ACS_RG_STATUS" == "Succeeded" ]; then
-		pwd
+		# pwd
 		IS_ACS_RG_YN="Y"
 		echo "INFO ::: Azure Cognitive Search Resource Group $ACS_RESOURCE_GROUP is already exist. Importing the existing Resource Group."
 		COMMAND="terraform import -var-file=$ACS_TFVARS_FILE_NAME azurerm_resource_group.acs_rg /subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$ACS_RESOURCE_GROUP"
@@ -1122,12 +1123,11 @@ else
 	ip=$(cat NACScheduler_IP.txt)
 	NAC_SCHEDULER_IP_ADDR=$ip
 	echo 'INFO ::: New pubilc IP just created:-'$ip
-	pwd
+	# pwd
 	cd ../
-	pwd
+	# pwd
 	echo "Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM_KEY_PATH
-exit 888
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 fi
 
