@@ -97,6 +97,15 @@ get_destination_container_url(){
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string -g $EDGEAPPLIANCE_RESOURCE_GROUP --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 	echo "INFO ::: SUCCESS :: Get destination container url."
 }
+append_destination_container_url_toNAC_txt(){
+	NAC_TXT_FILE_NAME="NAC.txt"
+    PREV_TOC_HANDLE="$1"
+    echo "INFO ::: Appending destination_container details to NAC.txt"
+    echo "DestinationContainer="$CONTAINER_NAME >> "$NAC_TXT_FILE_NAME"
+    echo "DestinationContainerSASURL="$DESTINATION_CONTAINER_SAS_URL >> "$NAC_TXT_FILE_NAME"
+    echo "DatasourceConnectionString="$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING >> "$NAC_TXT_FILE_NAME"
+    echo "PrevUniFSTOCHandle="$PREV_TOC_HANDLE >> "$NAC_TXT_FILE_NAME"
+}
 update_destination_container_url(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
 
@@ -821,13 +830,14 @@ echo "INFO ::: NAC_Activity : Export In Progress"
 
 ACS_RESOURCE_GROUP=$(echo "$ACS_RESOURCE_GROUP" | tr -d '"')
 ACS_ADMIN_APP_CONFIG_NAME=$(echo "$ACS_ADMIN_APP_CONFIG_NAME" | tr -d '"')
-add_appconfig_role_assignment
+
 if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+    add_appconfig_role_assignment
     ACS_URL=`az appconfig kv show --name $ACS_ADMIN_APP_CONFIG_NAME --key nmc-api-acs-url --label nmc-api-acs-url --query value --output tsv 2> /dev/null`
     ACS_REQUEST_URL=$ACS_URL"/indexes/index/docs?api-version=2021-04-30-Preview&search=*"
     DEFAULT_URL="/search/index.html"
 fi
-    
+  
 FREQUENCY=$(echo "$FREQUENCY" | tr -d '"')
 USER_SECRET=$KEY_VAULT_NAME
 CREATED_BY=$(echo "$SP_APPLICATION_ID" | tr -d '"')
@@ -867,6 +877,7 @@ nmc_api_call "nmc_details.txt"
 echo "INFO ::: Snapshot ID (UniFS toc handle) retrieved by NMC Api call: $UNIFS_TOC_HANDLE"
 echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
 LAST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_PROCESSED
+
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
     echo "INFO ::: Enabling the crontab as the code execution fails"
@@ -880,9 +891,13 @@ ACS_NMC_VOLUME_NAME=$(echo "$NMC_VOLUME_NAME" | tr '[:upper:]' '[:lower:]')
 ACS_NMC_VOLUME_NAME=$(echo "$ACS_NMC_VOLUME_NAME" | tr -cd '[:alnum:]')
 
 generate_unique_random_value
-
 get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP
-update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
+if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
+    update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
+else
+    append_destination_container_url_toNAC_txt $LATEST_TOC_HANDLE_PROCESSED
+fi
+echo "#### Also, Append update_destination_container_url to config.dat"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
  
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
@@ -966,6 +981,7 @@ echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "nac_resource_group_name="\"$NAC_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "service_name="\"$SERVICE_NAME\" >>$NAC_TFVARS_FILE_NAME
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
@@ -986,22 +1002,34 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     ### Create the Storage Account DNS Zone
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
+if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
+    LATEST_TOC_HANDLE=""
+    echo "########## 000000000000000000000000 ###################"
+    pwd
+    NAC_TXT_PATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
+    # cat ~/$NAC_TXT_PATH/NAC.txt
+    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH/NAC.txt
+    cat ~/$NAC_TXT_PATH/NAC.txt
+    echo "########## QQQQQQQQQQQQQQQQQQQQQQQ ###################"
 
-echo "INFO ::: Scheduler Tracker json file path: $JSON_FILE_PATH"
-LATEST_TOC_HANDLE=""
-if [ -f "$JSON_FILE_PATH" ] ; then
-	TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
-	echo $TRACEPATH
-	TRACKER_JSON=$(cat $JSON_FILE_PATH)
-	# echo "Tracker json" $TRACKER_JSON
-	LATEST_TOC_HANDLE=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
-	if [ "$LATEST_TOC_HANDLE" =  "null" ] ; then
-		LATEST_TOC_HANDLE="null"
-	fi
-	echo "INFO ::: LATEST_TOC_HANDLE: $LATEST_TOC_HANDLE"
+    # parse_file_NAC_txt ~/$NAC_TXT_PATH/NAC.txt
 else
-	LATEST_TOC_HANDLE=""
-	echo "ERROR ::: Tracker JSON folder Not present"
+    echo "INFO ::: Scheduler Tracker json file path: $JSON_FILE_PATH"
+    LATEST_TOC_HANDLE=""
+    if [ -f "$JSON_FILE_PATH" ] ; then
+        TRACEPATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
+        echo $TRACEPATH
+        TRACKER_JSON=$(cat $JSON_FILE_PATH)
+        # echo "Tracker json" $TRACKER_JSON
+        LATEST_TOC_HANDLE=$(echo $TRACKER_JSON | jq -r .INTEGRATIONS.\"$TRACEPATH\"._NAC_activity.latest_toc_handle_processed)
+        if [ "$LATEST_TOC_HANDLE" =  "null" ] ; then
+            LATEST_TOC_HANDLE="null"
+        fi
+        echo "INFO ::: LATEST_TOC_HANDLE: $LATEST_TOC_HANDLE"
+    else
+        LATEST_TOC_HANDLE=""
+        echo "ERROR ::: Tracker JSON folder Not present"
+    fi
 fi
 
 echo "INFO ::: LATEST_TOC_HANDLE" $LATEST_TOC_HANDLE
@@ -1010,8 +1038,9 @@ LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE
 FOLDER_PATH=`pwd`
 
 ## appending latest_toc_handle_processed to TFVARS_FILE
-echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$TFVARS_FILE
-
+echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$NAC_TFVARS_FILE_NAME
+echo "########## RRRRRRRRRRRRRRRRRRRRRRRRRRR ###################"
+exit 888
 ################################ NAC Provisioning and Data Export #############################################################
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"

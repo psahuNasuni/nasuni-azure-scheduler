@@ -606,6 +606,51 @@ provision_Azure_Cognitive_Search(){
 	##################################### END Azure CognitiveSearch ###################################################################
 }
 
+provision_AppConfig_if_Not_Available(){
+	ACS_SERVICE_NAME="$3"
+	ACS_ADMIN_APP_CONFIG_NAME="$2"
+	ACS_RESOURCE_GROUP="$1"
+	echo "INFO ::: Checking for ACS Availability Status . . . . "
+
+	echo "INFO ::: Checking for ACS Admin App Config $ACS_ADMIN_APP_CONFIG_NAME . . ."
+	check_if_acs_app_config_exists $ACS_ADMIN_APP_CONFIG_NAME $ACS_RESOURCE_GROUP
+	echo "IS_ACS_ADMIN_APP_CONFIG $IS_ACS_ADMIN_APP_CONFIG"
+	
+	if [ "$IS_ACS_ADMIN_APP_CONFIG" == "Y" ]; then
+		
+		### update the Destination bucket connection string in ACS_ADMIN_APP_CONFIG_NAME
+		
+		get_acs_config_values "$ACS_ADMIN_APP_CONFIG_NAME" acs-service-name
+
+		if [ "$ACS_SERVICE_NAME" == "" ]; then
+			### Service Not available in ACS Admin App Configuration 
+			############ START : Provision ACS if Not Available ################
+			echo "INFO ::: Service $ACS_SERVICE_NAME is Not available in ACS Admin App Configuration "
+			provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
+			### SMG ###
+			### import acs dns zone, endpoint, virtual_link 
+			############ END: Provision ACS if Not Available ################
+		else
+			### Service available in ACS Admin App Configuration but not in running condition
+			echo "INFO ::: Service $ACS_SERVICE_NAME entry found in ACS Admin App Configuration but not in running condition."
+			ACS_STATUS=`az search service show --name $ACS_SERVICE_NAME --resource-group $ACS_RESOURCE_GROUP | jq -r .status 2> /dev/null`
+			if [ "$ACS_STATUS" == "" ] || [ "$ACS_STATUS" == null ]; then
+				############ START : Provision ACS if Not Available ################
+				provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
+				############ END: Provision ACS if Not Available ################
+			else
+				echo "INFO ::: ACS $ACS_SERVICE_NAME Status is: $ACS_STATUS"
+			fi
+		fi 
+	else ## When Key Vault Not Available - 1st Run
+		############ START : Provision ACS if Not Available ################	
+		provision_Azure_Cognitive_Search "N" $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME
+		############ END: Provision ACS if Not Available ################
+	fi	
+}
+
+
+
 provision_ACS_if_Not_Available(){
 	ACS_SERVICE_NAME="$3"
 	ACS_ADMIN_APP_CONFIG_NAME="$2"
@@ -777,6 +822,9 @@ Schedule_CRON_JOB() {
 	
 	NAC_TXT_FILE_NAME="NAC.txt"
 	sudo rm -rf "$NAC_TXT_FILE_NAME"
+	if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
+		echo "exp_resource_group="$NETWORKING_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+	fi
 	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
@@ -996,6 +1044,7 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 fi
 if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
 	provision_ACS_if_Not_Available $ACS_RESOURCE_GROUP $ACS_ADMIN_APP_CONFIG_NAME $ACS_SERVICE_NAME
+
 fi
 ######################  Check : if NAC Scheduler Instance is Available ##############################
 echo "INFO ::: Checking existence of NAC Scheduler Instance = $NAC_SCHEDULER_NAME!!!"
