@@ -166,6 +166,7 @@ parse_file_NAC_txt() {
     while IFS="=" read -r key value; do
         case "$key" in
             "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
+            "exp_resource_group") _RESOURCE_GROUP="$value" ;;
             "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
@@ -174,7 +175,6 @@ parse_file_NAC_txt() {
             "azure_tenant_id") AZURE_TENANT_ID="$value" ;;
             "cred_vault") CRED_VAULT="$value" ;;
             "analytic_service") ANALYTICS_SERVICE="$value" ;;
-            "analytic_service") SERVICE_NAME="$value" ;; ### facilitate ExportOnly
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
@@ -184,8 +184,18 @@ parse_file_NAC_txt() {
             
             esac
         done <"$file"
+        SERVICE_NAME="$ANALYTICS_SERVICE" ### facilitate ExportOnly
 }
+read_PrevUniFSTOCHandle_from_NAC_txt_file() {
+    file="$1"
 
+    dos2unix $file
+    while IFS="=" read -r key value; do
+        case "$key" in
+            "PrevUniFSTOCHandle") PREV_UNIFS_TOC_HANDLE_EXP="$value" ;;
+            esac
+        done <"$file"
+}
 sp_login(){
     SP_USERNAME=$1
     SP_PASSWORD=$2
@@ -895,6 +905,7 @@ get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP
 if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
     update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 else
+    echo "***************** append_destination_container_url_toNAC_txt"
     append_destination_container_url_toNAC_txt $LATEST_TOC_HANDLE_PROCESSED
 fi
 echo "#### Also, Append update_destination_container_url to config.dat"
@@ -977,11 +988,15 @@ echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 sudo rm -rf "$NAC_TFVARS_FILE_NAME"
+
+if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
+    echo "exp_resource_group="\"${EXP_RESOURCE_GROUP^^}\" >>$NAC_TFVARS_FILE_NAME
+fi
 echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "nac_resource_group_name="\"$NAC_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
-echo "service_name="\"$SERVICE_NAME\" >>$NAC_TFVARS_FILE_NAME
+echo "service_name="\"$ANALYTICS_SERVICE\" >>$NAC_TFVARS_FILE_NAME
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
@@ -1002,17 +1017,23 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     ### Create the Storage Account DNS Zone
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
+LATEST_TOC_HANDLE="null"
+NAC_TXT_PATH="~/$NMC_VOLUME_NAME_$ANALYTICS_SERVICE/NAC.txt"
 if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
-    LATEST_TOC_HANDLE=""
     echo "########## 000000000000000000000000 ###################"
     pwd
-    NAC_TXT_PATH="${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}"
-    # cat ~/$NAC_TXT_PATH/NAC.txt
-    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH/NAC.txt
-    cat ~/$NAC_TXT_PATH/NAC.txt
+    ### Get PrevUniFSTOCHandle from NAC.txt file
+    read_PrevUniFSTOCHandle_from_NAC_txt_file $NAC_TXT_PATH
+    LATEST_TOC_HANDLE=$PREV_UNIFS_TOC_HANDLE_EXP
+    if [ "$LATEST_TOC_HANDLE" =  "null" ] ; then
+        LATEST_TOC_HANDLE="null"
+    fi
+    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" ~/$NAC_TXT_PATH 2> /dev/null
+    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH
+    cat ~/$NAC_TXT_PATH
     echo "########## QQQQQQQQQQQQQQQQQQQQQQQ ###################"
 
-    # parse_file_NAC_txt ~/$NAC_TXT_PATH/NAC.txt
+    # parse_file_NAC_txt ~/$NAC_TXT_PATHEXP
 else
     echo "INFO ::: Scheduler Tracker json file path: $JSON_FILE_PATH"
     LATEST_TOC_HANDLE=""
@@ -1038,9 +1059,8 @@ LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE
 FOLDER_PATH=`pwd`
 
 ## appending latest_toc_handle_processed to TFVARS_FILE
-echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$NAC_TFVARS_FILE_NAME
+# echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$NAC_TFVARS_FILE_NAME
 echo "########## RRRRRRRRRRRRRRRRRRRRRRRRRRR ###################"
-exit 888
 ################################ NAC Provisioning and Data Export #############################################################
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
@@ -1074,6 +1094,11 @@ else
         read_latest_toc_handle_from_tracker_json
         LATEST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_FROM_TRACKER_JSON
         generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
+    else
+        read_PrevUniFSTOCHandle_from_NAC_txt_file $NAC_TXT_PATH
+        LATEST_TOC_HANDLE=
+        sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" ~/$NAC_TXT_PATH 2> /dev/null
+        echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH
     fi
 	echo "INFO ::: NAC_Activity : Export Failed."
     echo "INFO ::: Deleting the nac_resource_group : ${NAC_RESOURCE_GROUP_NAME}"
@@ -1108,6 +1133,10 @@ if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
     ##################################### Blob Store Cleanup START ###############################################################
 
     destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
+else
+    echo "INFO ::: Keep current State of PrevUniFSTOCHandle in NAC.txt file."
+    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" ~/$NAC_TXT_PATH 2> /dev/null
+    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH
 fi
 echo "INFO ::: Enabling the crontab as the code executed SUCCESSFULLY"
 enable_crontab
