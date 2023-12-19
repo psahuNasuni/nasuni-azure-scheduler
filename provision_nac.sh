@@ -166,7 +166,7 @@ parse_file_NAC_txt() {
     while IFS="=" read -r key value; do
         case "$key" in
             "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
-            "exp_resource_group") _RESOURCE_GROUP="$value" ;;
+            "exp_resource_group") EXP_RESOURCE_GROUP="$value" ;;
             "acs_admin_app_config_name") ACS_ADMIN_APP_CONFIG_NAME="$value" ;;
             "github_organization") GITHUB_ORGANIZATION="$value" ;;
             "user_secret") KEY_VAULT_NAME="$value" ;;
@@ -990,9 +990,10 @@ NAC_TFVARS_FILE_NAME="NAC.tfvars"
 sudo rm -rf "$NAC_TFVARS_FILE_NAME"
 
 if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
-    echo "exp_resource_group="\"${EXP_RESOURCE_GROUP^^}\" >>$NAC_TFVARS_FILE_NAME
+    echo "acs_resource_group="\"${EXP_RESOURCE_GROUP^^}\" >>$NAC_TFVARS_FILE_NAME
+else
+    echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 fi
-echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "nac_resource_group_name="\"$NAC_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
@@ -1018,7 +1019,7 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
 LATEST_TOC_HANDLE="null"
-NAC_TXT_PATH="~/$NMC_VOLUME_NAME_$ANALYTICS_SERVICE/NAC.txt"
+NAC_TXT_PATH="~/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
 if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
     echo "########## 000000000000000000000000 ###################"
     pwd
