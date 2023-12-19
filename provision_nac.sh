@@ -989,11 +989,7 @@ echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 NAC_TFVARS_FILE_NAME="NAC.tfvars"
 sudo rm -rf "$NAC_TFVARS_FILE_NAME"
 
-if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
-    echo "acs_resource_group="\"${EXP_RESOURCE_GROUP^^}\" >>$NAC_TFVARS_FILE_NAME
-else
-    echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
-fi
+echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "nac_resource_group_name="\"$NAC_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
