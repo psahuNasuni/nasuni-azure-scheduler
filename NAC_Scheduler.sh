@@ -823,9 +823,10 @@ Schedule_CRON_JOB() {
 	NAC_TXT_FILE_NAME="NAC.txt"
 	sudo rm -rf "$NAC_TXT_FILE_NAME"
 	if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
-		echo "exp_resource_group="$NETWORKING_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+		echo "acs_resource_group="$NETWORKING_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
+	else
+		echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	fi
-	echo "acs_resource_group="$ACS_RESOURCE_GROUP >>$NAC_TXT_FILE_NAME
 	echo "acs_admin_app_config_name="$ACS_ADMIN_APP_CONFIG_NAME >>$NAC_TXT_FILE_NAME
 	echo "github_organization="$GITHUB_ORGANIZATION >>$NAC_TXT_FILE_NAME
 	echo "user_secret="$KEY_VAULT_NAME >>$NAC_TXT_FILE_NAME
