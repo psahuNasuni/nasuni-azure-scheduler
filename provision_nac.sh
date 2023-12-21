@@ -161,8 +161,9 @@ parse_file_nmc_txt() {
 }
 parse_file_NAC_txt() {
     file="$1"
-
+echo "HHHHHHHHHH $file"
     dos2unix $file
+
     while IFS="=" read -r key value; do
         case "$key" in
             "acs_resource_group") ACS_RESOURCE_GROUP="$value" ;;
@@ -821,7 +822,8 @@ ROOT_USER=""
 BLOB_FILE_COUNT=0
 SAS_EXPIRY=`date -u -d "1440 minutes" '+%Y-%m-%dT%H:%MZ'`
 ENDPOINT_NAME="acs-private-connection"
-parse_file_NAC_txt "NAC.txt"
+
+parse_file_NAC_txt "`pwd`/NAC.txt"
 parse_config_file_for_user_secret_keys_values config.dat
 parse_file_nmc_txt "nmc_details.txt"
 if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
@@ -1015,7 +1017,7 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
 LATEST_TOC_HANDLE="null"
-NAC_TXT_PATH="/home/ubuntu/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
+# NAC_TXT_PATH="/home/ubuntu/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
 if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
     echo "########## 888888888888 ###################"
     pwd
