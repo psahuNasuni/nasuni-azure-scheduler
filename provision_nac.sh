@@ -1015,9 +1015,9 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
 LATEST_TOC_HANDLE="null"
-NAC_TXT_PATH="~/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
+NAC_TXT_PATH="/home/ubuntu/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
 if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
-    echo "########## 000000000000000000000000 ###################"
+    echo "########## 888888888888 ###################"
     pwd
     ### Get PrevUniFSTOCHandle from NAC.txt file
     read_PrevUniFSTOCHandle_from_NAC_txt_file $NAC_TXT_PATH
@@ -1025,12 +1025,12 @@ if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
     if [ "$LATEST_TOC_HANDLE" =  "null" ] ; then
         LATEST_TOC_HANDLE="null"
     fi
-    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" ~/$NAC_TXT_PATH 2> /dev/null
-    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH
-    cat ~/$NAC_TXT_PATH
+    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" $NAC_TXT_PATH 2> /dev/null
+    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$NAC_TXT_PATH
+    cat "NAC_TXT_PATH - $NAC_TXT_PATH"
     echo "########## QQQQQQQQQQQQQQQQQQQQQQQ ###################"
 
-    # parse_file_NAC_txt ~/$NAC_TXT_PATHEXP
+    # parse_file_NAC_txt /home/ubuntu/$NAC_TXT_PATHEXP
 else
     echo "INFO ::: Scheduler Tracker json file path: $JSON_FILE_PATH"
     LATEST_TOC_HANDLE=""
@@ -1094,8 +1094,8 @@ else
     else
         read_PrevUniFSTOCHandle_from_NAC_txt_file $NAC_TXT_PATH
         LATEST_TOC_HANDLE=
-        sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" ~/$NAC_TXT_PATH 2> /dev/null
-        echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH
+        sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" $NAC_TXT_PATH 2> /dev/null
+        echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$NAC_TXT_PATH
     fi
 	echo "INFO ::: NAC_Activity : Export Failed."
     echo "INFO ::: Deleting the nac_resource_group : ${NAC_RESOURCE_GROUP_NAME}"
@@ -1132,8 +1132,8 @@ if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
     destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
 else
     echo "INFO ::: Keep current State of PrevUniFSTOCHandle in NAC.txt file."
-    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" ~/$NAC_TXT_PATH 2> /dev/null
-    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>~/$NAC_TXT_PATH
+    sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" $NAC_TXT_PATH 2> /dev/null
+    echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$NAC_TXT_PATH
 fi
 echo "INFO ::: Enabling the crontab as the code executed SUCCESSFULLY"
 enable_crontab
