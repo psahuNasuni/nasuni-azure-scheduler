@@ -174,7 +174,7 @@ parse_file_NAC_txt() {
             "sp_secret") SP_SECRET="$value" ;;
             "azure_tenant_id") AZURE_TENANT_ID="$value" ;;
             "cred_vault") CRED_VAULT="$value" ;;
-            "analytic_service") ANALYTICS_SERVICE="$value" ;;
+            "analytic_service") ANALYTICS_SERVICE="${value^^}" ;;
             "frequency") FREQUENCY="$value" ;;
             "nac_scheduler_name") NAC_SCHEDULER_NAME="$value" ;;
             "use_private_ip") USE_PRIVATE_IP="$value" ;;
@@ -982,7 +982,7 @@ $COMMAND
 ### RUN terraform init
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
-$COMMAND
+$COMMANDservice_name
 sudo chmod 755 $(pwd)/*
 echo "INFO ::: NAC provisioning ::: FINISH - Executing ::: Terraform init."
 
@@ -993,7 +993,7 @@ echo "acs_resource_group="\"$ACS_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_admin_app_config_name="\"$ACS_ADMIN_APP_CONFIG_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "acs_nmc_volume_name="\"$NMC_VOLUME_NAME\" >>$NAC_TFVARS_FILE_NAME
 echo "nac_resource_group_name="\"$NAC_RESOURCE_GROUP_NAME\" >>$NAC_TFVARS_FILE_NAME
-echo "service_name="\"$ANALYTICS_SERVICE\" >>$NAC_TFVARS_FILE_NAME
+echo "service_name="\"${ANALYTICS_SERVICE^^}\" >>$NAC_TFVARS_FILE_NAME
 if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 	echo "networking_resource_group="\"$NETWORKING_RESOURCE_GROUP\" >>$NAC_TFVARS_FILE_NAME
     echo "user_vnet_name="\"$USER_VNET_NAME\" >>$NAC_TFVARS_FILE_NAME
