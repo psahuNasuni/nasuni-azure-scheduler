@@ -939,7 +939,7 @@ cp $CONFIG_DAT_FILE_NAME $CONFIG_DAT_FILE_PATH/$NMC_VOLUME_NAME.dat
 echo "INFO ::: current user :-"`whoami`
 ########## Download NAC Provisioning Code from GitHub ##########
 ### GITHUB_ORGANIZATION defaults to nasuni-labs
-REPO_FOLDER="nasuni-azure-analyticsconnector"
+REPO_FOLDER="nasuni-azure-analyticsconnector-exportonly"
 validate_github $GITHUB_ORGANIZATION $REPO_FOLDER
 ########################### Git Clone : NAC Provisioning Repo ####################################################
 echo "INFO ::: BEGIN - Git Clone !!!"
