@@ -97,15 +97,34 @@ get_destination_container_url(){
 	DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING=`az storage account show-connection-string -g $EDGEAPPLIANCE_RESOURCE_GROUP --name ${DESTINATION_STORAGE_ACCOUNT_NAME} | jq -r '.connectionString'`
 	echo "INFO ::: SUCCESS :: Get destination container url."
 }
-append_destination_container_url_toNAC_txt(){
+append_destination_container_url_to_NAC_txt(){
 	NAC_TXT_FILE_NAME="NAC.txt"
     PREV_TOC_HANDLE="$1"
-    echo "INFO ::: Appending destination_container details to NAC.txt"
-    echo "DestinationContainer="$CONTAINER_NAME >> "$NAC_TXT_FILE_NAME"
-    echo "DestinationContainerSASURL="$DESTINATION_CONTAINER_SAS_URL >> "$NAC_TXT_FILE_NAME"
-    echo "DatasourceConnectionString="$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING >> "$NAC_TXT_FILE_NAME"
-    echo "PrevUniFSTOCHandle="$PREV_TOC_HANDLE >> "$NAC_TXT_FILE_NAME"
+    echo "INFO ::: Updating values in NAC.txt"
+
+    sed -i "s|^DestinationContainer=.*|DestinationContainer=$CONTAINER_NAME|" "$NAC_TXT_FILE_NAME" 2> /dev/null
+    if ! grep -q "^DestinationContainer=" "$NAC_TXT_FILE_NAME"; then
+        echo "DestinationContainer=$CONTAINER_NAME" >> "$NAC_TXT_FILE_NAME"
+    fi
+
+
+    sed -i '/^DestinationContainerSASURL=/d' "$NAC_TXT_FILE_NAME"
+    sed -i "s|^DestinationContainerSASURL=.*|DestinationContainerSASURL=$DESTINATION_CONTAINER_SAS_URL|" "$NAC_TXT_FILE_NAME" 2> /dev/null
+    if ! grep -q "^DestinationContainerSASURL=" "$NAC_TXT_FILE_NAME"; then
+        echo "DestinationContainerSASURL=$DESTINATION_CONTAINER_SAS_URL" >> "$NAC_TXT_FILE_NAME"
+    fi
+
+    sed -i "s|^DatasourceConnectionString=.*|DatasourceConnectionString=$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING|" "$NAC_TXT_FILE_NAME" 2> /dev/null
+    if ! grep -q "^DatasourceConnectionString=" "$NAC_TXT_FILE_NAME"; then
+        echo "DatasourceConnectionString=$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING" >> "$NAC_TXT_FILE_NAME"
+    fi
+
+    sed -i "s|^PrevUniFSTOCHandle=.*|PrevUniFSTOCHandle=$PREV_TOC_HANDLE|" "$NAC_TXT_FILE_NAME" 2> /dev/null
+    if ! grep -q "^PrevUniFSTOCHandle=" "$NAC_TXT_FILE_NAME"; then
+        echo "PrevUniFSTOCHandle=$PREV_TOC_HANDLE" >> "$NAC_TXT_FILE_NAME"
+    fi
 }
+
 update_destination_container_url(){
 	ACS_ADMIN_APP_CONFIG_NAME="$1"
 
@@ -161,7 +180,7 @@ parse_file_nmc_txt() {
 }
 parse_file_NAC_txt() {
     file="$1"
-echo "HHHHHHHHHH $file"
+
     dos2unix $file
 
     while IFS="=" read -r key value; do
@@ -288,7 +307,7 @@ append_nmc_details_to_config_dat(){
     PREV_UNIFS_TOC_HANDLE=$4
 	CONFIG_DAT_FILE_NAME="config.dat"
     NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
-    ### Be careful while modifieng the values
+    ### Be careful while modifying the values
     sed -i "s|\<Name\>:.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
     echo "Name: "$NAC_RESOURCE_GROUP_NAME >> "$CONFIG_DAT_FILE_NAME"
     sed -i "s|\<UniFSTOCHandle\>:.*||g" "$CONFIG_DAT_FILE_NAME" 2> /dev/null
@@ -907,10 +926,9 @@ get_destination_container_url $EDGEAPPLIANCE_RESOURCE_GROUP
 if [ "${ANALYTICS_SERVICE^^}" != "EXP" ];then
     update_destination_container_url $ACS_ADMIN_APP_CONFIG_NAME
 else
-    echo "***************** append_destination_container_url_toNAC_txt"
-    append_destination_container_url_toNAC_txt $LATEST_TOC_HANDLE_PROCESSED
+    append_destination_container_url_to_NAC_txt $LATEST_TOC_HANDLE_PROCESSED
 fi
-echo "#### Also, Append update_destination_container_url to config.dat"
+echo "INFO ::: Updating config.dat"
 append_nmc_details_to_config_dat $UNIFS_TOC_HANDLE $SOURCE_CONTAINER $SOURCE_CONTAINER_SAS_URL $LATEST_TOC_HANDLE_PROCESSED
  
 if [ "$USE_PRIVATE_IP" = "Y" ]; then
@@ -954,11 +972,11 @@ COMMAND="git clone -b $GIT_BRANCH_NAME $GIT_REPO"
 $COMMAND
 RESULT=$?
 if [ $RESULT -eq 0 ]; then
-    echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
+   echo "INFO ::: FINISH ::: GIT clone SUCCESS for repo ::: $GIT_REPO_NAME"
 else
-    echo "ERROR ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
-    echo "ERROR ::: Unable to Proceed with NAC Provisioning."
-    echo "INFO ::: Deleting the destination storage account"
+   echo "ERROR ::: FINISH ::: GIT Clone FAILED for repo ::: $GIT_REPO_NAME"
+   echo "ERROR ::: Unable to Proceed with NAC Provisioning."
+   echo "INFO ::: Deleting the destination storage account"
     delete_destination_storage_account
     echo "INFO ::: Enabling the crontab as the code execution FAILS"
     enable_crontab
@@ -978,9 +996,9 @@ else
     install_NAC_CLI
 fi
 ### Installing dependencies in ./ACSFunction/.python_packages/lib/site-packages location
-echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
-COMMAND="pip3 install --target=./ACSFunction/.python_packages/lib/site-packages -r ./ACSFunction/requirements.txt"
-$COMMAND
+#echo "INFO ::: NAC provisioning ::: Installing Python Dependencies."
+#COMMAND="pip3 install --target=./ACSFunction/.python_packages/lib/site-packages -r ./ACSFunction/requirements.txt"
+#$COMMAND
 ### RUN terraform init
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform init."
 COMMAND="terraform init"
@@ -1018,9 +1036,8 @@ if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
     create_storage_account_private_dns_zone $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME
 fi
 LATEST_TOC_HANDLE="null"
-# NAC_TXT_PATH="/home/ubuntu/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
+ NAC_TXT_PATH="/home/ubuntu/${NMC_VOLUME_NAME}_${ANALYTICS_SERVICE}/NAC.txt"
 if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
-    echo "########## 888888888888 ###################"
     pwd
     ### Get PrevUniFSTOCHandle from NAC.txt file
     read_PrevUniFSTOCHandle_from_NAC_txt_file $NAC_TXT_PATH
@@ -1031,7 +1048,6 @@ if [ "${ANALYTICS_SERVICE^^}" == "EXP" ];then
     sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" $NAC_TXT_PATH 2> /dev/null
     echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$NAC_TXT_PATH
     cat "NAC_TXT_PATH - $NAC_TXT_PATH"
-    echo "########## QQQQQQQQQQQQQQQQQQQQQQQ ###################"
 
     # parse_file_NAC_txt /home/ubuntu/$NAC_TXT_PATHEXP
 else
@@ -1060,7 +1076,7 @@ FOLDER_PATH=`pwd`
 
 ## appending latest_toc_handle_processed to TFVARS_FILE
 # echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$FOLDER_PATH/$NAC_TFVARS_FILE_NAME
-echo "########## RRRRRRRRRRRRRRRRRRRRRRRRRRR ###################"
+
 ################################ NAC Provisioning and Data Export #############################################################
 echo "INFO ::: NAC provisioning ::: BEGIN - Executing ::: Terraform Apply . . . . . . . . . . . "
 COMMAND="terraform apply -var-file=$NAC_TFVARS_FILE_NAME -auto-approve"
