@@ -102,6 +102,7 @@ append_destination_container_url_to_NAC_txt(){
     PREV_TOC_HANDLE="$1"
     echo "INFO ::: Updating values in NAC.txt"
 
+    sed -i '/^DestinationContainer=/d' "$NAC_TXT_FILE_NAME"
     sed -i "s|^DestinationContainer=.*|DestinationContainer=$CONTAINER_NAME|" "$NAC_TXT_FILE_NAME" 2> /dev/null
     if ! grep -q "^DestinationContainer=" "$NAC_TXT_FILE_NAME"; then
         echo "DestinationContainer=$CONTAINER_NAME" >> "$NAC_TXT_FILE_NAME"
@@ -114,11 +115,13 @@ append_destination_container_url_to_NAC_txt(){
         echo "DestinationContainerSASURL=$DESTINATION_CONTAINER_SAS_URL" >> "$NAC_TXT_FILE_NAME"
     fi
 
+    sed -i '/^DatasourceConnectionString=/d' "$NAC_TXT_FILE_NAME"
     sed -i "s|^DatasourceConnectionString=.*|DatasourceConnectionString=$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING|" "$NAC_TXT_FILE_NAME" 2> /dev/null
     if ! grep -q "^DatasourceConnectionString=" "$NAC_TXT_FILE_NAME"; then
         echo "DatasourceConnectionString=$DESTINATION_STORAGE_ACCOUNT_CONNECTION_STRING" >> "$NAC_TXT_FILE_NAME"
     fi
 
+    sed -i '/^PrevUniFSTOCHandle=/d' "$NAC_TXT_FILE_NAME"
     sed -i "s|^PrevUniFSTOCHandle=.*|PrevUniFSTOCHandle=$PREV_TOC_HANDLE|" "$NAC_TXT_FILE_NAME" 2> /dev/null
     if ! grep -q "^PrevUniFSTOCHandle=" "$NAC_TXT_FILE_NAME"; then
         echo "PrevUniFSTOCHandle=$PREV_TOC_HANDLE" >> "$NAC_TXT_FILE_NAME"
@@ -423,9 +426,6 @@ add_metadat_to_destination_blob(){
         ### To rerun, we need to Start with metadata Assignment.
         ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
         #########################################################################
-        CURRENT_STATE="Export-completed-And-MetadataAssignment-Failed"
-        LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
-        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "ERROR ::: Metadata Assignment Failed in destination container."
         echo "INFO ::: Deleting the destination storage account"
         delete_destination_storage_account
@@ -437,9 +437,6 @@ add_metadat_to_destination_blob(){
         ### Data already Exported to Destination Storage Account and Metadata Assignment is finished.
         ### So, Setting the  LATEST_TOC_HANDLE_PROCESSED as the UNIFS_TOC_HANDLE
         #########################################################################
-        CURRENT_STATE="Export-Completed-And-MetadataAssignment-Completed"
-        LATEST_TOC_HANDLE_PROCESSED=$UNIFS_TOC_HANDLE
-        generate_tracker_json $ACS_URL $ACS_REQUEST_URL $DEFAULT_URL $FREQUENCY $USER_SECRET $CREATED_BY $CREATED_ON $TRACKER_NMC_VOLUME_NAME $ANALYTICS_SERVICE $MOST_RECENT_RUN $CURRENT_STATE $LATEST_TOC_HANDLE_PROCESSED $NAC_SCHEDULER_NAME
         echo "INFO ::: Metadata Assignment COMPLETED for all blobs in destination container."
     fi
 }
@@ -1113,6 +1110,8 @@ else
     else
         read_PrevUniFSTOCHandle_from_NAC_txt_file $NAC_TXT_PATH
         LATEST_TOC_HANDLE=
+
+        sed -i '/^PrevUniFSTOCHandle=/d' "$NAC_TXT_PATH"
         sed -i "s|\<PrevUniFSTOCHandle\>:.*||g" $NAC_TXT_PATH 2> /dev/null
         echo "PrevUniFSTOCHandle="\"$LATEST_TOC_HANDLE\" >>$NAC_TXT_PATH
     fi
