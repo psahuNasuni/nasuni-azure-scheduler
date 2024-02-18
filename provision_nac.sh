@@ -83,8 +83,10 @@ delete_destination_storage_account() {
 get_destination_container_url(){
 	
 	EDGEAPPLIANCE_RESOURCE_GROUP=$1
-    DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
+    DESTINATION_STORAGE_ACCOUNT_NAME="deststr$(date +%s)"
     DESTINATION_CONTAINER_NAME="destcontainer"
+
+    echo "INFO ::: Destination storage account name : $DESTINATION_STORAGE_ACCOUNT_NAME"
 
     #### Destination Storage account and container creation####
     creationDate=$(date +"%Y-%m-%dT%H:%M:%SZ")
@@ -740,19 +742,15 @@ generate_unique_random_value() {
     while true; do
         RND=$(( $RANDOM % 1000000 ))
         NAC_RESOURCE_GROUP_NAME="nac-resource-group-$RND"
-        DESTINATION_STORAGE_ACCOUNT_NAME="deststr$RND"
 
         if az group show --name $NAC_RESOURCE_GROUP_NAME &> /dev/null; then
             continue
         fi
 
-        if az storage account show --name $DESTINATION_STORAGE_ACCOUNT_NAME  &> /dev/null; then
-            continue
-        fi
         break
     done
 
-    echo "NAC_RESOURCE_GROUP_NAME=$NAC_RESOURCE_GROUP_NAME, DESTINATION_STORAGE_ACCOUNT_NAME=$DESTINATION_STORAGE_ACCOUNT_NAME"
+    echo "NAC_RESOURCE_GROUP_NAME=$NAC_RESOURCE_GROUP_NAME"
 }
 
 resolve_filer_ip(){
