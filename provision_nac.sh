@@ -26,7 +26,6 @@ disable_crontab(){
         local retry_count=0
         MAX_RETRIES=5
 
-        echo "$script_directory_name"
         while [ $retry_count -lt $MAX_RETRIES ]; do
             
             if [[ $(crontab -l | grep -c "^#.*$script_directory_name") -eq 0 ]]; then
@@ -37,7 +36,7 @@ disable_crontab(){
             break
 
             else
-                echo "Already commented.Another execution is in progress"
+                echo "WARNING ::: Already commented.Another execution maybe in progress"
                 exit 1
             fi
 
@@ -58,7 +57,7 @@ enable_crontab(){
         crontab -l
         break
     else
-        echo "Already uncommented"
+        echo "INFO ::: Crontab for this volume is already uncommented"
         break
     fi
     retry_count=$((retry_count + 1))
@@ -135,7 +134,7 @@ update_destination_container_url(){
 		echo "INFO ::: appconfig update FAILED"
         echo "INFO ::: Deleting the destination storage account"
         delete_destination_storage_account
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "ERROR :::Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
 	fi
@@ -256,7 +255,7 @@ validate_github() {
     REPO_EXISTS=$?
     if [ $REPO_EXISTS -ne 0 ]; then
             echo "ERROR ::: Unable to Access the git repo $GIT_REPO. Execution STOPPED"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "ERROR ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
             exit 1
     else
@@ -393,7 +392,7 @@ add_metadat_to_destination_blob(){
         echo "ERROR ::: Metadata Assignment Failed in destination container."
         echo "INFO ::: Deleting the destination storage account"
         delete_destination_storage_account
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "ERROR ::: Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
     else
@@ -437,7 +436,7 @@ run_cognitive_search_indexer(){
         echo "ERROR ::: Cognitive Search Indexer Run ::: FAILED"
         echo "INFO ::: Deleting the destination storage account"
         delete_destination_storage_account
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "ERROR ::: Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
     fi
@@ -476,8 +475,8 @@ destination_blob_cleanup(){
 
         if [[ "$INDEXER_LAST_RUN_STATUS"  == "success" ]];then
             if [ -n "$INDEXER_END_TIME" ]; then
-            echo "Indexer run finished, Start cleanup"
-            echo "NAC_Activity : Indexing Completed"
+            echo "INFO ::: Indexer run finished, Start cleanup"
+            echo "INFO ::: NAC_Activity : Indexing Completed"
             MOST_RECENT_RUN=$(date "+%Y:%m:%d-%H:%M:%S")
             CURRENT_STATE="Indexing-Completed"
             LATEST_TOC_HANDLE_PROCESSED="$UNIFS_TOC_HANDLE"
@@ -500,10 +499,10 @@ destination_blob_cleanup(){
                 time_difference=$((end_utimestamp - start_utimestamp))
 
                 if [ "$time_difference" -ge 86400 ]; then
-                    echo "The time difference is 24 hours"
+                    echo "INFO ::: The time difference is 24 hours"
                     run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
                 else
-                    echo "WARN ::: The time difference is less than 24 hours."
+                    echo "WARNING ::: The time difference is less than 24 hours."
                     
                     break  
                 fi
@@ -551,13 +550,13 @@ create_shared_private_access(){
             echo "INFO ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is Approved"
         else
             echo "ERROR ::: Private Endpoint Connection "$PRIVATE_CONNECTION_NAME" is NOT Approved"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "ERROR ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
             exit 1
         fi
     else
         echo "ERROR ::: Shared Link "$ENDPOINT_NAME" is NOT Created Properly"
-        echo "Enabling the crontab as the code execution FAILS"
+        echo "ERROR ::: Enabling the crontab as the code execution FAILS"
         enable_crontab
         exit 1
     fi
@@ -604,7 +603,7 @@ create_azure_function_private_dns_zone_virtual_network_link(){
 			echo "INFO ::: COMPLETED ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "ERROR ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -638,7 +637,7 @@ create_storage_account_private_dns_zone_virtual_network_link(){
 			echo "INFO ::: COMPLETED : $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link successfully created ::: $LINK_NAME"
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone virtual link creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "ERROR ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -668,7 +667,7 @@ create_azure_function_private_dns_zone(){
 			create_azure_function_private_dns_zone_virtual_network_link $AZURE_FUNCTION_PRIVAE_DNS_ZONE_RESOURCE_GROUP $AZURE_FUNCTION_VNET_NAME
 		else
 			echo "ERROR ::: $AZURE_FUNCTION_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "ERROR ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -698,7 +697,7 @@ create_storage_account_private_dns_zone(){
 			create_storage_account_private_dns_zone_virtual_network_link $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_RESOURCE_GROUP $STORAGE_ACCOUNT_VNET_NAME
 		else
 			echo "ERROR ::: $STORAGE_ACCOUNT_PRIVAE_DNS_ZONE_NAME dns zone creation failed"
-            echo "Enabling the crontab as the code execution FAILS"
+            echo "ERROR ::: Enabling the crontab as the code execution FAILS"
             enable_crontab
 			exit 1
 		fi
@@ -769,7 +768,7 @@ generate_unique_random_value() {
         break
     done
 
-    echo "NAC_RESOURCE_GROUP_NAME=$NAC_RESOURCE_GROUP_NAME"
+    echo "INFO ::: NAC resource group =$NAC_RESOURCE_GROUP_NAME"
 }
 
 resolve_filer_ip(){
@@ -788,7 +787,7 @@ if [ -n "$hostname" ]; then
         echo "{\"$ip_address\": \"$hostname\"}" > "$json_file"
    fi
 else
-    echo "Unable to resolve IP address to hostname.Please add entry in /etc/hosts/ to reflect the required changes in search interface."
+    echo "WARNING ::: Unable to resolve IP address to hostname.Please add entry in /etc/hosts/ to reflect the required changes in search interface."
 fi
 }
 
@@ -802,7 +801,7 @@ fi
 SCRIPT_DIRECTORY="$(cd "$(dirname "$0")" ; pwd -P)"
 script_directory_name="${SCRIPT_DIRECTORY##*/}"
 USER_CRONTAB=$(crontab -l)
-echo "Disabling the crontab as the execution started"
+echo "INFO ::: Disabling the crontab as the execution started"
 disable_crontab
 CURRENT_STATE="Provision-NAC-Started"
 NMC_API_ENDPOINT=""
@@ -878,7 +877,7 @@ echo "INFO ::: Previous snapshot processed is: $LATEST_TOC_HANDLE_PROCESSED"
 LAST_TOC_HANDLE_PROCESSED=$LATEST_TOC_HANDLE_PROCESSED
 if [[ "$UNIFS_TOC_HANDLE" == "$LATEST_TOC_HANDLE_PROCESSED" ]]; then
     echo "INFO ::: Couldn't find a new Snapshot of the volume: $NMC_VOLUME_NAME to process."
-    echo "Enabling the crontab as the code execution fails"
+    echo "ERROR ::: Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
 fi
@@ -905,7 +904,7 @@ fi
 NAC_RESOURCE_GROUP_NAME_STATUS=`az group exists -n ${NAC_RESOURCE_GROUP_NAME} --subscription ${AZURE_SUBSCRIPTION_ID} 2> /dev/null`
 if [ "$NAC_RESOURCE_GROUP_NAME_STATUS" = "true" ]; then
    echo "INFO ::: Provided Azure NAC Resource Group Name is Already Exist : $NAC_RESOURCE_GROUP_NAME"
-   echo "Enabling the crontab as the code execution FAILS"
+   echo "ERROR ::: Enabling the crontab as the code execution FAILS"
    enable_crontab
    exit 1
 fi
@@ -941,7 +940,7 @@ else
     echo "ERROR ::: Unable to Proceed with NAC Provisioning."
     echo "INFO ::: Deleting the destination storage account"
     delete_destination_storage_account
-    echo "Enabling the crontab as the code execution FAILS"
+    echo "ERROR ::: Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
 fi
@@ -1065,7 +1064,7 @@ else
     	fi
     echo "INFO ::: Deleting the destination storage account"
     delete_destination_storage_account
-    echo "Enabling the crontab as the code execution FAILS"
+    echo "ERROR ::: Enabling the crontab as the code execution FAILS"
     enable_crontab
     exit 1
 fi
@@ -1084,7 +1083,7 @@ run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
 ##################################### Blob Store Cleanup START ###############################################################
 
 destination_blob_cleanup $ACS_SERVICE_NAME $ACS_API_KEY $USE_PRIVATE_IP $EDGEAPPLIANCE_RESOURCE_GROUP $LAST_TOC_HANDLE_PROCESSED
-echo "Enabling the crontab as the code executed SUCCESSFULLY"
+echo "INFO ::: Enabling the crontab as the code executed SUCCESSFULLY"
 enable_crontab
 cd ..
 ##################################### Blob Store Cleanup END #####################################################################
