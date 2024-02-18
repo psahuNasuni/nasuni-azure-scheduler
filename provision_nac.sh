@@ -469,6 +469,8 @@ destination_blob_cleanup(){
         INDEXER_LAST_RUN_STATUS=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.status)
         echo "INFO ::: INDEXER_LAST_RUN_STATUS : $INDEXER_LAST_RUN_STATUS"
 
+        INDEXER_START_TIME=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.endTime)
+        
         INDEXER_END_TIME=$(echo $INDEXED_FILE_COUNT | jq -r .lastResult.endTime)
         echo "INFO ::: INDEXER_END_TIME : $INDEXER_END_TIME"
 
@@ -490,6 +492,23 @@ destination_blob_cleanup(){
             echo "INFO ::: $TOTAL_INDEX_FILE_COUNT files Indexed for snapshot ID : $LATEST_TOC_HANDLE_PROCESSED of Volume Name : $NMC_VOLUME_NAME !!!!"
             break 
             fi
+        elif [[ "$INDEXER_LAST_RUN_STATUS" == "transientFailure" ]];then
+            if [ -n "$INDEXER_END_TIME" ];then
+                start_utimestamp=$(date -d "$INDEXER_START_TIME" +%s)
+                end_utimestamp=$(date -d "$INDEXER_END_TIME" +%s)
+
+                time_difference=$((end_utimestamp - start_utimestamp))
+
+                if [ "$time_difference" -ge 86400 ]; then
+                    echo "The time difference is 24 hours"
+                    run_cognitive_search_indexer $ACS_SERVICE_NAME $ACS_API_KEY
+                else
+                    echo "WARN ::: The time difference is less than 24 hours."
+                    
+                    break  
+                fi
+            fi
+        fi  
         elif  [[ "$INDEXER_LAST_RUN_STATUS" != "inProgress" ]];then
             if [ -n "$INDEXER_END_TIME" ]; then
                 echo "ERROR ::: Failed to index due to INDEXER_LAST_RUN_STATUS is $INDEXER_LAST_RUN_STATUS "
