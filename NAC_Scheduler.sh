@@ -30,7 +30,7 @@ check_if_VNET_exists(){
 		
 		get_subnets $NETWORKING_RESOURCE_GROUP $INPUT_VNET "24" "1"
 		VNET_0_SUBNET_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g' | tr -d '"')
-		echo "VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
+		echo "INFO ::: VNET_0_SUBNET_CIDR: $VNET_0_SUBNET_CIDR----------------"
 		VNET_0_SUBNET=$(az network vnet subnet create -n $SUBNET_0_NAME --vnet-name $INPUT_VNET -g $NETWORKING_RESOURCE_GROUP --service-endpoints "Microsoft.Web" "Microsoft.Storage" --address-prefixes "$VNET_0_SUBNET_CIDR")
 
 		SUBNET_STATUS_CHECK=`az network vnet subnet show --name $SUBNET_0_NAME --vnet-name $INPUT_VNET --resource-group $NETWORKING_RESOURCE_GROUP | jq -r .provisioningState`
@@ -47,7 +47,7 @@ check_if_VNET_exists(){
 	fi
 
 	SUBNET_NAME="$SUBNET_0_NAME"
-	echo "SUBNET_NAME=$SUBNET_0_NAME , USER_VNET_NAME=$INPUT_VNET"
+	echo "INFO ::: SUBNET_NAME=$SUBNET_0_NAME , USER_VNET_NAME=$INPUT_VNET"
 	
 }
 
@@ -453,7 +453,7 @@ create_acs_private_dns_zone(){
 				echo "COMPLETED ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone successfully created"
 				create_acs_private_dns_zone_virtual_network_link $ACS_DNS_ZONE_RESOURCE_GROUP $ACS_VNET_NAME
 			else
-				cho "ERROR ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone creation failed"
+				echo "ERROR ::: $PRIVAE_DNS_ZONE_ACS_NAME dns zone creation failed"
 				exit 1
 			fi
 		fi
@@ -704,14 +704,13 @@ get_subnets(){
 	REQUIRED_SUBNET_COUNT="$4"
 
 	DIRECTORY=$(pwd)
-	echo "Directory: $DIRECTORY"
+	echo "INFO ::: Directory: $DIRECTORY"
 	FILENAME="$DIRECTORY/create_subnets/create_subnet_infra.py"
 	OUTPUT=$(python3 $FILENAME $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME $SUBNET_MASK $REQUIRED_SUBNET_COUNT 2>&1 >/dev/null > available_subnets.txt)
 	COUNTER=0
 	SUBNETS_CIDR=(`cat available_subnets.txt`)
 	SUBNETS_CIDR=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
-	echo "Subnet list from file : $SUBNETS_CIDR"
-	# Use comma as separator and apply as pattern
+	echo "INFO ::: Subnet list from file : $SUBNETS_CIDR"
 }
 
 ########################## Create CRON ############################################################
@@ -723,7 +722,7 @@ Schedule_CRON_JOB() {
 	echo $PEM
 	sudo chmod 400 $PEM
 	echo "INFO ::: Public IP Address:- $NAC_SCHEDULER_IP_ADDR"
-	echo "ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
+	echo "INFO ::: ssh -i "$PEM" ubuntu@$NAC_SCHEDULER_IP_ADDR -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
 	### Create TFVARS File for PROVISION_NAC.SH which is Used by CRON JOB - to Provision NAC Stack
 	CONFIG_DAT_FILE_NAME="config.dat"
 	sudo rm -rf "$CONFIG_DAT_FILE_NAME"
@@ -827,9 +826,9 @@ Schedule_CRON_JOB() {
 	JSON_FILE_PATH="/var/www/Tracker_UI/docs/"
 	### Create Directory for each Volume
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "[ ! -d $CRON_DIR_NAME ] && mkdir $CRON_DIR_NAME "
-	echo "Creating $JSON_FILE_PATH Directory"
+	echo "INFO ::: Creating $JSON_FILE_PATH Directory"
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p $JSON_FILE_PATH"
-	echo "$JSON_FILE_PATH Directory Created"
+	echo "INFO ::: $JSON_FILE_PATH Directory Created"
 
 	###Moving nmc_detail file to /var/www/
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo mkdir -p /var/www/SearchUI_Web"
@@ -846,12 +845,12 @@ Schedule_CRON_JOB() {
 		echo "INFO ::: $TFVARS_FILE_NAME Uploaded Successfully to NAC_Scheduer Instance."
 	fi
 	sudo rm -rf $TFVARS_FILE_NAME
-	echo "Copying file tracker_json.py $JSON_FILE_PATH Creating Direcotory "
+	echo "INFO ::: Copying file tracker_json.py $JSON_FILE_PATH Creating Directory "
 	#dos2unix command execute
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "dos2unix ~/$CRON_DIR_NAME/provision_nac.sh"
 	ssh -i "$PEM" ubuntu@"$NAC_SCHEDULER_IP_ADDR" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null "sudo cp ~/$CRON_DIR_NAME/tracker_json.py $JSON_FILE_PATH"
 	### Check If CRON JOB is running for a specific VOLUME_NAME
-	echo "Copy completed file tracker_json.py $JSON_FILE_PATH Creating Direcotory  *****************"
+	echo "INFO ::: Copy completed file tracker_json.py $JSON_FILE_PATH Creating Directory  *****************"
 	CRON_VOL=$(ssh -i "$PEM" -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null ubuntu@"$NAC_SCHEDULER_IP_ADDR" "crontab -l | grep \"~/$CRON_DIR_NAME/$TFVARS_FILE_NAME\"")
 	if [ "$CRON_VOL" != "" ]; then
 		### DO Nothing. CRON JOB takes care of NAC Provisioning
@@ -1027,7 +1026,7 @@ else
 	if [[ "$USE_PRIVATE_IP" == "Y" ]]; then
 		get_subnets $NETWORKING_RESOURCE_GROUP $USER_VNET_NAME "28" "1"
 		SEARCH_OUTBOUND_SUBNET=$(echo "$SUBNETS_CIDR" | sed 's/[][]//g')
-		echo "SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
+		echo "INFO ::: SEARCH_OUTBOUND_SUBNET: $SEARCH_OUTBOUND_SUBNET"
 	else
 		check_network_availability
 	fi
@@ -1111,7 +1110,7 @@ else
 	pwd
 	cd ../
 	pwd
-	echo "Pem key path: $PEM_KEY_PATH"
+	echo "INFO ::: Pem key path: $PEM_KEY_PATH"
 	sudo chmod 400 $PEM_KEY_PATH
 	Schedule_CRON_JOB $NAC_SCHEDULER_IP_ADDR
 fi

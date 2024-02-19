@@ -507,7 +507,7 @@ destination_blob_cleanup(){
                     break  
                 fi
             fi
-        fi  
+ 
         elif  [[ "$INDEXER_LAST_RUN_STATUS" != "inProgress" ]];then
             if [ -n "$INDEXER_END_TIME" ]; then
                 echo "ERROR ::: Failed to index due to INDEXER_LAST_RUN_STATUS is $INDEXER_LAST_RUN_STATUS "
